@@ -134,6 +134,22 @@ export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
   }
 };
 
+export const deleteEmployeeFromSupabase = async (userId: string): Promise<boolean> => {
+  if (!isSupabaseConfigured || !supabase) return false;
+
+  try {
+    const uuid = ensureUuid(userId);
+    const { error } = await supabase.from('employees').delete().eq('id', uuid);
+    if (error) {
+      console.warn('Error deleting employee from Supabase:', error);
+    }
+    return !error;
+  } catch (err) {
+    console.warn('Error deleting employee from Supabase:', err);
+    return false;
+  }
+};
+
 // ==============================================================================
 // 2. DEPARTMENTS SUPABASE OPERATIONS
 // ==============================================================================

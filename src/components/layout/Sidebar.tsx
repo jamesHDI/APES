@@ -112,7 +112,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Users,
           children: [
             { id: 'employee_mgmt', label: 'Employee Directory', icon: Users },
-            { id: 'pending_approvals', label: 'Pending Approvals', icon: UserCheck, badge: 1 },
             { id: 'dept_mgmt', label: 'Departments', icon: Building2 },
             { id: 'org_hierarchy', label: 'Org Chart', icon: GitBranch },
           ],
@@ -137,7 +136,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Users,
           children: [
             { id: 'employee_mgmt', label: 'Employee Directory', icon: Users },
-            { id: 'pending_approvals', label: 'Pending Approvals', icon: UserCheck },
+            { id: 'pending_approvals', label: 'Pending Approvals', icon: UserCheck, badge: pendingCount },
             { id: 'dept_mgmt', label: 'Departments', icon: Building2 },
             { id: 'org_hierarchy', label: 'Org Chart', icon: GitBranch },
           ],

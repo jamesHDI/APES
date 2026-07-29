@@ -18,9 +18,11 @@ import {
   Phone,
   Calendar,
   Sparkles,
-  Key
+  Key,
+  Trash2
 } from 'lucide-react';
 import { RegisterEmployeeModal } from '../auth/RegisterEmployeeModal';
+import { deleteEmployeeFromSupabase } from '../../services/supabaseService';
 import * as XLSX from 'xlsx';
 
 interface EmployeeManagementProps {
@@ -100,6 +102,21 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     });
     setUserList(updated);
     onSaveUsers(updated);
+  };
+
+  const handleDeleteUser = (user: User) => {
+    if (user.id === 'usr_default_admin' || user.email === 'Admin.Systemad@hdiadventures.com') {
+      alert('The System Administrator account cannot be deleted.');
+      return;
+    }
+
+    if (confirm(`Are you sure you want to permanently delete employee record for ${user.name} (${user.email})?`)) {
+      const updated = userList.filter(u => u.id !== user.id);
+      setUserList(updated);
+      onSaveUsers(updated);
+      deleteEmployeeFromSupabase(user.id);
+      showToast(`Deleted employee account for ${user.name}`);
+    }
   };
 
   const handleRegisterNewUser = (newUser: User) => {
@@ -301,6 +318,14 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                   title={u.isActive ? 'Deactivate / Archive Employee' : 'Reactivate Employee'}
                 >
                   {u.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                </button>
+
+                <button
+                  onClick={() => handleDeleteUser(u)}
+                  className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30"
+                  title="Permanently Delete Employee Account"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
