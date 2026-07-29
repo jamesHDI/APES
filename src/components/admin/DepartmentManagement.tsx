@@ -235,82 +235,104 @@ export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
 
       {/* Add / Edit Department Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
-              <h3 className="font-bold text-slate-900 dark:text-white text-base">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 dark:border-slate-700 space-y-5">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
                 {editingDept ? 'Edit Department' : 'Add New Department'}
-              </h3>
-              <button onClick={() => setShowModal(false)} className="p-1 text-slate-400 hover:text-slate-600">
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Department Name *</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border text-xs"
-                placeholder="e.g. Creatives"
-              />
+            {/* Form Fields */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  DEPARTMENT NAME *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  placeholder="e.g. Accounting"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  DEPARTMENT CODE *
+                </label>
+                <input
+                  type="text"
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-100 uppercase focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  placeholder="e.g. ACC"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  ASSIGNED DEPARTMENT HEAD
+                </label>
+                <select
+                  value={formData.headId}
+                  onChange={(e) => {
+                    const u = users.find(usr => usr.id === e.target.value);
+                    setFormData({ ...formData, headId: e.target.value, headName: u ? u.name : formData.headName });
+                  }}
+                  className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                >
+                  <option value="">Select Department Head...</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.position})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  DEFAULT KPI EVALUATION TEMPLATE
+                </label>
+                <select
+                  value={formData.defaultTemplateId}
+                  onChange={(e) => setFormData({ ...formData, defaultTemplateId: e.target.value })}
+                  className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                >
+                  <option value="">Select KPI Template...</option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title} ({t.departmentName})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Department Code *</label>
-              <input
-                type="text"
-                value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border text-xs uppercase"
-                placeholder="e.g. CRT"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Assigned Department Head</label>
-              <select
-                value={formData.headId}
-                onChange={(e) => {
-                  const u = users.find(usr => usr.id === e.target.value);
-                  setFormData({ ...formData, headId: e.target.value, headName: u ? u.name : formData.headName });
-                }}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-medium"
-              >
-                <option value="">Select Department Head...</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name} ({u.position})</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Default KPI Evaluation Template</label>
-              <select
-                value={formData.defaultTemplateId}
-                onChange={(e) => setFormData({ ...formData, defaultTemplateId: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-medium"
-              >
-                <option value="">Select KPI Template...</option>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>{t.title} ({t.departmentName})</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-end space-x-2">
+            {/* Buttons */}
+            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100 dark:border-slate-700">
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                className="px-5 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSave}
-                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-lg flex items-center space-x-1.5"
+                className="px-6 py-3 rounded-2xl bg-[#8B3DFF] hover:bg-[#7b2cff] text-white text-xs font-bold shadow-lg shadow-purple-500/25 flex items-center space-x-2 transition-all active:scale-95"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Save Department Info</span>
