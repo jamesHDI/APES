@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS public.positions (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. EMPLOYEES & USERS PROFILE TABLE
+-- 3. EMPLOYEES & USERS PROFILE TABLE (Linked to Supabase Auth.users)
 CREATE TABLE IF NOT EXISTS public.employees (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -212,49 +212,23 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ==============================================================================
 
-ALTER TABLE public.departments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.positions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.employees ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.evaluation_cycles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.evaluation_templates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.kpis ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.evaluations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.kpi_ratings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.core_value_ratings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.digital_signatures ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.evidence_files ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Drop existing policies if re-running
-DROP POLICY IF EXISTS "Public full access departments" ON public.departments;
-DROP POLICY IF EXISTS "Public full access positions" ON public.positions;
-DROP POLICY IF EXISTS "Public full access employees" ON public.employees;
-DROP POLICY IF EXISTS "Public full access evaluation_cycles" ON public.evaluation_cycles;
-DROP POLICY IF EXISTS "Public full access evaluation_templates" ON public.evaluation_templates;
-DROP POLICY IF EXISTS "Public full access kpis" ON public.kpis;
-DROP POLICY IF EXISTS "Public full access evaluations" ON public.evaluations;
-DROP POLICY IF EXISTS "Public full access kpi_ratings" ON public.kpi_ratings;
-DROP POLICY IF EXISTS "Public full access core_value_ratings" ON public.core_value_ratings;
-DROP POLICY IF EXISTS "Public full access digital_signatures" ON public.digital_signatures;
-DROP POLICY IF EXISTS "Public full access evidence_files" ON public.evidence_files;
-DROP POLICY IF EXISTS "Public full access notifications" ON public.notifications;
-DROP POLICY IF EXISTS "Public full access audit_logs" ON public.audit_logs;
+CREATE POLICY "Employees view own records" ON public.evaluations
+    FOR SELECT USING (auth.uid() = employee_id OR auth.uid() IN (
+        SELECT user_id FROM public.employees WHERE role IN ('hr_admin', 'system_admin', 'pod')
+    ));
 
--- Allow full access for APES tables
-CREATE POLICY "Public full access departments" ON public.departments FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public full access positions" ON public.positions FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public full access employees" ON public.employees FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public full access evaluation_cycles" ON public.evaluation_cycles FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public full access evaluation_templates" ON public.evaluation_templates FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public full access kpis" ON public.kpis FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public full access evaluations" ON public.evaluations FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public full access kpi_ratings" ON public.kpi_ratings FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public full access core_value_ratings" ON public.core_value_ratings FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public full access digital_signatures" ON public.digital_signatures FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public full access evidence_files" ON public.evidence_files FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public full access notifications" ON public.notifications FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public full access audit_logs" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Supervisors view direct reports" ON public.evaluations
+    FOR SELECT USING (employee_id IN (
+        SELECT id FROM public.employees WHERE immediate_superior_id = auth.uid()
+    ));
+
+CREATE POLICY "HR and System Admins Full Access" ON public.employees
+    FOR ALL USING (auth.uid() IN (
+        SELECT user_id FROM public.employees WHERE role IN ('hr_admin', 'system_admin')
+    ));
 
 -- STORAGE BUCKETS SETUP
 INSERT INTO storage.buckets (id, name, public) VALUES ('apes-signatures', 'apes-signatures', true) ON CONFLICT DO NOTHING;
