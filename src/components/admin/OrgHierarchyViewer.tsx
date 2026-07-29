@@ -1,6 +1,6 @@
 import React from 'react';
 import { User, Department } from '../../types';
-import { Crown, Building2, UserCheck, Users, ChevronRight, ShieldCheck } from 'lucide-react';
+import { Building2, ChevronRight, ShieldCheck, UserCheck } from 'lucide-react';
 
 interface OrgHierarchyViewerProps {
   users: User[];
@@ -8,8 +8,10 @@ interface OrgHierarchyViewerProps {
 }
 
 export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, departments }) => {
-  const president = users.find(u => u.role === 'president') || users[3];
-  const deptHeads = users.filter(u => u.role === 'dept_head' || u.isDepartmentHead);
+  const president = users.find(u => u.role === 'president' || u.name.includes('Emman Buenaventura') || u.id === 'usr_dh_fop') || {
+    name: 'Emman Buenaventura',
+    position: 'President & Department Head - Finance / Office of the President'
+  };
 
   return (
     <div className="space-y-6 pb-12">
@@ -18,7 +20,7 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
       <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-amber-900 rounded-2xl p-6 text-white shadow-xl flex items-center justify-between">
         <div>
           <div className="flex items-center space-x-2">
-            <Crown className="w-6 h-6 text-amber-300" />
+            <ShieldCheck className="w-6 h-6 text-amber-400" />
             <h2 className="text-xl font-black tracking-tight">Organizational Hierarchy & Workflow Routing Matrix</h2>
           </div>
           <p className="text-xs text-amber-200 mt-1">
@@ -32,15 +34,9 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
         
         {/* Tier 1: President */}
         <div className="flex flex-col items-center">
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg flex items-center space-x-3 border-2 border-amber-300 max-w-sm w-full">
-            <Crown className="w-8 h-8 text-white shrink-0" />
-            <div>
-              <span className="text-[10px] font-extrabold uppercase bg-black/20 px-2 py-0.5 rounded text-amber-100">
-                Top Executive Evaluator
-              </span>
-              <h3 className="font-black text-sm tracking-tight">{president.name}</h3>
-              <p className="text-xs text-amber-100">{president.position}</p>
-            </div>
+          <div className="p-5 rounded-2xl bg-amber-600 text-white shadow-lg border-2 border-amber-400 max-w-sm w-full text-center space-y-1">
+            <h3 className="font-black text-lg tracking-tight leading-snug">{president.name}</h3>
+            <p className="text-xs text-amber-100 font-medium">{president.position}</p>
           </div>
           
           <div className="w-0.5 h-8 bg-amber-400 my-1" />
@@ -54,7 +50,7 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {departments.map((dept) => {
-              const headUser = users.find(u => u.name === dept.headName || u.departmentName === dept.name && (u.role === 'dept_head' || u.isDepartmentHead));
+              const headUser = users.find(u => u.name === dept.headName || (u.departmentName === dept.name && (u.role === 'dept_head' || u.isDepartmentHead)));
               const deptStaff = users.filter(u => u.departmentName === dept.name && u.id !== headUser?.id);
 
               return (
@@ -70,12 +66,12 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
                   </div>
 
                   {/* Dept Head Card */}
-                  <div className="p-2.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200 text-xs flex items-center space-x-2">
-                    <Crown className="w-4 h-4 text-purple-600 shrink-0" />
+                  <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-xs flex items-center justify-between">
                     <div>
                       <p className="font-bold text-slate-900 dark:text-white">{dept.headName}</p>
-                      <p className="text-[10px] text-purple-600">Department Head</p>
+                      <p className="text-[10px] text-purple-600 font-semibold mt-0.5">Department Head</p>
                     </div>
+                    <UserCheck className="w-4 h-4 text-purple-600 shrink-0" />
                   </div>
 
                   {/* Staff List */}
