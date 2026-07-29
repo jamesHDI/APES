@@ -272,8 +272,11 @@ export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Assigned Department Head</label>
               <select
                 value={formData.headId}
-                onChange={(e) => setFormData({ ...formData, headId: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border text-xs"
+                onChange={(e) => {
+                  const u = users.find(usr => usr.id === e.target.value);
+                  setFormData({ ...formData, headId: e.target.value, headName: u ? u.name : formData.headName });
+                }}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-medium"
               >
                 <option value="">Select Department Head...</option>
                 {users.map((u) => (
@@ -282,12 +285,35 @@ export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
               </select>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Default KPI Evaluation Template</label>
+              <select
+                value={formData.defaultTemplateId}
+                onChange={(e) => setFormData({ ...formData, defaultTemplateId: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-medium"
+              >
+                <option value="">Select KPI Template...</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.title} ({t.departmentName})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
                 Cancel
               </button>
-              <button onClick={handleSave} className="px-5 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold">
-                Save Department
+              <button
+                type="button"
+                onClick={handleSave}
+                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-lg flex items-center space-x-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Save Department Info</span>
               </button>
             </div>
 
