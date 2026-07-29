@@ -26,11 +26,8 @@ export const PendingApprovalsDashboard: React.FC<PendingApprovalsDashboardProps>
   onApproveUser,
   onRejectUser,
 }) => {
-  // Include all self-registered users awaiting approval
-  const pendingList = users.filter(u => 
-    u.approvalStatus === 'pending' || 
-    (u.isApproved === false && u.approvalStatus !== 'approved')
-  );
+  // Only show accounts that are currently pending review — approved & rejected accounts automatically leave the queue
+  const pendingList = users.filter(u => (u.approvalStatus as string) === 'pending');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   

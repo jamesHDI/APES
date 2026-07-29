@@ -170,8 +170,8 @@ export const App: React.FC = () => {
     // Initial sync
     syncDatabaseAndNotifications();
 
-    // Poll every 15 seconds
-    const intervalId = setInterval(syncDatabaseAndNotifications, 15000);
+    // Poll every 5 seconds for rapid cross-device sync
+    const intervalId = setInterval(syncDatabaseAndNotifications, 5000);
 
     // Supabase Realtime Channel
     let channel: any = null;
