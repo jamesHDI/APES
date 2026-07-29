@@ -226,6 +226,21 @@ ALTER TABLE public.evidence_files ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if re-running
+DROP POLICY IF EXISTS "Public full access departments" ON public.departments;
+DROP POLICY IF EXISTS "Public full access positions" ON public.positions;
+DROP POLICY IF EXISTS "Public full access employees" ON public.employees;
+DROP POLICY IF EXISTS "Public full access evaluation_cycles" ON public.evaluation_cycles;
+DROP POLICY IF EXISTS "Public full access evaluation_templates" ON public.evaluation_templates;
+DROP POLICY IF EXISTS "Public full access kpis" ON public.kpis;
+DROP POLICY IF EXISTS "Public full access evaluations" ON public.evaluations;
+DROP POLICY IF EXISTS "Public full access kpi_ratings" ON public.kpi_ratings;
+DROP POLICY IF EXISTS "Public full access core_value_ratings" ON public.core_value_ratings;
+DROP POLICY IF EXISTS "Public full access digital_signatures" ON public.digital_signatures;
+DROP POLICY IF EXISTS "Public full access evidence_files" ON public.evidence_files;
+DROP POLICY IF EXISTS "Public full access notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Public full access audit_logs" ON public.audit_logs;
+
 -- Allow full access for APES tables
 CREATE POLICY "Public full access departments" ON public.departments FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public full access positions" ON public.positions FOR ALL USING (true) WITH CHECK (true);
