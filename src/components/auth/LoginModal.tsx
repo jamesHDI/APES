@@ -88,9 +88,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
             {/* Welcome text */}
             <div className="space-y-2">
-              <span className="text-[11px] uppercase tracking-widest font-extrabold text-hdi-red bg-rose-950/60 px-3 py-1 rounded-full border border-rose-500/30">
-                HDI FAMILY OF COMPANIES
-              </span>
               <h2 className="text-xl font-black leading-snug tracking-tight text-center">
                 Welcome to APES v3.0<br />
                 <span className="text-brand-400">Performance Evaluation System</span>
