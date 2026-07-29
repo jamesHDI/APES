@@ -81,7 +81,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <div className="bg-white/95 backdrop-blur-sm rounded-2xl px-6 py-5 shadow-2xl inline-block border border-white/20">
               <img
                 src="/hdi-logo.png"
-                alt="HDI Family of Companies"
+                alt="HDI Hive"
                 className="h-16 max-w-full w-auto object-contain mx-auto"
               />
             </div>

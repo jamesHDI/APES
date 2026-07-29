@@ -72,7 +72,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
 
             <p className="text-[11px] text-slate-500">
-              APES Performance Evaluation System &bull; HDI Family of Companies
+              APES Performance Evaluation System &bull; HDI Hive
             </p>
           </div>
         </div>

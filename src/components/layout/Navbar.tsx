@@ -92,7 +92,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="shrink-0 bg-white rounded-xl p-1.5 shadow-sm border border-slate-200 dark:border-slate-700">
                 <img
                   src="/hdi-logo.png"
-                  alt="HDI Family of Companies"
+                  alt="HDI Hive"
                   className="h-9 w-auto object-contain"
                 />
               </div>
@@ -106,7 +106,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-none mt-0.5 hidden md:block">
-                  HDI Family of Companies
+                  HDI Hive
                 </p>
               </div>
             </div>

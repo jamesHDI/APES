@@ -255,7 +255,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Mobile Close Button */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 lg:hidden">
           <div className="flex items-center gap-2">
-            <img src="/hdi-logo.png" alt="HDI Family of Companies" className="h-6 w-auto object-contain" />
+            <img src="/hdi-logo.png" alt="HDI Hive" className="h-6 w-auto object-contain" />
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200">APES v3.0</span>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
@@ -273,7 +273,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-100 dark:border-slate-800 text-center">
-          <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">HDI Family of Companies</p>
+          <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">HDI Hive</p>
           <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Strictly Confidential</p>
         </div>
       </aside>
