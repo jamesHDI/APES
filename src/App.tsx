@@ -180,12 +180,27 @@ export const App: React.FC = () => {
     };
   }, [currentUser?.id]);
 
-  const handleLoginSuccess = (authenticatedUser: User) => {
+  const handleLoginSuccess = async (authenticatedUser: User) => {
     setCurrentUser(authenticatedUser);
     setCurrentUserStore(authenticatedUser);
     localStorage.setItem('apes_session_active_v3', 'true');
     setIsAuthenticated(true);
-    setNotifications(getStoredNotifications(authenticatedUser.id));
+
+    // Fetch all fresh data from Supabase on login
+    if (isSupabaseConfigured) {
+      const [sbUsers, sbNotifs] = await Promise.all([
+        fetchEmployeesFromSupabase(),
+        fetchNotificationsFromSupabase(authenticatedUser.id),
+      ]);
+      if (sbUsers && sbUsers.length > 0) { setUsers(sbUsers); saveUsers(sbUsers); }
+      if (sbNotifs && sbNotifs.length > 0) {
+        setNotifications(sbNotifs);
+      } else {
+        setNotifications(getStoredNotifications(authenticatedUser.id));
+      }
+    } else {
+      setNotifications(getStoredNotifications(authenticatedUser.id));
+    }
 
     const savedTab = localStorage.getItem('apes_active_tab_v3') || 'dashboard';
     setActiveTab(savedTab);
@@ -231,8 +246,15 @@ export const App: React.FC = () => {
     saveUsers(updated);
   };
 
-  const handleMarkNotificationRead = (notifId: string) => {
+  const handleMarkNotificationRead = async (notifId: string) => {
     markNotificationAsRead(notifId);
+    if (isSupabaseConfigured) {
+      const sbNotifs = await fetchNotificationsFromSupabase(currentUser.id);
+      if (sbNotifs && sbNotifs.length > 0) {
+        setNotifications(sbNotifs);
+        return;
+      }
+    }
     setNotifications(getStoredNotifications(currentUser.id));
   };
 

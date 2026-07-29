@@ -26,7 +26,15 @@ export const PendingApprovalsDashboard: React.FC<PendingApprovalsDashboardProps>
   onApproveUser,
   onRejectUser,
 }) => {
-  const pendingList = users.filter(u => u.approvalStatus === 'pending' || u.isApproved === false);
+  // UUID regex — real Supabase-registered users will have proper UUID IDs
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  // Only show truly self-registered pending accounts — exclude built-in seed system users
+  const pendingList = users.filter(u => 
+    u.approvalStatus === 'pending' && 
+    u.isApproved === false && 
+    u.isActive === false &&
+    (UUID_REGEX.test(u.id) || u.id.startsWith('usr_reg_') || u.id.startsWith('usr_new_'))
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   

@@ -201,7 +201,7 @@ export const fetchNotificationsFromSupabase = async (userId?: string): Promise<N
 
     const mapped = data.map((n: any) => ({
       id: n.id,
-      userId: n.user_id || 'usr_default_admin',
+      userId: n.user_id,
       title: n.title,
       message: n.message,
       type: n.type || 'action_required',
@@ -211,9 +211,7 @@ export const fetchNotificationsFromSupabase = async (userId?: string): Promise<N
       dateTime: n.created_at ? new Date(n.created_at).toLocaleString() : new Date().toLocaleString(),
     }));
 
-    if (userId) {
-      return mapped.filter((n: Notification) => n.userId === userId || n.userId === 'usr_default_admin' || n.userId === 'ALL' || n.userId === 'ALL_ADMINS');
-    }
+    // Return all notifications — let the UI filter by role rather than exact UUID
     return mapped;
   } catch (err) {
     console.warn('Error fetching notifications from Supabase:', err);
