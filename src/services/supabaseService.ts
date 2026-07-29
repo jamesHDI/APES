@@ -94,12 +94,12 @@ export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
 
   try {
     const payload = {
-      id: ensureUuid(user.id),
+      id: isValidUuid(user.id) ? user.id : ensureUuid(user.id),
       employee_number: user.employeeNumber,
       first_name: user.firstName || user.name.split(' ')[0],
       middle_name: user.middleName || '',
       last_name: user.lastName || user.name.split(' ')[1] || '',
-      email: user.email,
+      email: user.email.toLowerCase(),
       contact_number: user.contactNumber,
       // Set FK references to null to avoid constraint violations if referenced records don't exist in Supabase
       department_id: null,
@@ -123,7 +123,7 @@ export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
       updated_at: new Date().toISOString()
     };
 
-    const { error } = await supabase.from('employees').upsert(payload);
+    const { error } = await supabase.from('employees').upsert(payload, { onConflict: 'id' });
     if (error) {
       console.warn('Supabase employees upsert error:', error.message, error.details, error.hint);
     }

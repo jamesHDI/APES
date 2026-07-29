@@ -2,7 +2,7 @@ import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { User, Role } from '../types';
 import { getStoredUsers, saveUsers, getStoredCurrentUser, setCurrentUserStore } from './storage';
 import { triggerRegistrationNotification } from './notificationService';
-import { ensureUuid, saveEmployeeToSupabase } from './supabaseService';
+import { ensureUuid, generateUuid, saveEmployeeToSupabase } from './supabaseService';
 
 export interface LoginCredentials {
   identifier: string; // Email or Employee ID
@@ -113,28 +113,45 @@ export const changeUserPassword = (userId: string, newPassword: string): boolean
 
 export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: User | null; error?: string }> => {
   const users = getStoredUsers();
-  const existing = users.find(u => u.email.toLowerCase() === data.email.toLowerCase());
-  if (existing) {
-    return { user: null, error: `An account with email ${data.email} already exists.` };
+  const normalizedEmail = data.email.trim().toLowerCase();
+  
+  const existingLocal = users.find(u => u.email.toLowerCase() === normalizedEmail);
+  if (existingLocal) {
+    return { user: null, error: `An account with email ${data.email} is already registered.` };
   }
 
-  const fullName = `${data.firstName} ${data.middleName ? data.middleName + ' ' : ''}${data.lastName}`;
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data: existingSb } = await supabase.from('employees').select('id, email').eq('email', normalizedEmail).maybeSingle();
+      if (existingSb) {
+        return { user: null, error: `An account with email ${data.email} is already registered in the system.` };
+      }
+    } catch (e) {
+      console.warn('Supabase duplicate email check:', e);
+    }
+  }
+
+  const fullName = `${data.firstName.trim()} ${data.middleName ? data.middleName.trim() + ' ' : ''}${data.lastName.trim()}`;
+  const empNum = data.employeeNumber && data.employeeNumber.trim().length > 0 
+    ? data.employeeNumber.trim() 
+    : `EMP-${Date.now().toString().slice(-6)}`;
+
   const newUser: User = {
-    id: ensureUuid(`usr_${Date.now()}`),
-    employeeNumber: data.employeeNumber || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-    firstName: data.firstName,
-    middleName: data.middleName,
-    lastName: data.lastName,
+    id: generateUuid(),
+    employeeNumber: empNum,
+    firstName: data.firstName.trim(),
+    middleName: data.middleName ? data.middleName.trim() : undefined,
+    lastName: data.lastName.trim(),
     name: fullName,
-    email: data.email,
+    email: normalizedEmail,
     contactNumber: data.contactNumber,
     departmentId: data.departmentId,
     departmentName: data.departmentName,
-    position: data.position,
+    position: data.position.trim(),
     role: 'employee',
     employmentStatus: 'Regular',
     dateHired: new Date().toISOString().substring(0, 10),
-    username: data.email.split('@')[0],
+    username: normalizedEmail.split('@')[0],
     isActive: false,
     isApproved: false,
     approvalStatus: 'pending',
@@ -149,7 +166,7 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
   if (isSupabaseConfigured && supabase) {
     try {
       await supabase.auth.signUp({
-        email: data.email,
+        email: normalizedEmail,
         password: data.password || 'password123',
       });
     } catch (err) {
