@@ -184,19 +184,17 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   };
 
   const doSubmitEmployee = () => {
-    const nextStatus = evalData.workflowType === 'WORKFLOW_DEPT_HEAD' 
-      ? 'pending_president' 
-      : evalData.workflowType === 'WORKFLOW_NO_IS' 
-      ? 'pending_dept_head' 
-      : 'pending_supervisor';
+    const deptName = currentUser.departmentName || evalData.departmentName;
+    const deptHeadUser = allUsers.find(
+      u => (u.id === currentUser.departmentHeadId) || 
+           (u.role === 'dept_head' && u.departmentName === deptName) ||
+           (u.isDepartmentHead && u.departmentName === deptName)
+    );
 
-    const assignedTo = evalData.workflowType === 'WORKFLOW_DEPT_HEAD'
-      ? 'Dr. Gabriel Santos (President)'
-      : evalData.workflowType === 'WORKFLOW_NO_IS'
-      ? 'Department Head'
-      : (currentUser.immediateSuperiorName || 'Immediate Superior');
+    const nextStatus = 'pending_dept_head';
+    const assignedTo = deptHeadUser ? `${deptHeadUser.name} (${deptName} Department Head)` : `${deptName} Department Head`;
 
-    const updatedAudit = addAuditEntry('Evaluation Submitted', evalData.status, nextStatus, assignedTo);
+    const updatedAudit = addAuditEntry('Evaluation Submitted', evalData.status, nextStatus, assignedTo, 'Submitted for Department Head review.');
 
     const updated: Evaluation = {
       ...evalData,
@@ -206,21 +204,24 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     };
 
     onSave(updated);
-    triggerWorkflowNotification(
-      'usr_sup_01',
-      updated,
-      'Action Required: Self-Evaluation Submitted',
-      `${currentUser.name} submitted evaluation for review.`,
-      currentUser.name
-    );
+
+    if (deptHeadUser) {
+      triggerWorkflowNotification(
+        deptHeadUser.id,
+        updated,
+        'Action Required: Employee Self-Evaluation Submitted',
+        `${currentUser.name} (${deptName}) has submitted their self-evaluation for your review.`,
+        currentUser.name
+      );
+    }
 
     confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
-    showToast(`Evaluation submitted! Next evaluator: ${assignedTo}`);
+    showToast(`Evaluation submitted! Routed to Department Head: ${assignedTo}`);
   };
 
   const handleFinalizeSupervisor = () => setConfirmAction('supervisor');
   const doFinalizeSupervisor = () => {
-    const updatedAudit = addAuditEntry('Supervisor Review Completed', evalData.status, 'pending_pod', 'POD Reviewer');
+    const updatedAudit = addAuditEntry('Department Head Review Completed', evalData.status, 'pending_pod', 'POD Reviewer', 'Review completed and submitted to POD.');
 
     const updated: Evaluation = {
       ...evalData,
@@ -230,16 +231,18 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     };
 
     onSave(updated);
+
+    const podUser = allUsers.find(u => u.role === 'pod') || { id: 'usr_pod_01' };
     triggerWorkflowNotification(
-      'usr_pod_01',
+      podUser.id,
       updated,
       'Action Required: Evaluation Pending POD Validation',
-      `Supervisor completed review for ${evalData.employeeName}. Ready for POD validation.`,
+      `Department Head ${currentUser.name} completed review for ${evalData.employeeName}. Ready for POD validation.`,
       currentUser.name
     );
 
     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-    showToast('Review finalized and sent to POD!');
+    showToast('Department Head review finalized and submitted to POD!');
   };
 
   const handleFinalizePresident = () => setConfirmAction('president');
@@ -258,7 +261,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       'usr_pod_01',
       updated,
       'Action Required: Dept Head Scorecard Ready for POD Validation',
-      `President Dr. Gabriel Santos completed executive review for ${evalData.employeeName}.`,
+      `Executive review completed for ${evalData.employeeName}.`,
       currentUser.name
     );
 
@@ -425,7 +428,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               </button>
             )}
 
-            {currentRole === 'supervisor' && (evalData.status === 'pending_supervisor' || evalData.status === 'employee_submitted') && (
+            {(currentRole === 'dept_head' || currentRole === 'supervisor' || currentUser.isDepartmentHead) && 
+             (evalData.status === 'pending_dept_head' || evalData.status === 'pending_supervisor' || evalData.status === 'employee_submitted') && (
               <button onClick={handleFinalizeSupervisor} className="btn btn-success btn-sm">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Submit to POD

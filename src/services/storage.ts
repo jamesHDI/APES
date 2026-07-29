@@ -28,8 +28,8 @@ export const SEED_USERS: User[] = [
     password: 'ADMIN',
     contactNumber: '',
     role: 'system_admin',
-    departmentId: 'dept_it',
-    departmentName: 'General Administration',
+    departmentId: 'dept_adm',
+    departmentName: 'Admin',
     position: 'System Administrator',
     employmentStatus: 'Regular',
     dateHired: '2024-01-01',
@@ -39,6 +39,198 @@ export const SEED_USERS: User[] = [
     approvalStatus: 'approved',
     requiresPasswordChange: true,
   },
+  // ── OFFICIAL DEPARTMENT HEADS ──────────────────────────────────────────────
+  {
+    id: 'usr_dh_acc',
+    employeeNumber: 'DH-ACC-01',
+    firstName: 'Mary Anne',
+    lastName: 'Murphy',
+    name: 'Mary Anne Murphy',
+    email: 'maryanne.murphy@hdiadventures.com',
+    username: 'maryanne.murphy',
+    password: 'password',
+    role: 'dept_head',
+    departmentId: 'dept_acc',
+    departmentName: 'Accounting',
+    position: 'Department Head - Accounting',
+    isDepartmentHead: true,
+    isActive: true,
+    isApproved: true,
+    approvalStatus: 'approved',
+    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'usr_dh_adm',
+    employeeNumber: 'DH-ADM-01',
+    firstName: 'James Ivan',
+    lastName: 'Abendan',
+    name: 'James Ivan Abendan',
+    email: 'james.abendan@hdiadventures.com',
+    username: 'james.abendan',
+    password: 'password',
+    role: 'dept_head',
+    departmentId: 'dept_adm',
+    departmentName: 'Admin',
+    position: 'Department Head - Admin',
+    isDepartmentHead: true,
+    isActive: true,
+    isApproved: true,
+    approvalStatus: 'approved',
+    avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'usr_dh_bmc',
+    employeeNumber: 'DH-BMC-01',
+    firstName: 'Rara',
+    lastName: 'Carrillo',
+    name: 'Rara Carrillo',
+    email: 'rara.carrillo@hdiadventures.com',
+    username: 'rara.carrillo',
+    password: 'password',
+    role: 'dept_head',
+    departmentId: 'dept_bmc',
+    departmentName: 'BMC',
+    position: 'Department Head - BMC',
+    isDepartmentHead: true,
+    isActive: true,
+    isApproved: true,
+    approvalStatus: 'approved',
+    avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'usr_dh_fop',
+    employeeNumber: 'DH-FOP-01',
+    firstName: 'Emman',
+    lastName: 'Buenaventura',
+    name: 'Emman Buenaventura',
+    email: 'emman.buenaventura@hdiadventures.com',
+    username: 'emman.buenaventura',
+    password: 'password',
+    role: 'dept_head',
+    departmentId: 'dept_fop',
+    departmentName: 'Finance / Office of the President',
+    position: 'Department Head - Finance / Office of the President',
+    isDepartmentHead: true,
+    isActive: true,
+    isApproved: true,
+    approvalStatus: 'approved',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'usr_dh_gaw',
+    employeeNumber: 'DH-GAW-01',
+    firstName: 'Melette',
+    lastName: 'Floresca',
+    name: 'Melette Floresca',
+    email: 'melette.floresca@hdiadventures.com',
+    username: 'melette.floresca',
+    password: 'password',
+    role: 'dept_head',
+    departmentId: 'dept_gaw',
+    departmentName: 'GA & World',
+    position: 'Department Head - GA & World',
+    isDepartmentHead: true,
+    isActive: true,
+    isApproved: true,
+    approvalStatus: 'approved',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'usr_dh_leg',
+    employeeNumber: 'DH-LGL-01',
+    firstName: 'Jem',
+    lastName: 'delos Santos',
+    name: 'Jem delos Santos',
+    email: 'jem.delossantos@hdiadventures.com',
+    username: 'jem.delossantos',
+    password: 'password',
+    role: 'dept_head',
+    departmentId: 'dept_leg',
+    departmentName: 'Legal',
+    position: 'Department Head - Legal',
+    isDepartmentHead: true,
+    isActive: true,
+    isApproved: true,
+    approvalStatus: 'approved',
+    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'usr_dh_mkt',
+    employeeNumber: 'DH-MKT-01',
+    firstName: 'Pam',
+    lastName: 'Fernando',
+    name: 'Pam Fernando',
+    email: 'pam.fernando@hdiadventures.com',
+    username: 'pam.fernando',
+    password: 'password',
+    role: 'dept_head',
+    departmentId: 'dept_mkt',
+    departmentName: 'Marketing',
+    position: 'Department Head - Marketing',
+    isDepartmentHead: true,
+    isActive: true,
+    isApproved: true,
+    approvalStatus: 'approved',
+    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'usr_dh_ops',
+    employeeNumber: 'DH-OPS-01',
+    firstName: 'Jun',
+    lastName: 'Embuido',
+    name: 'Jun Embuido',
+    email: 'jun.embuido@hdiadventures.com',
+    username: 'jun.embuido',
+    password: 'password',
+    role: 'dept_head',
+    departmentId: 'dept_ops',
+    departmentName: 'Operations',
+    position: 'Department Head - Operations',
+    isDepartmentHead: true,
+    isActive: true,
+    isApproved: true,
+    approvalStatus: 'approved',
+    avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'usr_dh_pohr',
+    employeeNumber: 'DH-POHR-01',
+    firstName: 'Malene',
+    lastName: 'Pellazo',
+    name: 'Malene Pellazo',
+    email: 'malene.pellazo@hdiadventures.com',
+    username: 'malene.pellazo',
+    password: 'password',
+    role: 'dept_head',
+    departmentId: 'dept_pohr',
+    departmentName: 'People Operations (HR)',
+    position: 'Department Head - People Operations (HR)',
+    isDepartmentHead: true,
+    isActive: true,
+    isApproved: true,
+    approvalStatus: 'approved',
+    avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'usr_dh_sls',
+    employeeNumber: 'DH-SLS-01',
+    firstName: 'Grazie',
+    lastName: 'Esguerra',
+    name: 'Grazie Esguerra',
+    email: 'grazie.esguerra@hdiadventures.com',
+    username: 'grazie.esguerra',
+    password: 'password',
+    role: 'dept_head',
+    departmentId: 'dept_sls',
+    departmentName: 'Sales',
+    position: 'Department Head - Sales',
+    isDepartmentHead: true,
+    isActive: true,
+    isApproved: true,
+    approvalStatus: 'approved',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  },
+  // ── CORE STAFF & OTHER ROLES ──────────────────────────────────────────────
   {
     id: 'usr_emp_01',
     employeeNumber: 'EMP-1001',
@@ -49,7 +241,7 @@ export const SEED_USERS: User[] = [
     email: 'maritess.bacle@hdiadventures.com',
     contactNumber: '+63 917 123 4567',
     role: 'employee',
-    departmentId: 'dept_sales',
+    departmentId: 'dept_sls',
     departmentName: 'Sales',
     position: 'Senior Sales Executive',
     employmentStatus: 'Regular',
@@ -57,8 +249,8 @@ export const SEED_USERS: User[] = [
     avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
     immediateSuperiorId: 'usr_sup_01',
     immediateSuperiorName: 'Roberto Garcia',
-    departmentHeadId: 'usr_depthead_01',
-    departmentHeadName: 'Elena Rostova',
+    departmentHeadId: 'usr_dh_sls',
+    departmentHeadName: 'Grazie Esguerra',
     username: 'maritess.bacle',
     isActive: true,
     isApproved: true,
@@ -74,39 +266,17 @@ export const SEED_USERS: User[] = [
     email: 'roberto.garcia@hdiadventures.com',
     contactNumber: '+63 918 234 5678',
     role: 'supervisor',
-    departmentId: 'dept_sales',
+    departmentId: 'dept_sls',
     departmentName: 'Sales',
     position: 'Sales Team Leader',
     employmentStatus: 'Regular',
     dateHired: '2019-06-01',
     avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
-    immediateSuperiorId: 'usr_depthead_01',
-    immediateSuperiorName: 'Elena Rostova',
+    immediateSuperiorId: 'usr_dh_sls',
+    immediateSuperiorName: 'Grazie Esguerra',
+    departmentHeadId: 'usr_dh_sls',
+    departmentHeadName: 'Grazie Esguerra',
     username: 'roberto.garcia',
-    isActive: true,
-    isApproved: true,
-    approvalStatus: 'approved'
-  },
-  {
-    id: 'usr_depthead_01',
-    employeeNumber: 'EMP-1003',
-    firstName: 'Elena',
-    middleName: 'Vance',
-    lastName: 'Rostova',
-    name: 'Elena Rostova',
-    email: 'elena.rostova@hdiadventures.com',
-    contactNumber: '+63 919 345 6789',
-    role: 'dept_head',
-    departmentId: 'dept_sales',
-    departmentName: 'Sales',
-    position: 'Head of Sales Department',
-    employmentStatus: 'Regular',
-    dateHired: '2017-01-10',
-    isDepartmentHead: true,
-    avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-    immediateSuperiorId: 'usr_pres_01',
-    immediateSuperiorName: 'Dr. Gabriel Santos',
-    username: 'elena.rostova',
     isActive: true,
     isApproved: true,
     approvalStatus: 'approved'
@@ -121,8 +291,8 @@ export const SEED_USERS: User[] = [
     email: 'gabriel.santos@hdiadventures.com',
     contactNumber: '+63 920 456 7890',
     role: 'president',
-    departmentId: 'dept_genadmin',
-    departmentName: 'Executive Office',
+    departmentId: 'dept_fop',
+    departmentName: 'Finance / Office of the President',
     position: 'President & CEO',
     employmentStatus: 'Regular',
     dateHired: '2010-01-01',
@@ -142,8 +312,8 @@ export const SEED_USERS: User[] = [
     email: 'maria.clara@hdiadventures.com',
     contactNumber: '+63 921 567 8901',
     role: 'pod',
-    departmentId: 'dept_hr',
-    departmentName: 'Human Resources',
+    departmentId: 'dept_pohr',
+    departmentName: 'People Operations (HR)',
     position: 'POD Governance Director',
     employmentStatus: 'Regular',
     dateHired: '2018-04-12',
@@ -163,8 +333,8 @@ export const SEED_USERS: User[] = [
     email: 'patricia.mendoza@hdiadventures.com',
     contactNumber: '+63 922 678 9012',
     role: 'hr_admin',
-    departmentId: 'dept_hr',
-    departmentName: 'Human Resources',
+    departmentId: 'dept_pohr',
+    departmentName: 'People Operations (HR)',
     position: 'HR Administrator',
     employmentStatus: 'Regular',
     dateHired: '2020-02-01',
@@ -177,15 +347,16 @@ export const SEED_USERS: User[] = [
 ];
 
 export const SEED_DEPARTMENTS: Department[] = [
-  { id: 'dept_hdi', name: 'HDI Adventures', code: 'HDIA', headName: 'Carlos Rossi', employeeCount: 18, isActive: true },
-  { id: 'dept_fin', name: 'Finance', code: 'FIN', headName: 'Arthur Dent', employeeCount: 12, isActive: true },
-  { id: 'dept_sales', name: 'Sales', code: 'SLS', headId: 'usr_depthead_01', headName: 'Elena Rostova', employeeCount: 24, isActive: true },
-  { id: 'dept_genadmin', name: 'General Administration', code: 'GAD', headName: 'Dr. Gabriel Santos', employeeCount: 15, isActive: true },
-  { id: 'dept_ops', name: 'Operations', code: 'OPS', headName: 'Marcus Aurelius', employeeCount: 30, isActive: true },
-  { id: 'dept_crt', name: 'Creatives', code: 'CRT', headName: 'Sofia Ramos', employeeCount: 10, isActive: true },
-  { id: 'dept_mkt', name: 'Marketing', code: 'MKT', headName: 'David Lee', employeeCount: 14, isActive: true },
-  { id: 'dept_leg', name: 'Legal', code: 'LGL', headName: 'Atty. Samantha Cruz', employeeCount: 6, isActive: true },
-  { id: 'dept_hr', name: 'Human Resources', code: 'HRD', headName: 'Maria Clara', employeeCount: 8, isActive: true },
+  { id: 'dept_acc', name: 'Accounting', code: 'ACC', headId: 'usr_dh_acc', headName: 'Mary Anne Murphy', employeeCount: 10, isActive: true },
+  { id: 'dept_adm', name: 'Admin', code: 'ADM', headId: 'usr_dh_adm', headName: 'James Ivan Abendan', employeeCount: 8, isActive: true },
+  { id: 'dept_bmc', name: 'BMC', code: 'BMC', headId: 'usr_dh_bmc', headName: 'Rara Carrillo', employeeCount: 12, isActive: true },
+  { id: 'dept_fop', name: 'Finance / Office of the President', code: 'FOP', headId: 'usr_dh_fop', headName: 'Emman Buenaventura', employeeCount: 15, isActive: true },
+  { id: 'dept_gaw', name: 'GA & World', code: 'GAW', headId: 'usr_dh_gaw', headName: 'Melette Floresca', employeeCount: 14, isActive: true },
+  { id: 'dept_leg', name: 'Legal', code: 'LGL', headId: 'usr_dh_leg', headName: 'Jem delos Santos', employeeCount: 6, isActive: true },
+  { id: 'dept_mkt', name: 'Marketing', code: 'MKT', headId: 'usr_dh_mkt', headName: 'Pam Fernando', employeeCount: 16, isActive: true },
+  { id: 'dept_ops', name: 'Operations', code: 'OPS', headId: 'usr_dh_ops', headName: 'Jun Embuido', employeeCount: 25, isActive: true },
+  { id: 'dept_pohr', name: 'People Operations (HR)', code: 'POHR', headId: 'usr_dh_pohr', headName: 'Malene Pellazo', employeeCount: 9, isActive: true },
+  { id: 'dept_sls', name: 'Sales', code: 'SLS', headId: 'usr_dh_sls', headName: 'Grazie Esguerra', employeeCount: 22, isActive: true },
 ];
 
 export const SEED_CYCLES: EvaluationCycle[] = [
@@ -205,7 +376,7 @@ export const SEED_TEMPLATES: EvaluationTemplate[] = [
   {
     id: 'template_sales',
     title: 'Sales Performance Scorecard Standard',
-    departmentId: 'dept_sales',
+    departmentId: 'dept_sls',
     departmentName: 'Sales',
     evaluationPeriod: 'FY 2025',
     formulaConfig: { eligibilityWeight: 85, coreValuesWeight: 15 },
@@ -320,7 +491,7 @@ export const SEED_TEMPLATES: EvaluationTemplate[] = [
 ];
 
 export const SEED_EVALUATIONS: Evaluation[] = [
-  // Workflow A: Regular Employee (Maritess Bacle)
+  // Regular Employee (Maritess Bacle) -> Routed to Sales Department Head (Grazie Esguerra)
   {
     id: 'eval_maritess_2025',
     cycleId: 'cycle_2025_annual',
@@ -332,7 +503,7 @@ export const SEED_EVALUATIONS: Evaluation[] = [
     position: 'Senior Sales Executive',
     appraisalPeriod: 'January - September 2025',
     appraisalDate: '2025-09-30',
-    status: 'pending_supervisor',
+    status: 'pending_dept_head',
     eligibilityScore: 2.85,
     coreValuesScore: 3.00,
     totalEligibilityWeightedRating: 2.85,
@@ -420,7 +591,7 @@ export const SEED_EVALUATIONS: Evaluation[] = [
     personnelAction: {
       actionType: 'salary_adjustment',
       remarks: 'Recommended for 7% annual merit salary increase.',
-      recommendedBy: 'Roberto Garcia (Supervisor)'
+      recommendedBy: 'Grazie Esguerra (Department Head)'
     },
     signatures: {
       employee: {
@@ -446,31 +617,31 @@ export const SEED_EVALUATIONS: Evaluation[] = [
         timestamp: '2025-09-30 14:30:00',
         performedBy: 'Maritess Bacle',
         performedByRole: 'EMPLOYEE',
-        assignedTo: 'Roberto Garcia (Supervisor)',
+        assignedTo: 'Grazie Esguerra (Sales Department Head)',
         actionPerformed: 'Submitted Self-Evaluation',
         previousStatus: 'draft',
-        newStatus: 'pending_supervisor',
-        remarks: 'Submitted for supervisor review.'
+        newStatus: 'pending_dept_head',
+        remarks: 'Submitted for Department Head review.'
       }
     ],
     createdAt: '2025-09-01',
     updatedAt: '2025-09-30'
   },
 
-  // Workflow B: Department Head (Elena Rostova)
+  // Department Head (Grazie Esguerra) Self-Assessment
   {
-    id: 'eval_elena_depthead_2025',
+    id: 'eval_grazie_depthead_2025',
     cycleId: 'cycle_2025_annual',
     templateId: 'template_sales',
     workflowType: 'WORKFLOW_DEPT_HEAD',
-    employeeId: 'usr_depthead_01',
-    employeeName: 'Elena Rostova',
+    employeeId: 'usr_dh_sls',
+    employeeName: 'Grazie Esguerra',
     departmentName: 'Sales',
-    position: 'Head of Sales Department',
+    position: 'Department Head - Sales',
     isDepartmentHead: true,
     appraisalPeriod: 'January - September 2025',
     appraisalDate: '2025-09-30',
-    status: 'pending_president',
+    status: 'pending_pod',
     eligibilityScore: 3.20,
     coreValuesScore: 3.67,
     totalEligibilityWeightedRating: 3.20,
@@ -505,13 +676,13 @@ export const SEED_EVALUATIONS: Evaluation[] = [
       actionType: 'promotion',
       newPosition: 'Executive Vice President of Commercial Operations',
       remarks: 'Recommended for Executive VP Promotion.',
-      recommendedBy: 'Dr. Gabriel Santos (President)'
+      recommendedBy: 'Emman Buenaventura (Department Head)'
     },
     signatures: {
       deptHead: {
         role: 'dept_head',
-        signerName: 'Elena Rostova',
-        signatureDataUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="50"><text x="10" y="30" font-family="cursive" font-size="20">Elena Rostova</text></svg>',
+        signerName: 'Grazie Esguerra',
+        signatureDataUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="50"><text x="10" y="30" font-family="cursive" font-size="20">Grazie Esguerra</text></svg>',
         signedAt: '2025-09-29 10:15'
       }
     },
@@ -520,13 +691,13 @@ export const SEED_EVALUATIONS: Evaluation[] = [
       {
         id: 'audit_depthead_01',
         timestamp: '2025-09-29 10:15:00',
-        performedBy: 'Elena Rostova',
+        performedBy: 'Grazie Esguerra',
         performedByRole: 'DEPT_HEAD',
-        assignedTo: 'Dr. Gabriel Santos (President)',
-        actionPerformed: 'Submitted Department Head Self-Assessment',
+        assignedTo: 'POD Reviewer',
+        actionPerformed: 'Submitted Department Head Evaluation',
         previousStatus: 'draft',
-        newStatus: 'pending_president',
-        remarks: 'Submitted for Presidential review.'
+        newStatus: 'pending_pod',
+        remarks: 'Submitted for POD Review.'
       }
     ],
     createdAt: '2025-09-01',
@@ -539,31 +710,21 @@ export const getStoredUsers = (): User[] => {
   if (data) {
     try {
       let users: User[] = JSON.parse(data);
-      // Remove deprecated secondary system admin if present
-      users = users.filter(u => u.id !== 'usr_sys_01');
+      // Remove deprecated users if present
+      users = users.filter(u => u.id !== 'usr_sys_01' && u.id !== 'usr_depthead_01');
 
-      const adminIdx = users.findIndex(u => u.email.toLowerCase() === 'admin.systemad@hdiadventures.com' || u.id === 'usr_default_admin');
-      const adminSeed = SEED_USERS.find(u => u.id === 'usr_default_admin');
-      
-      if (adminSeed) {
-        if (adminIdx >= 0) {
-          users[adminIdx] = {
-            ...adminSeed,
-            ...users[adminIdx],
-            password: users[adminIdx].password || adminSeed.password || 'ADMIN',
-            email: adminSeed.email,
-            username: adminSeed.username,
-            role: 'system_admin',
-            isActive: true,
-            isApproved: true,
-            approvalStatus: 'approved',
-          };
+      // Ensure default department heads exist in user list
+      SEED_USERS.forEach(seedU => {
+        const existingIdx = users.findIndex(u => u.id === seedU.id || (u.email && u.email.toLowerCase() === seedU.email.toLowerCase()));
+        if (existingIdx >= 0) {
+          users[existingIdx] = { ...seedU, ...users[existingIdx], departmentName: seedU.departmentName, role: seedU.role };
         } else {
-          users = [adminSeed, ...users];
+          users.push(seedU);
         }
-        localStorage.setItem(USERS_KEY, JSON.stringify(users));
-        return users;
-      }
+      });
+
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+      return users;
     } catch {
       // JSON parse fallback
     }
@@ -574,13 +735,25 @@ export const getStoredUsers = (): User[] => {
 
 export const saveUsers = (users: User[]) => {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  // Sync to Supabase in background if configured
   users.forEach(u => saveEmployeeToSupabase(u));
 };
 
 export const getStoredCurrentUser = (): User => {
   const data = localStorage.getItem(CURRENT_USER_KEY);
-  if (data) return JSON.parse(data);
+  if (data) {
+    try {
+      const user: User = JSON.parse(data);
+      // If cached user is an obsolete user, default to admin or first seeded user
+      if (user.id === 'usr_depthead_01') {
+        const grazie = SEED_USERS.find(u => u.id === 'usr_dh_sls');
+        if (grazie) {
+          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(grazie));
+          return grazie;
+        }
+      }
+      return user;
+    } catch {}
+  }
   const defaultUser = SEED_USERS[0];
   localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(defaultUser));
   return defaultUser;
@@ -592,7 +765,16 @@ export const setCurrentUserStore = (user: User) => {
 
 export const getStoredDepartments = (): Department[] => {
   const data = localStorage.getItem(DEPARTMENTS_KEY);
-  if (data) return JSON.parse(data);
+  if (data) {
+    try {
+      const depts: Department[] = JSON.parse(data);
+      // Filter out HDI Adventures if stored in local cache
+      const filtered = depts.filter(d => d.name !== 'HDI Adventures' && d.id !== 'dept_hdi');
+      if (filtered.length >= 10) {
+        return filtered;
+      }
+    } catch {}
+  }
   localStorage.setItem(DEPARTMENTS_KEY, JSON.stringify(SEED_DEPARTMENTS));
   return SEED_DEPARTMENTS;
 };

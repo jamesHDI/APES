@@ -1,4 +1,5 @@
 import { Evaluation, User } from '../types';
+import { triggerWorkflowNotification } from './notificationService';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -14,52 +15,65 @@ export function validateEvaluationForSubmission(
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // 1. Organizational Hierarchy Validation
+  // Rule 1: The employee is assigned to a department
   if (!currentUser.departmentName || currentUser.departmentName === 'Unassigned') {
-    errors.push('Employee is missing an assigned Department. Contact HR to complete organizational profile.');
+    errors.push('Employee is missing an assigned Department. Submission blocked. Contact HR Administrator.');
   }
 
-  if (!currentUser.position) {
-    errors.push('Employee is missing an assigned Position.');
+  // Rule 2 & 3: Department Head assignment & Active status check
+  const deptName = currentUser.departmentName || evaluation.departmentName;
+  const deptHeadUser = allUsers.find(
+    u => (u.id === currentUser.departmentHeadId) || 
+         (u.role === 'dept_head' && u.departmentName === deptName) ||
+         (u.isDepartmentHead && u.departmentName === deptName)
+  );
+
+  if (!deptHeadUser) {
+    errors.push(`No assigned Department Head found for department "${deptName}". Submission blocked.`);
+  } else if (deptHeadUser.isActive === false) {
+    errors.push(`Assigned Department Head (${deptHeadUser.name}) for "${deptName}" is currently inactive/archived. Submission blocked.`);
   }
 
-  // Check reporting line based on workflow type
-  if (evaluation.workflowType === 'WORKFLOW_REGULAR' || evaluation.workflowType === 'WORKFLOW_A') {
-    if (!currentUser.immediateSuperiorId) {
-      errors.push('Missing assigned Immediate Superior (IS) in reporting line. Contact HR to assign IS.');
-    } else {
-      const isUser = allUsers.find(u => u.id === currentUser.immediateSuperiorId);
-      if (isUser && isUser.isActive === false) {
-        errors.push(`Assigned Immediate Superior (${isUser.name}) is currently inactive/archived.`);
-      }
-    }
-  } else if (evaluation.workflowType === 'WORKFLOW_NO_IS') {
-    if (!currentUser.departmentHeadId && !currentUser.immediateSuperiorId) {
-      errors.push('Missing assigned Department Head for reporting line.');
-    }
+  // Rule 4: The evaluation template is assigned
+  if (!evaluation.templateId) {
+    errors.push('No evaluation template is assigned to this scorecard. Contact HR Administrator.');
   }
 
-  // 2. Form Completeness Validation
-  // Check if all KPIs have ratings
-  const unratedKpis = evaluation.kpiRatings.filter(k => (!k.selfRating && !k.supervisorRating && !k.presidentRating));
+  // Rule 5: All required sections of the evaluation are complete
+  // Check if all KPIs have self ratings
+  const unratedKpis = evaluation.kpiRatings.filter(k => k.selfRating === undefined || k.selfRating === null || k.selfRating === 0);
   if (unratedKpis.length > 0) {
-    errors.push(`${unratedKpis.length} KPI indicator(s) remain unrated.`);
+    errors.push(`Form incomplete: ${unratedKpis.length} KPI indicator(s) require self-ratings before submission.`);
   }
 
-  // Check if Core Values have mandatory comments
+  // Check if Core Values have mandatory narrative comments
   const missingCvComments = evaluation.coreValueRatings.filter(cv => !cv.comments || cv.comments.trim().length === 0);
   if (missingCvComments.length > 0) {
-    errors.push('Core Values Practice section requires specific narrative comments.');
+    errors.push('Form incomplete: Core Values Practice section requires narrative comments for all entries.');
   }
 
-  // Check if digital signature is attached for the current submitter
-  const role = currentUser.role;
-  if (role === 'employee' && !evaluation.signatures.employee) {
-    warnings.push('Digital signature by Appraisee is recommended before submission.');
-  } else if (role === 'supervisor' && !evaluation.signatures.supervisor) {
-    warnings.push('Digital signature by Immediate Superior is recommended.');
-  } else if (role === 'president' && !evaluation.signatures.president) {
-    warnings.push('Digital signature by President is recommended.');
+  // Digital Signature Check
+  if (currentUser.role === 'employee' && !evaluation.signatures.employee) {
+    warnings.push('Digital signature by Appraisee is strongly recommended before final submission.');
+  }
+
+  // If configuration validations (Rules 1-4) fail, automatically notify HR Administrator
+  const configErrors = errors.filter(e => 
+    e.includes('Department') || e.includes('Department Head') || e.includes('template') || e.includes('HR')
+  );
+
+  if (configErrors.length > 0) {
+    const hrAdmin = allUsers.find(u => u.role === 'hr_admin' || u.role === 'system_admin');
+    if (hrAdmin) {
+      triggerWorkflowNotification(
+        hrAdmin.id,
+        evaluation,
+        'Action Required: Missing Organizational Configuration',
+        `Evaluation submission failed for ${currentUser.name} (${deptName}): ${configErrors.join(' ')}`,
+        'System Validator',
+        'alert'
+      );
+    }
   }
 
   return {
@@ -68,3 +82,4 @@ export function validateEvaluationForSubmission(
     warnings
   };
 }
+

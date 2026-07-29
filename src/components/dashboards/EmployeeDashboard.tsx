@@ -34,8 +34,9 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
 
   const statusMessages: Partial<Record<string, string>> = {
     draft: 'Your evaluation is ready. Please complete and submit it.',
-    pending_supervisor: 'Your evaluation has been submitted and is waiting for your supervisor\'s review.',
-    pending_pod: 'Your supervisor has reviewed your evaluation. It is now with the POD team.',
+    pending_dept_head: 'Your evaluation has been submitted and is waiting for your Department Head\'s review.',
+    pending_supervisor: 'Your evaluation has been submitted and is waiting for review.',
+    pending_pod: 'Your Department Head has reviewed your evaluation. It is now with the POD team for final review.',
     archived: 'Your evaluation is complete and has been archived.',
     reopened: 'Your evaluation has been returned for revision. Please update and resubmit.',
   };

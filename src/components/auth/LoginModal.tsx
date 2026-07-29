@@ -80,23 +80,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             {/* Logo */}
             <div className="bg-white/95 backdrop-blur-sm rounded-2xl px-6 py-5 shadow-2xl inline-block border border-white/20">
               <img
-                src="/hdi-logo-full.png"
-                onError={(e) => {
-                  (e.target as HTMLElement).setAttribute('src', '/hdi-logo.png');
-                }}
-                alt="HDI Adventures"
+                src="/hdi-logo.png"
+                alt="HDI Family of Companies"
                 className="h-16 max-w-full w-auto object-contain mx-auto"
               />
             </div>
 
             {/* Welcome text */}
             <div className="space-y-2">
-              <span className="text-[11px] uppercase tracking-widest font-extrabold text-orange-400 bg-orange-950/60 px-3 py-1 rounded-full border border-orange-500/30">
-                HDI ADVENTURES
+              <span className="text-[11px] uppercase tracking-widest font-extrabold text-hdi-red bg-rose-950/60 px-3 py-1 rounded-full border border-rose-500/30">
+                HDI FAMILY OF COMPANIES
               </span>
               <h2 className="text-xl font-black leading-snug tracking-tight text-center">
-                Welcome to HDI Adventures<br />
-                <span className="text-orange-400">Performance Evaluation System</span>
+                Welcome to APES v3.0<br />
+                <span className="text-brand-400">Performance Evaluation System</span>
               </h2>
               <p className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed">
                 Empowering employees through continuous feedback and core values alignment.

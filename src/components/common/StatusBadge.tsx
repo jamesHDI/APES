@@ -24,8 +24,8 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
     className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
   },
   pending_dept_head: {
-    label: 'Awaiting Dept Head',
-    className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+    label: 'Pending Dept Head Review',
+    className: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
   },
   pending_president: {
     label: 'Awaiting President',
