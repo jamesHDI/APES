@@ -98,14 +98,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
               <div className="hidden sm:block">
                 <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-slate-900 dark:text-white tracking-tight">
-                    APES
+                  <span className="font-black text-slate-900 dark:text-white tracking-tight">
+                    HDI ADVENTURES
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                    v3.0
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
+                    APES v3.0
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium leading-none mt-0.5 hidden md:block">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-none mt-0.5 hidden md:block">
                   Performance Evaluation System
                 </p>
               </div>

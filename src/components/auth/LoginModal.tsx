@@ -78,26 +78,35 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
           <div className="relative z-10 space-y-6 flex flex-col items-center">
             {/* Logo */}
-            <div className="bg-white rounded-2xl px-5 py-4 shadow-xl inline-block">
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl px-6 py-5 shadow-2xl inline-block border border-white/20">
               <img
-                src="/hdi-logo.png"
+                src="/hdi-logo-full.png"
+                onError={(e) => {
+                  (e.target as HTMLElement).setAttribute('src', '/hdi-logo.png');
+                }}
                 alt="HDI Adventures"
-                className="h-16 w-auto object-contain mx-auto"
+                className="h-16 max-w-full w-auto object-contain mx-auto"
               />
             </div>
 
             {/* Welcome text */}
-            <div>
+            <div className="space-y-2">
+              <span className="text-[11px] uppercase tracking-widest font-extrabold text-orange-400 bg-orange-950/60 px-3 py-1 rounded-full border border-orange-500/30">
+                HDI ADVENTURES
+              </span>
               <h2 className="text-xl font-black leading-snug tracking-tight text-center">
                 Welcome to HDI Adventures<br />
                 <span className="text-orange-400">Performance Evaluation System</span>
               </h2>
+              <p className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed">
+                Empowering employees through continuous feedback and core values alignment.
+              </p>
             </div>
 
             {/* Core Motto Chips */}
-            <div className="flex flex-wrap justify-center gap-2 pt-2">
+            <div className="flex flex-wrap justify-center gap-2 pt-1">
               {['Live', 'Learn', 'Love'].map((motto) => (
-                <span key={motto} className="text-xs font-bold px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-orange-300">
+                <span key={motto} className="text-xs font-bold px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-orange-300 shadow-sm">
                   {motto}
                 </span>
               ))}

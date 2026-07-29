@@ -255,10 +255,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Mobile Close Button */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 lg:hidden">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Navigation</span>
+          <div className="flex items-center gap-2">
+            <img src="/hdi-logo.png" alt="HDI Adventures" className="h-6 w-auto object-contain" />
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">HDI Adventures</span>
+          </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
             <X className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* Desktop Sidebar Branding */}
+        <div className="hidden lg:flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 dark:border-slate-800">
+          <div className="bg-white rounded-xl p-1.5 shadow-sm border border-slate-200 dark:border-slate-700 shrink-0">
+            <img
+              src="/hdi-logo.png"
+              alt="HDI Adventures"
+              className="h-7 w-auto object-contain"
+            />
+          </div>
+          <div className="min-w-0">
+            <p className="font-black text-xs text-slate-900 dark:text-white truncate">HDI ADVENTURES</p>
+            <p className="text-[10px] font-medium text-brand-600 dark:text-brand-400 truncate">Evaluation System</p>
+          </div>
         </div>
 
         {/* Nav Items */}

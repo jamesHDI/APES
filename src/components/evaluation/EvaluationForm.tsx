@@ -550,14 +550,14 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                             <span className="text-slate-500">Score: <strong className="text-brand-600 text-sm font-bold">{kpi.weightedScore.toFixed(2)}</strong></span>
                           </div>
 
-                          <div className="grid grid-cols-3 gap-2 bg-slate-100 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 text-xs">
+                          <div className="grid grid-cols-3 gap-2 bg-slate-100 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
                             <div>
-                              <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Self Rating</p>
+                              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Self Rating</p>
                               <select
                                 value={kpi.selfRating || 0}
                                 disabled={isReadOnly || (currentRole !== 'employee' && currentRole !== 'dept_head')}
                                 onChange={(e) => handleRatingChange(kpi.kpiId, 'self', Number(e.target.value))}
-                                className="w-full px-2 py-1.5 rounded-lg border text-xs font-bold"
+                                className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-bold"
                               >
                                 <option value={0}>Select...</option>
                                 <option value={4}>4</option>
@@ -568,12 +568,12 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                             </div>
 
                             <div>
-                              <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">IS Rating</p>
+                              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">IS Rating</p>
                               <select
                                 value={kpi.supervisorRating || 0}
                                 disabled={isReadOnly || currentRole !== 'supervisor'}
                                 onChange={(e) => handleRatingChange(kpi.kpiId, 'supervisor', Number(e.target.value))}
-                                className="w-full px-2 py-1.5 rounded-lg border border-brand-300 text-xs font-bold"
+                                className="w-full px-2 py-1.5 rounded-lg border border-brand-300 dark:border-brand-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-bold"
                               >
                                 <option value={0}>Select...</option>
                                 <option value={4}>4</option>
@@ -584,12 +584,12 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                             </div>
 
                             <div>
-                              <p className="text-[10px] font-bold text-amber-600 uppercase mb-1">President</p>
+                              <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase mb-1">President</p>
                               <select
                                 value={kpi.presidentRating || 0}
                                 disabled={isReadOnly || currentRole !== 'president'}
                                 onChange={(e) => handleRatingChange(kpi.kpiId, 'president', Number(e.target.value))}
-                                className="w-full px-2 py-1.5 rounded-lg border border-amber-400 bg-amber-50 text-xs font-bold text-amber-900"
+                                className="w-full px-2 py-1.5 rounded-lg border border-amber-400 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 text-xs font-bold text-amber-900 dark:text-amber-200"
                               >
                                 <option value={0}>Select...</option>
                                 <option value={4}>4</option>
@@ -602,7 +602,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                         </div>
 
                         <div className="lg:col-span-3">
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                          <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase mb-1">
                             Comments / STAR Evidence
                           </label>
                           <textarea
@@ -611,7 +611,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                             disabled={isReadOnly}
                             onChange={(e) => handleKPICommentChange(kpi.kpiId, e.target.value)}
                             placeholder="Specific evidence details..."
-                            className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 bg-white"
+                            className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
                           />
                         </div>
 
@@ -660,7 +660,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">POD Rating (1-4)</label>
+                    <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">POD Rating (1-4)</label>
                     <input
                       type="number"
                       min={1}
@@ -668,11 +668,11 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                       value={cv.podRating}
                       disabled={isReadOnly || (currentRole !== 'pod' && currentRole !== 'hr_admin')}
                       onChange={(e) => handleCoreValueRatingChange(cv.coreValueId, 'podRating', Number(e.target.value))}
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-sm font-bold text-center"
+                      className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-bold text-center"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Peer Rating (1-4)</label>
+                    <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Peer Rating (1-4)</label>
                     <input
                       type="number"
                       min={1}
@@ -680,11 +680,11 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                       value={cv.peerRating}
                       disabled={isReadOnly}
                       onChange={(e) => handleCoreValueRatingChange(cv.coreValueId, 'peerRating', Number(e.target.value))}
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-sm font-bold text-center"
+                      className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-bold text-center"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Supervisor / President</label>
+                    <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Supervisor / President</label>
                     <input
                       type="number"
                       min={1}
@@ -692,13 +692,13 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                       value={cv.isRating}
                       disabled={isReadOnly}
                       onChange={(e) => handleCoreValueRatingChange(cv.coreValueId, 'isRating', Number(e.target.value))}
-                      className="w-full px-3 py-1.5 rounded-lg border border-brand-400 bg-brand-50 text-sm font-bold text-center"
+                      className="w-full px-3 py-1.5 rounded-lg border border-brand-400 dark:border-brand-700 bg-brand-50 dark:bg-brand-950/60 text-brand-900 dark:text-brand-200 text-sm font-bold text-center"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Core Values Practice Comments (Required)</label>
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Core Values Practice Comments (Required)</label>
                   <textarea
                     rows={2}
                     value={cv.comments}
@@ -710,7 +710,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                       setEvalData({ ...evalData, coreValueRatings: updated });
                     }}
                     placeholder="Mandatory narrative comments on core values..."
-                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 bg-white"
+                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
                   />
                 </div>
               </div>
@@ -723,7 +723,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       {activeTab === 'part2' && (
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
-            <h3 className="font-bold text-slate-900 dark:text-white text-base pb-3 border-b border-slate-100">
+            <h3 className="font-bold text-slate-900 dark:text-white text-base pb-3 border-b border-slate-100 dark:border-slate-700">
               PART 2A: PERSONAL DEVELOPMENT PLAN
             </h3>
 
@@ -740,7 +740,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                     ...evalData,
                     developmentPlan: { ...evalData.developmentPlan, strengths: e.target.value }
                   })}
-                  className="w-full px-3.5 py-2.5 rounded-xl text-xs border border-slate-300 bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
                 />
               </div>
 
@@ -756,58 +756,58 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                     ...evalData,
                     developmentPlan: { ...evalData.developmentPlan, areasForImprovement: e.target.value }
                   })}
-                  className="w-full px-3.5 py-2.5 rounded-xl text-xs border border-slate-300 bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
                 />
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <h4 className="font-bold text-xs uppercase text-slate-500">Employee Signature</h4>
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
+              <h4 className="font-bold text-xs uppercase text-slate-500 dark:text-slate-400">Employee Signature</h4>
               {evalData.signatures.employee ? (
-                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center">
                   <img src={evalData.signatures.employee.signatureDataUrl} alt="Employee Sig" className="h-8 mx-auto" />
-                  <p className="font-bold text-xs mt-1">{evalData.signatures.employee.signerName}</p>
+                  <p className="font-bold text-xs mt-1 text-slate-900 dark:text-white">{evalData.signatures.employee.signerName}</p>
                 </div>
               ) : (
                 <button
                   onClick={() => { setSigRole('employee'); setShowSigModal(true); }}
-                  className="w-full py-2 rounded-xl bg-brand-600 text-white font-bold text-xs"
+                  className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs"
                 >
                   Sign as Employee
                 </button>
               )}
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <h4 className="font-bold text-xs uppercase text-slate-500">Supervisor / Dept Head Signature</h4>
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
+              <h4 className="font-bold text-xs uppercase text-slate-500 dark:text-slate-400">Supervisor / Dept Head Signature</h4>
               {evalData.signatures.supervisor || evalData.signatures.deptHead ? (
-                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center">
                   <img src={(evalData.signatures.supervisor || evalData.signatures.deptHead)?.signatureDataUrl} alt="Sig" className="h-8 mx-auto" />
-                  <p className="font-bold text-xs mt-1">{(evalData.signatures.supervisor || evalData.signatures.deptHead)?.signerName}</p>
+                  <p className="font-bold text-xs mt-1 text-slate-900 dark:text-white">{(evalData.signatures.supervisor || evalData.signatures.deptHead)?.signerName}</p>
                 </div>
               ) : (
                 <button
                   onClick={() => { setSigRole(evalData.workflowType === 'WORKFLOW_DEPT_HEAD' || evalData.workflowType === 'WORKFLOW_B' ? 'dept_head' : 'supervisor'); setShowSigModal(true); }}
-                  className="w-full py-2 rounded-xl bg-purple-600 text-white font-bold text-xs"
+                  className="w-full py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs"
                 >
                   Sign as Supervisor / Dept Head
                 </button>
               )}
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <h4 className="font-bold text-xs uppercase text-slate-500">President / POD Signature</h4>
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
+              <h4 className="font-bold text-xs uppercase text-slate-500 dark:text-slate-400">President / POD Signature</h4>
               {evalData.signatures.president || evalData.signatures.pod ? (
-                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center">
                   <img src={(evalData.signatures.president || evalData.signatures.pod)?.signatureDataUrl} alt="Sig" className="h-8 mx-auto" />
-                  <p className="font-bold text-xs mt-1">{(evalData.signatures.president || evalData.signatures.pod)?.signerName}</p>
+                  <p className="font-bold text-xs mt-1 text-slate-900 dark:text-white">{(evalData.signatures.president || evalData.signatures.pod)?.signerName}</p>
                 </div>
               ) : (
                 <button
                   onClick={() => { setSigRole(currentRole === 'president' ? 'president' : 'pod'); setShowSigModal(true); }}
-                  className="w-full py-2 rounded-xl bg-amber-600 text-white font-bold text-xs"
+                  className="w-full py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs"
                 >
                   Sign as President / POD
                 </button>
@@ -820,7 +820,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       {/* PART 3 */}
       {activeTab === 'part3' && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-base">
                 PART 3: PERSONNEL ACTION RECOMMENDATION
@@ -842,8 +842,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 key={item.type}
                 className={`p-4 rounded-xl border cursor-pointer transition-all flex items-start space-x-3 ${
                   evalData.personnelAction.actionType === item.type
-                    ? 'bg-purple-50 border-purple-500 ring-2 ring-purple-500/20'
-                    : 'bg-slate-50 border-slate-200'
+                    ? 'bg-purple-50 dark:bg-purple-950/50 border-purple-500 dark:border-purple-600 ring-2 ring-purple-500/20'
+                    : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
                 <input
@@ -859,7 +859,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 />
                 <div>
                   <p className="font-bold text-xs text-slate-900 dark:text-white">{item.label}</p>
-                  <p className="text-[11px] text-slate-500">{item.desc}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.desc}</p>
                 </div>
               </label>
             ))}

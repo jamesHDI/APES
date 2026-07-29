@@ -192,7 +192,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ evaluations, depar
                       {ev.ratingClassification}
                     </span>
                   </td>
-                  <td className="p-3 font-semibold uppercase text-[10px] text-slate-500">{ev.status.replace('_', ' ')}</td>
+                  <td className="p-3 font-semibold uppercase text-[10px] text-slate-500 dark:text-slate-400">{ev.status.replace('_', ' ')}</td>
                 </tr>
               ))}
             </tbody>
@@ -202,7 +202,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ evaluations, depar
         {selectedReportType === 'training' && (
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="bg-slate-100 dark:bg-slate-750 font-bold text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700">
+              <tr className="bg-slate-100 dark:bg-slate-750 font-bold text-slate-400 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700">
                 <th className="p-3">Employee</th>
                 <th className="p-3">Department</th>
                 <th className="p-3">Recommended Program / Course</th>
@@ -215,10 +215,10 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ evaluations, depar
                 ev.developmentPlan.learningNeeds.map((need) => (
                   <tr key={need.id} className="hover:bg-slate-50 dark:hover:bg-slate-750/50">
                     <td className="p-3 font-bold text-slate-900 dark:text-white">{ev.employeeName}</td>
-                    <td className="p-3 text-slate-600">{ev.departmentName}</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-300">{ev.departmentName}</td>
                     <td className="p-3 font-semibold text-brand-700 dark:text-brand-300">{need.program}</td>
-                    <td className="p-3 text-slate-500">{need.targetDate}</td>
-                    <td className="p-3 text-slate-600">{need.responsiblePerson}</td>
+                    <td className="p-3 text-slate-500 dark:text-slate-400">{need.targetDate}</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-300">{need.responsiblePerson}</td>
                   </tr>
                 ))
               )}
@@ -229,7 +229,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ evaluations, depar
         {selectedReportType === 'personnel_action' && (
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="bg-slate-100 dark:bg-slate-750 font-bold text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700">
+              <tr className="bg-slate-100 dark:bg-slate-750 font-bold text-slate-400 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700">
                 <th className="p-3">Employee</th>
                 <th className="p-3">Department</th>
                 <th className="p-3">Final Rating</th>
@@ -242,13 +242,13 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ evaluations, depar
               {filteredEvaluations.map((ev) => (
                 <tr key={ev.id} className="hover:bg-slate-50 dark:hover:bg-slate-750/50">
                   <td className="p-3 font-bold text-slate-900 dark:text-white">{ev.employeeName}</td>
-                  <td className="p-3 text-slate-600">{ev.departmentName}</td>
+                  <td className="p-3 text-slate-600 dark:text-slate-300">{ev.departmentName}</td>
                   <td className="p-3 font-bold text-hdi-red">{ev.finalRating.toFixed(2)}</td>
                   <td className="p-3 font-extrabold uppercase text-purple-700 dark:text-purple-300">
                     {ev.personnelAction.actionType.replace('_', ' ')}
                   </td>
-                  <td className="p-3 text-slate-600">{ev.personnelAction.newPosition || 'N/A'}</td>
-                  <td className="p-3 text-slate-500">{ev.personnelAction.effectiveDate || 'N/A'}</td>
+                  <td className="p-3 text-slate-600 dark:text-slate-300">{ev.personnelAction.newPosition || 'N/A'}</td>
+                  <td className="p-3 text-slate-500 dark:text-slate-400">{ev.personnelAction.effectiveDate || 'N/A'}</td>
                 </tr>
               ))}
             </tbody>
