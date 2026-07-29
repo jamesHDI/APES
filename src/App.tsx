@@ -79,6 +79,11 @@ export const App: React.FC = () => {
 
   // 1. Session Restoration Effect (On App Mount)
   useEffect(() => {
+    let isMounted = true;
+    const timeoutGuard = setTimeout(() => {
+      if (isMounted) setIsSessionLoading(false);
+    }, 2000);
+
     const initSession = async () => {
       try {
         const sessionActive = localStorage.getItem('apes_session_active_v3') === 'true';
@@ -86,19 +91,18 @@ export const App: React.FC = () => {
         const storedUser = getStoredCurrentUser();
 
         if (sessionActive && storedUser && storedUser.isActive !== false && storedUser.isApproved !== false && storedUser.approvalStatus !== 'pending') {
-          setCurrentUser(storedUser);
-          setIsAuthenticated(true);
-          setNotifications(getStoredNotifications(storedUser.id));
-
-          if (savedTab) {
-            setActiveTab(savedTab);
+          if (isMounted) {
+            setCurrentUser(storedUser);
+            setIsAuthenticated(true);
+            setNotifications(getStoredNotifications(storedUser.id));
+            if (savedTab) setActiveTab(savedTab);
           }
         } else if (isSupabaseConfigured && supabase) {
           const { data } = await supabase.auth.getSession();
           if (data?.session?.user) {
             const sbUsers = await fetchEmployeesFromSupabase();
             const matched = (sbUsers || users).find(u => u.email === data.session.user.email);
-            if (matched && matched.isActive !== false && matched.isApproved !== false) {
+            if (matched && matched.isActive !== false && matched.isApproved !== false && isMounted) {
               setCurrentUser(matched);
               setCurrentUserStore(matched);
               setIsAuthenticated(true);
@@ -110,11 +114,19 @@ export const App: React.FC = () => {
       } catch (err) {
         console.warn('Error restoring session:', err);
       } finally {
-        setIsSessionLoading(false);
+        if (isMounted) {
+          setIsSessionLoading(false);
+          clearTimeout(timeoutGuard);
+        }
       }
     };
 
     initSession();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutGuard);
+    };
   }, []);
 
   // 2. Real-time Database & Notification Polling (Every 15s)

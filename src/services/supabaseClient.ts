@@ -2,15 +2,23 @@ import { createClient } from '@supabase/supabase-js';
 
 const metaEnv = (import.meta as any).env || {};
 
-const supabaseUrl = metaEnv.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = metaEnv.VITE_SUPABASE_ANON_KEY || '';
+const rawUrl = (metaEnv.VITE_SUPABASE_URL || '').trim().replace(/^['"]|['"]$/g, '');
+const rawKey = (metaEnv.VITE_SUPABASE_ANON_KEY || '').trim().replace(/^['"]|['"]$/g, '');
 
 export const isSupabaseConfigured = Boolean(
-  supabaseUrl && 
-  supabaseAnonKey && 
-  supabaseUrl !== 'https://your-supabase-project.supabase.co'
+  rawUrl && 
+  rawKey && 
+  rawUrl.startsWith('http') &&
+  rawUrl !== 'https://your-supabase-project.supabase.co'
 );
 
-export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+let client: any = null;
+if (isSupabaseConfigured) {
+  try {
+    client = createClient(rawUrl, rawKey);
+  } catch (err) {
+    console.error('Failed to initialize Supabase client:', err);
+  }
+}
+
+export const supabase = client;
