@@ -101,17 +101,18 @@ export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
       last_name: user.lastName || user.name.split(' ')[1] || '',
       email: user.email,
       contact_number: user.contactNumber,
-      department_id: isValidUuid(user.departmentId) ? user.departmentId : null,
+      // Set FK references to null to avoid constraint violations if referenced records don't exist in Supabase
+      department_id: null,
       department_name: user.departmentName,
       position: user.position,
       role: user.role,
       employment_status: user.employmentStatus || 'Regular',
       date_hired: user.dateHired || new Date().toISOString().substring(0, 10),
-      immediate_superior_id: isValidUuid(user.immediateSuperiorId) ? user.immediateSuperiorId : null,
+      immediate_superior_id: null,
       immediate_superior_name: user.immediateSuperiorName,
-      department_head_id: isValidUuid(user.departmentHeadId) ? user.departmentHeadId : null,
+      department_head_id: null,
       department_head_name: user.departmentHeadName,
-      default_template_id: isValidUuid(user.defaultTemplateId) ? user.defaultTemplateId : null,
+      default_template_id: null,
       username: user.username || user.email.split('@')[0],
       avatar_url: user.avatarUrl,
       is_active: user.isActive ?? false,
@@ -124,7 +125,7 @@ export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
 
     const { error } = await supabase.from('employees').upsert(payload);
     if (error) {
-      console.warn('Supabase employees upsert error:', error);
+      console.warn('Supabase employees upsert error:', error.message, error.details, error.hint);
     }
     return !error;
   } catch (err) {
@@ -225,18 +226,19 @@ export const saveNotificationToSupabase = async (notif: Notification): Promise<b
   try {
     const payload = {
       id: ensureUuid(notif.id),
-      user_id: isValidUuid(notif.userId) ? notif.userId : ensureUuid('usr_default_admin'),
+      // user_id references public.employees(id) FK - must be null if employee doesn't exist in DB yet
+      user_id: null,
       title: notif.title,
       message: notif.message,
-      type: notif.type,
-      read: notif.read,
+      type: notif.type || 'action_required',
+      read: notif.read || false,
       evaluation_id: isValidUuid(notif.evaluationId) ? notif.evaluationId : null,
       created_at: new Date().toISOString()
     };
 
     const { error } = await supabase.from('notifications').upsert(payload);
     if (error) {
-      console.warn('Supabase notifications upsert error:', error);
+      console.warn('Supabase notifications upsert error:', error.message, error.details);
     }
     return !error;
   } catch (err) {
