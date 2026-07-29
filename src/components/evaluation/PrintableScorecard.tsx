@@ -43,15 +43,15 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
         <div>
           <div className="flex items-center justify-between border-b-2 border-hdi-red pb-3 mb-4">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-hdi-red text-white font-black text-2xl flex items-center justify-center rounded">
-                HDI
+              <div className="bg-white rounded-lg p-1 border border-slate-200 shadow-sm shrink-0">
+                <img src="/hdi-logo.png" alt="HDI Hive" className="h-10 w-auto object-contain" />
               </div>
               <div>
                 <h1 className="text-xl font-extrabold uppercase tracking-wide text-slate-900">
                   SCORECARD / PERFORMANCE EVALUATION
                 </h1>
                 <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
-                  HDI FAMILY OF COMPANIES • STRICTLY CONFIDENTIAL
+                  HDI HIVE • STRICTLY CONFIDENTIAL
                 </p>
               </div>
             </div>
@@ -394,7 +394,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
           </div>
 
           <div className="pt-4 text-right text-[9px] text-slate-400 font-bold uppercase">
-            HDI FAMILY OF COMPANIES • STRICTLY CONFIDENTIAL • Page 2 of 2
+            HDI HIVE • STRICTLY CONFIDENTIAL • Page 2 of 2
           </div>
 
         </div>

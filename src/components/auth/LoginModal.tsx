@@ -211,7 +211,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
           {/* Footer */}
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800 text-center space-y-1">
-            <p className="text-xs font-bold text-slate-700 dark:text-slate-300">HDI FAMILY OF COMPANIES</p>
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300">HDI HIVE</p>
             <p className="text-[10px] text-slate-400 dark:text-slate-500">
               Performance Evaluation System v3.0 &nbsp;·&nbsp; Strictly Confidential
             </p>
