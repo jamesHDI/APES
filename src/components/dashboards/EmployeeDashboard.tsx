@@ -30,7 +30,34 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
   evaluations,
   onOpenEvaluation,
 }) => {
-  const myEvaluation = evaluations.find((e) => e.employeeId === currentUser.id) || evaluations[0];
+  const myEvaluation = evaluations.find((e) => e.employeeId === currentUser.id) || {
+    id: `eval_${currentUser.id}_2025`,
+    cycleId: 'cycle_2025_annual',
+    templateId: 'template_sales',
+    workflowType: currentUser.isDepartmentHead || currentUser.role === 'dept_head' ? 'WORKFLOW_DEPT_HEAD' : 'WORKFLOW_REGULAR',
+    employeeId: currentUser.id,
+    employeeName: currentUser.name,
+    departmentName: currentUser.departmentName || 'General',
+    position: currentUser.position || 'Staff Specialist',
+    appraisalPeriod: 'January - December 2025',
+    appraisalDate: new Date().toISOString().substring(0, 10),
+    status: 'draft',
+    eligibilityScore: 0,
+    coreValuesScore: 0,
+    totalEligibilityWeightedRating: 0,
+    totalCoreValuesWeightedRating: 0,
+    finalRating: 0,
+    ratingClassification: 'Pending Evaluation',
+    kpiRatings: [],
+    coreValueRatings: [],
+    developmentPlan: { strengths: '', areasForImprovement: '', learningNeeds: [] },
+    personnelAction: { actionType: 'no_action' },
+    signatures: {},
+    evidenceFiles: [],
+    auditTrail: [],
+    createdAt: new Date().toISOString().substring(0, 10),
+    updatedAt: new Date().toISOString().substring(0, 10)
+  };
 
   const statusMessages: Partial<Record<string, string>> = {
     draft: 'Your evaluation is ready. Please complete and submit it.',
