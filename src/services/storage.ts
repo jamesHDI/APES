@@ -717,7 +717,7 @@ export const getStoredUsers = (): User[] => {
       SEED_USERS.forEach(seedU => {
         const existingIdx = users.findIndex(u => u.id === seedU.id || (u.email && u.email.toLowerCase() === seedU.email.toLowerCase()));
         if (existingIdx >= 0) {
-          users[existingIdx] = { ...seedU, ...users[existingIdx], departmentName: seedU.departmentName, role: seedU.role };
+          users[existingIdx] = { ...seedU, ...users[existingIdx] };
         } else {
           users.push(seedU);
         }

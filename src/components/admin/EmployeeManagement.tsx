@@ -343,6 +343,198 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
         users={users}
       />
 
+      {/* Edit Employee & Credentials Modal */}
+      {showAddModal && editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center space-x-3">
+                <div className="p-3 bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-2xl">
+                  <Edit3 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                    Edit Personnel Profile & Credentials
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Update profile info, department assignment, role permissions, and default password.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">First Name *</label>
+                <input
+                  type="text"
+                  value={formData.firstName || ''}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Middle Name</label>
+                <input
+                  type="text"
+                  value={formData.middleName || ''}
+                  onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Last Name *</label>
+                <input
+                  type="text"
+                  value={formData.lastName || ''}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  value={formData.email || ''}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Department</label>
+                <select
+                  value={formData.departmentId || ''}
+                  onChange={(e) => {
+                    const dept = departments.find(d => d.id === e.target.value);
+                    setFormData({ ...formData, departmentId: e.target.value, departmentName: dept?.name || formData.departmentName });
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs font-bold border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                >
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Position Title</label>
+                <input
+                  type="text"
+                  value={formData.position || ''}
+                  onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">System Role</label>
+                <select
+                  value={formData.role || 'employee'}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs font-bold border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                >
+                  <option value="employee">Employee (Staff)</option>
+                  <option value="supervisor">Supervisor (Team Lead)</option>
+                  <option value="dept_head">Department Head</option>
+                  <option value="president">President / Executive</option>
+                  <option value="pod">POD Reviewer</option>
+                  <option value="hr_admin">HR Administrator</option>
+                  <option value="system_admin">System Administrator</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Employment Status</label>
+                <select
+                  value={formData.employmentStatus || 'Regular'}
+                  onChange={(e) => setFormData({ ...formData, employmentStatus: e.target.value as EmploymentStatus })}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs font-bold border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                >
+                  <option value="Regular">Regular</option>
+                  <option value="Probationary">Probationary</option>
+                  <option value="Contractual">Contractual</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Password & Credentials Management Section */}
+            <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2 text-amber-900 dark:text-amber-300 font-bold text-xs">
+                  <Key className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span>Account Password & Login Credentials</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, password: 'password123', requiresPasswordChange: true })}
+                  className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold shadow-sm"
+                >
+                  Reset to Default (password123)
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Password</label>
+                  <input
+                    type="text"
+                    value={formData.password || ''}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Enter password..."
+                    className="w-full px-3.5 py-2 rounded-xl text-xs font-mono border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                  />
+                </div>
+
+                <div className="flex items-end pb-2">
+                  <label className="flex items-center space-x-2 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.requiresPasswordChange || false}
+                      onChange={(e) => setFormData({ ...formData, requiresPasswordChange: e.target.checked })}
+                      className="w-4 h-4 rounded text-brand-600 focus:ring-brand-500"
+                    />
+                    <span>Force password change on next login</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Action Buttons */}
+            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEmployee}
+                className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold shadow-lg flex items-center space-x-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Save Profile Changes</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
