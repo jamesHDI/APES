@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { User, Role } from '../types';
 import { getStoredUsers, saveUsers, getStoredCurrentUser, setCurrentUserStore } from './storage';
+import { triggerRegistrationNotification } from './notificationService';
 
 export interface LoginCredentials {
   identifier: string; // Email or Employee ID
@@ -141,6 +142,7 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
 
   const updatedUsers = [newUser, ...users];
   saveUsers(updatedUsers);
+  triggerRegistrationNotification(newUser);
 
   if (isSupabaseConfigured && supabase) {
     try {

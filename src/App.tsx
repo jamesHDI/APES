@@ -20,9 +20,10 @@ import {
 import { 
   fetchEmployeesFromSupabase, 
   fetchDepartmentsFromSupabase, 
-  fetchEvaluationsFromSupabase 
+  fetchEvaluationsFromSupabase,
+  saveEmployeeToSupabase
 } from './services/supabaseService';
-import { isSupabaseConfigured } from './services/supabaseClient';
+import { supabase, isSupabaseConfigured } from './services/supabaseClient';
 import { getStoredNotifications, markNotificationAsRead } from './services/notificationService';
 import { logoutUser } from './services/authService';
 import { Navbar } from './components/layout/Navbar';
@@ -51,8 +52,8 @@ export const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>(getStoredUsers());
   const [currentUser, setCurrentUser] = useState<User>(getStoredCurrentUser());
   
-  // Set isAuthenticated to false by default so Login / Create Account modal displays immediately!
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isSessionLoading, setIsSessionLoading] = useState<boolean>(true);
 
   const [departments, setDepartments] = useState<Department[]>(getStoredDepartments());
   const [templates, setTemplates] = useState<EvaluationTemplate[]>(getStoredTemplates());
@@ -75,39 +76,118 @@ export const App: React.FC = () => {
     }
   }, [darkMode]);
 
-  // Load from Supabase PostgreSQL if configured
+  // 1. Session Restoration Effect (On App Mount)
   useEffect(() => {
-    if (isSupabaseConfigured) {
-      (async () => {
+    const initSession = async () => {
+      try {
+        const sessionActive = localStorage.getItem('apes_session_active_v3') === 'true';
+        const savedTab = localStorage.getItem('apes_active_tab_v3');
+        const storedUser = getStoredCurrentUser();
+
+        if (sessionActive && storedUser && storedUser.isActive !== false && storedUser.isApproved !== false && storedUser.approvalStatus !== 'pending') {
+          setCurrentUser(storedUser);
+          setIsAuthenticated(true);
+          setNotifications(getStoredNotifications(storedUser.id));
+
+          if (savedTab) {
+            setActiveTab(savedTab);
+          }
+        } else if (isSupabaseConfigured && supabase) {
+          const { data } = await supabase.auth.getSession();
+          if (data?.session?.user) {
+            const sbUsers = await fetchEmployeesFromSupabase();
+            const matched = (sbUsers || users).find(u => u.email === data.session.user.email);
+            if (matched && matched.isActive !== false && matched.isApproved !== false) {
+              setCurrentUser(matched);
+              setCurrentUserStore(matched);
+              setIsAuthenticated(true);
+              localStorage.setItem('apes_session_active_v3', 'true');
+              if (savedTab) setActiveTab(savedTab);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Error restoring session:', err);
+      } finally {
+        setIsSessionLoading(false);
+      }
+    };
+
+    initSession();
+  }, []);
+
+  // 2. Real-time Database & Notification Polling (Every 15s)
+  useEffect(() => {
+    const syncDatabaseAndNotifications = async () => {
+      if (isSupabaseConfigured) {
         const sbUsers = await fetchEmployeesFromSupabase();
-        if (sbUsers && sbUsers.length > 0) setUsers(sbUsers);
+        if (sbUsers && sbUsers.length > 0) {
+          setUsers(sbUsers);
+          saveUsers(sbUsers);
+        }
 
         const sbDepts = await fetchDepartmentsFromSupabase();
         if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
 
         const sbEvals = await fetchEvaluationsFromSupabase();
         if (sbEvals && sbEvals.length > 0) setEvaluations(sbEvals);
-      })();
+      } else {
+        const storedUsers = getStoredUsers();
+        setUsers(storedUsers);
+      }
+
+      if (currentUser?.id) {
+        setNotifications(getStoredNotifications(currentUser.id));
+      }
+    };
+
+    // Initial sync
+    syncDatabaseAndNotifications();
+
+    // Poll every 15 seconds
+    const intervalId = setInterval(syncDatabaseAndNotifications, 15000);
+
+    // Supabase Realtime Channel
+    let channel: any = null;
+    if (isSupabaseConfigured && supabase) {
+      try {
+        channel = supabase
+          .channel('apes_realtime_channel')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, () => {
+            syncDatabaseAndNotifications();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+            syncDatabaseAndNotifications();
+          })
+          .subscribe();
+      } catch (e) {
+        console.warn('Realtime channel subscription error:', e);
+      }
     }
-  }, []);
+
+    return () => {
+      clearInterval(intervalId);
+      if (channel && supabase) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [currentUser?.id]);
 
   const handleLoginSuccess = (authenticatedUser: User) => {
     setCurrentUser(authenticatedUser);
     setCurrentUserStore(authenticatedUser);
+    localStorage.setItem('apes_session_active_v3', 'true');
     setIsAuthenticated(true);
     setNotifications(getStoredNotifications(authenticatedUser.id));
 
-    if (authenticatedUser.role === 'president') {
-      const workflowBEval = evaluations.find(e => e.workflowType === 'WORKFLOW_DEPT_HEAD' || e.workflowType === 'WORKFLOW_B') || evaluations[1];
-      if (workflowBEval) setSelectedEvalId(workflowBEval.id);
-    } else {
-      const workflowAEval = evaluations.find(e => e.workflowType === 'WORKFLOW_REGULAR' || e.workflowType === 'WORKFLOW_A') || evaluations[0];
-      if (workflowAEval) setSelectedEvalId(workflowAEval.id);
-    }
+    const savedTab = localStorage.getItem('apes_active_tab_v3') || 'dashboard';
+    setActiveTab(savedTab);
   };
 
   const handleLogout = async () => {
     await logoutUser();
+    localStorage.removeItem('apes_session_active_v3');
+    localStorage.removeItem('apes_active_tab_v3');
     setIsAuthenticated(false);
   };
 
@@ -115,24 +195,28 @@ export const App: React.FC = () => {
     const updated = [newUser, ...users];
     setUsers(updated);
     saveUsers(updated);
+    saveEmployeeToSupabase(newUser);
   };
 
   const handleApproveUser = (approvedUser: User) => {
     const updated = users.map(u => u.id === approvedUser.id ? approvedUser : u);
     setUsers(updated);
     saveUsers(updated);
+    saveEmployeeToSupabase(approvedUser);
   };
 
   const handleRejectUser = (userId: string, remarks: string) => {
     const updated = users.map(u => {
       if (u.id === userId) {
-        return {
+        const rejected: User = {
           ...u,
           isApproved: false,
           isActive: false,
           approvalStatus: 'rejected' as const,
           hrRejectionRemarks: remarks
         };
+        saveEmployeeToSupabase(rejected);
+        return rejected;
       }
       return u;
     });
@@ -400,6 +484,22 @@ export const App: React.FC = () => {
     }
   };
 
+  if (isSessionLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 font-sans">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="p-3 bg-white/10 rounded-2xl border border-white/20 shadow-xl backdrop-blur-sm">
+            <img src="/hdi-logo.png" alt="HDI APES" className="h-10 w-auto object-contain animate-pulse" />
+          </div>
+          <div className="flex items-center space-x-2 text-sm font-bold text-slate-300">
+            <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+            <span>Restoring Session...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
       
@@ -431,6 +531,7 @@ export const App: React.FC = () => {
           onSelectTab={(tab) => {
             setActiveTab(tab);
             setViewMode('normal');
+            localStorage.setItem('apes_active_tab_v3', tab);
           }}
           pendingCount={notifications.filter(n => !n.read).length}
           isOpen={isSidebarOpen}

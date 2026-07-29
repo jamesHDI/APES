@@ -1,4 +1,4 @@
-import { Notification, Evaluation } from '../types';
+import { Notification, Evaluation, User } from '../types';
 
 const NOTIF_KEY = 'apes_notifications_v3';
 
@@ -40,7 +40,7 @@ export const getStoredNotifications = (userId?: string): Notification[] => {
   ];
 
   if (userId) {
-    return all.filter((n) => n.userId === userId || n.userId === 'ALL');
+    return all.filter((n) => n.userId === userId || n.userId === 'ALL' || n.userId === 'ALL_ADMINS');
   }
   return all;
 };
@@ -69,6 +69,28 @@ export const triggerWorkflowNotification = (
     senderName,
     dateTime: new Date().toLocaleString(),
     evaluationId: evaluation.id
+  };
+
+  notifications.unshift(newNotif);
+  localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
+};
+
+export const triggerRegistrationNotification = (newUser: User) => {
+  const notifications = getStoredNotifications();
+  const newNotif: Notification = {
+    id: `notif_reg_${Date.now()}`,
+    userId: 'usr_default_admin', // Target default admin and admin accounts
+    title: 'New Employee Registration Pending Approval',
+    message: `${newUser.name} (${newUser.email}) registered for ${newUser.position} in ${newUser.departmentName} and requires HR/Admin approval.`,
+    date: 'Just now',
+    read: false,
+    type: 'action_required',
+    employeeName: newUser.name,
+    departmentName: newUser.departmentName,
+    appraisalPeriod: 'Registration Request',
+    status: 'pending_approval',
+    senderName: newUser.name,
+    dateTime: new Date().toLocaleString(),
   };
 
   notifications.unshift(newNotif);
