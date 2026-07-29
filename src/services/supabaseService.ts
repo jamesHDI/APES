@@ -1,5 +1,48 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { User, Department, Evaluation, EvaluationTemplate } from '../types';
+import { User, Department, Evaluation, Notification } from '../types';
+
+// Helper: Ensure valid UUID format for PostgreSQL UUID columns
+export const isValidUuid = (str?: string): boolean => {
+  if (!str) return false;
+  const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return regex.test(str);
+};
+
+export const generateUuid = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'f0000000-0000-4000-8000-' + Date.now().toString(16).padStart(12, '0');
+};
+
+const SEED_UUID_MAP: Record<string, string> = {
+  'usr_default_admin': '00000000-0000-4000-8000-000000000001',
+  'usr_hr_admin_01': '00000000-0000-4000-8000-000000000002',
+  'usr_dh_acc': '00000000-0000-4000-8000-000000000010',
+  'usr_dh_adm': '00000000-0000-4000-8000-000000000011',
+  'usr_dh_bmc': '00000000-0000-4000-8000-000000000012',
+  'usr_dh_fop': '00000000-0000-4000-8000-000000000013',
+  'usr_dh_gaw': '00000000-0000-4000-8000-000000000014',
+  'usr_dh_lgl': '00000000-0000-4000-8000-000000000015',
+  'usr_dh_mkt': '00000000-0000-4000-8000-000000000016',
+  'usr_dh_ops': '00000000-0000-4000-8000-000000000017',
+  'usr_dh_pohr': '00000000-0000-4000-8000-000000000018',
+  'usr_dh_sls': '00000000-0000-4000-8000-000000000019',
+  'usr_emp_01': '00000000-0000-4000-8000-000000000020',
+  'usr_sup_01': '00000000-0000-4000-8000-000000000021',
+  'usr_pres_01': '00000000-0000-4000-8000-000000000022',
+  'usr_pod_01': '00000000-0000-4000-8000-000000000023',
+};
+
+export const ensureUuid = (id?: string): string => {
+  if (!id) return generateUuid();
+  if (isValidUuid(id)) return id;
+  if (SEED_UUID_MAP[id]) return SEED_UUID_MAP[id];
+
+  const clean = id.replace(/[^a-f0-9]/gi, '');
+  const pad = (clean + '00000000000000000000000000000000').substring(0, 32).toLowerCase();
+  return `${pad.substring(0, 8)}-${pad.substring(8, 12)}-4${pad.substring(13, 16)}-8${pad.substring(17, 20)}-${pad.substring(20, 32)}`;
+};
 
 // ==============================================================================
 // 1. EMPLOYEES & USERS SUPABASE OPERATIONS
@@ -51,34 +94,38 @@ export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
 
   try {
     const payload = {
-      id: user.id,
+      id: ensureUuid(user.id),
       employee_number: user.employeeNumber,
       first_name: user.firstName || user.name.split(' ')[0],
       middle_name: user.middleName || '',
       last_name: user.lastName || user.name.split(' ')[1] || '',
       email: user.email,
       contact_number: user.contactNumber,
-      department_id: user.departmentId,
+      department_id: isValidUuid(user.departmentId) ? user.departmentId : null,
       department_name: user.departmentName,
       position: user.position,
       role: user.role,
       employment_status: user.employmentStatus || 'Regular',
       date_hired: user.dateHired || new Date().toISOString().substring(0, 10),
-      immediate_superior_id: user.immediateSuperiorId,
+      immediate_superior_id: isValidUuid(user.immediateSuperiorId) ? user.immediateSuperiorId : null,
       immediate_superior_name: user.immediateSuperiorName,
-      department_head_id: user.departmentHeadId,
+      department_head_id: isValidUuid(user.departmentHeadId) ? user.departmentHeadId : null,
       department_head_name: user.departmentHeadName,
-      default_template_id: user.defaultTemplateId,
+      default_template_id: isValidUuid(user.defaultTemplateId) ? user.defaultTemplateId : null,
       username: user.username || user.email.split('@')[0],
       avatar_url: user.avatarUrl,
-      is_active: user.isActive ?? true,
-      is_approved: user.isApproved ?? true,
-      approval_status: user.approvalStatus || 'approved',
+      is_active: user.isActive ?? false,
+      is_approved: user.isApproved ?? false,
+      approval_status: user.approvalStatus || 'pending',
+      hr_rejection_remarks: user.hrRejectionRemarks || null,
       is_department_head: user.isDepartmentHead || false,
       updated_at: new Date().toISOString()
     };
 
     const { error } = await supabase.from('employees').upsert(payload);
+    if (error) {
+      console.warn('Supabase employees upsert error:', error);
+    }
     return !error;
   } catch (err) {
     console.warn('Error saving employee to Supabase:', err);
@@ -118,12 +165,12 @@ export const saveDepartmentToSupabase = async (dept: Department): Promise<boolea
 
   try {
     const payload = {
-      id: dept.id,
+      id: ensureUuid(dept.id),
       code: dept.code,
       name: dept.name,
-      head_user_id: dept.headId,
+      head_user_id: isValidUuid(dept.headId) ? dept.headId : null,
       head_name: dept.headName,
-      default_template_id: dept.defaultTemplateId,
+      default_template_id: isValidUuid(dept.defaultTemplateId) ? dept.defaultTemplateId : null,
       employee_count: dept.employeeCount,
       is_active: dept.isActive ?? true,
       updated_at: new Date().toISOString()
@@ -138,7 +185,70 @@ export const saveDepartmentToSupabase = async (dept: Department): Promise<boolea
 };
 
 // ==============================================================================
-// 3. EVALUATIONS SUPABASE OPERATIONS
+// 3. NOTIFICATIONS SUPABASE OPERATIONS
+// ==============================================================================
+
+export const fetchNotificationsFromSupabase = async (userId?: string): Promise<Notification[] | null> => {
+  if (!isSupabaseConfigured || !supabase) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error || !data) return null;
+
+    const mapped = data.map((n: any) => ({
+      id: n.id,
+      userId: n.user_id || 'usr_default_admin',
+      title: n.title,
+      message: n.message,
+      type: n.type || 'action_required',
+      read: n.read || false,
+      evaluationId: n.evaluation_id,
+      date: 'Just now',
+      dateTime: n.created_at ? new Date(n.created_at).toLocaleString() : new Date().toLocaleString(),
+    }));
+
+    if (userId) {
+      return mapped.filter((n: Notification) => n.userId === userId || n.userId === 'usr_default_admin' || n.userId === 'ALL' || n.userId === 'ALL_ADMINS');
+    }
+    return mapped;
+  } catch (err) {
+    console.warn('Error fetching notifications from Supabase:', err);
+    return null;
+  }
+};
+
+export const saveNotificationToSupabase = async (notif: Notification): Promise<boolean> => {
+  if (!isSupabaseConfigured || !supabase) return false;
+
+  try {
+    const payload = {
+      id: ensureUuid(notif.id),
+      user_id: isValidUuid(notif.userId) ? notif.userId : ensureUuid('usr_default_admin'),
+      title: notif.title,
+      message: notif.message,
+      type: notif.type,
+      read: notif.read,
+      evaluation_id: isValidUuid(notif.evaluationId) ? notif.evaluationId : null,
+      created_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase.from('notifications').upsert(payload);
+    if (error) {
+      console.warn('Supabase notifications upsert error:', error);
+    }
+    return !error;
+  } catch (err) {
+    console.warn('Error saving notification to Supabase:', err);
+    return false;
+  }
+};
+
+// ==============================================================================
+// 4. EVALUATIONS SUPABASE OPERATIONS
 // ==============================================================================
 
 export const fetchEvaluationsFromSupabase = async (): Promise<Evaluation[] | null> => {
@@ -148,7 +258,6 @@ export const fetchEvaluationsFromSupabase = async (): Promise<Evaluation[] | nul
     const { data: evals, error: evalErr } = await supabase.from('evaluations').select('*');
     if (evalErr || !evals) return null;
 
-    // Map base evaluations
     return evals.map((e: any) => ({
       id: e.id,
       cycleId: e.cycle_id || 'cycle_2025_annual',
@@ -187,11 +296,11 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
 
   try {
     const payload = {
-      id: evaluation.id,
-      cycle_id: evaluation.cycleId,
-      template_id: evaluation.templateId,
+      id: ensureUuid(evaluation.id),
+      cycle_id: isValidUuid(evaluation.cycleId) ? evaluation.cycleId : null,
+      template_id: isValidUuid(evaluation.templateId) ? evaluation.templateId : null,
       workflow_type: evaluation.workflowType,
-      employee_id: evaluation.employeeId,
+      employee_id: isValidUuid(evaluation.employeeId) ? evaluation.employeeId : null,
       employee_name: evaluation.employeeName,
       department_name: evaluation.departmentName,
       position: evaluation.position,
@@ -214,7 +323,7 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
 };
 
 // ==============================================================================
-// 4. SUPABASE STORAGE BUCKET FILE UPLOADS
+// 5. SUPABASE STORAGE BUCKET FILE UPLOADS
 // ==============================================================================
 
 export const uploadFileToSupabaseStorage = async (

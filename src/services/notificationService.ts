@@ -1,4 +1,5 @@
 import { Notification, Evaluation, User } from '../types';
+import { saveNotificationToSupabase } from './supabaseService';
 
 const NOTIF_KEY = 'apes_notifications_v3';
 
@@ -40,7 +41,7 @@ export const getStoredNotifications = (userId?: string): Notification[] => {
   ];
 
   if (userId) {
-    return all.filter((n) => n.userId === userId || n.userId === 'ALL' || n.userId === 'ALL_ADMINS');
+    return all.filter((n) => n.userId === userId || n.userId === 'ALL' || n.userId === 'ALL_ADMINS' || n.userId === 'usr_default_admin');
   }
   return all;
 };
@@ -73,6 +74,7 @@ export const triggerWorkflowNotification = (
 
   notifications.unshift(newNotif);
   localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
+  saveNotificationToSupabase(newNotif);
 };
 
 export const triggerRegistrationNotification = (newUser: User) => {
@@ -95,10 +97,15 @@ export const triggerRegistrationNotification = (newUser: User) => {
 
   notifications.unshift(newNotif);
   localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
+  saveNotificationToSupabase(newNotif);
 };
 
 export const markNotificationAsRead = (notifId: string) => {
   const notifications = getStoredNotifications();
   const updated = notifications.map(n => n.id === notifId ? { ...n, read: true } : n);
   localStorage.setItem(NOTIF_KEY, JSON.stringify(updated));
+  const target = updated.find(n => n.id === notifId);
+  if (target) {
+    saveNotificationToSupabase(target);
+  }
 };

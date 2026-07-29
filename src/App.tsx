@@ -21,6 +21,7 @@ import {
   fetchEmployeesFromSupabase, 
   fetchDepartmentsFromSupabase, 
   fetchEvaluationsFromSupabase,
+  fetchNotificationsFromSupabase,
   saveEmployeeToSupabase
 } from './services/supabaseService';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
@@ -131,13 +132,19 @@ export const App: React.FC = () => {
 
         const sbEvals = await fetchEvaluationsFromSupabase();
         if (sbEvals && sbEvals.length > 0) setEvaluations(sbEvals);
+
+        const sbNotifs = await fetchNotificationsFromSupabase(currentUser?.id);
+        if (sbNotifs && sbNotifs.length > 0) {
+          setNotifications(sbNotifs);
+        } else if (currentUser?.id) {
+          setNotifications(getStoredNotifications(currentUser.id));
+        }
       } else {
         const storedUsers = getStoredUsers();
         setUsers(storedUsers);
-      }
-
-      if (currentUser?.id) {
-        setNotifications(getStoredNotifications(currentUser.id));
+        if (currentUser?.id) {
+          setNotifications(getStoredNotifications(currentUser.id));
+        }
       }
     };
 
