@@ -229,120 +229,6 @@ export const SEED_USERS: User[] = [
     isApproved: true,
     approvalStatus: 'approved',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-  },
-  // ── CORE STAFF & OTHER ROLES ──────────────────────────────────────────────
-  {
-    id: 'usr_emp_01',
-    employeeNumber: 'EMP-1001',
-    firstName: 'Maritess',
-    middleName: 'Santos',
-    lastName: 'Bacle',
-    name: 'Maritess Bacle',
-    email: 'maritess.bacle@hdiadventures.com',
-    contactNumber: '+63 917 123 4567',
-    role: 'employee',
-    departmentId: 'dept_sls',
-    departmentName: 'Sales',
-    position: 'Senior Sales Executive',
-    employmentStatus: 'Regular',
-    dateHired: '2021-03-15',
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-    immediateSuperiorId: 'usr_sup_01',
-    immediateSuperiorName: 'Roberto Garcia',
-    departmentHeadId: 'usr_dh_sls',
-    departmentHeadName: 'Grazie Esguerra',
-    username: 'maritess.bacle',
-    isActive: true,
-    isApproved: true,
-    approvalStatus: 'approved'
-  },
-  {
-    id: 'usr_sup_01',
-    employeeNumber: 'EMP-1002',
-    firstName: 'Roberto',
-    middleName: 'Del Cruz',
-    lastName: 'Garcia',
-    name: 'Roberto Garcia',
-    email: 'roberto.garcia@hdiadventures.com',
-    contactNumber: '+63 918 234 5678',
-    role: 'supervisor',
-    departmentId: 'dept_sls',
-    departmentName: 'Sales',
-    position: 'Sales Team Leader',
-    employmentStatus: 'Regular',
-    dateHired: '2019-06-01',
-    avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
-    immediateSuperiorId: 'usr_dh_sls',
-    immediateSuperiorName: 'Grazie Esguerra',
-    departmentHeadId: 'usr_dh_sls',
-    departmentHeadName: 'Grazie Esguerra',
-    username: 'roberto.garcia',
-    isActive: true,
-    isApproved: true,
-    approvalStatus: 'approved'
-  },
-  {
-    id: 'usr_pres_01',
-    employeeNumber: 'EMP-1000',
-    firstName: 'Dr. Gabriel',
-    middleName: 'M.',
-    lastName: 'Santos',
-    name: 'Dr. Gabriel Santos',
-    email: 'gabriel.santos@hdiadventures.com',
-    contactNumber: '+63 920 456 7890',
-    role: 'president',
-    departmentId: 'dept_fop',
-    departmentName: 'Finance / Office of the President',
-    position: 'President & CEO',
-    employmentStatus: 'Regular',
-    dateHired: '2010-01-01',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    username: 'gabriel.santos',
-    isActive: true,
-    isApproved: true,
-    approvalStatus: 'approved'
-  },
-  {
-    id: 'usr_pod_01',
-    employeeNumber: 'EMP-1004',
-    firstName: 'Maria',
-    middleName: 'Clara',
-    lastName: 'Reyes',
-    name: 'Maria Clara',
-    email: 'maria.clara@hdiadventures.com',
-    contactNumber: '+63 921 567 8901',
-    role: 'pod',
-    departmentId: 'dept_pohr',
-    departmentName: 'People Operations (HR)',
-    position: 'POD Governance Director',
-    employmentStatus: 'Regular',
-    dateHired: '2018-04-12',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    username: 'maria.clara',
-    isActive: true,
-    isApproved: true,
-    approvalStatus: 'approved'
-  },
-  {
-    id: 'usr_hr_01',
-    employeeNumber: 'EMP-1005',
-    firstName: 'Patricia',
-    middleName: 'Luna',
-    lastName: 'Mendoza',
-    name: 'Patricia Mendoza',
-    email: 'patricia.mendoza@hdiadventures.com',
-    contactNumber: '+63 922 678 9012',
-    role: 'hr_admin',
-    departmentId: 'dept_pohr',
-    departmentName: 'People Operations (HR)',
-    position: 'HR Administrator',
-    employmentStatus: 'Regular',
-    dateHired: '2020-02-01',
-    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-    username: 'patricia.mendoza',
-    isActive: true,
-    isApproved: true,
-    approvalStatus: 'approved'
   }
 ];
 
@@ -493,14 +379,14 @@ export const SEED_TEMPLATES: EvaluationTemplate[] = [
 export const SEED_EVALUATIONS: Evaluation[] = [
   // Regular Employee (Maritess Bacle) -> Routed to Sales Department Head (Grazie Esguerra)
   {
-    id: 'eval_maritess_2025',
+    id: 'eval_grazie_2025',
     cycleId: 'cycle_2025_annual',
     templateId: 'template_sales',
-    workflowType: 'WORKFLOW_REGULAR',
-    employeeId: 'usr_emp_01',
-    employeeName: 'Maritess Bacle',
+    workflowType: 'WORKFLOW_DEPT_HEAD',
+    employeeId: 'usr_dh_sls',
+    employeeName: 'Grazie Esguerra',
     departmentName: 'Sales',
-    position: 'Senior Sales Executive',
+    position: 'Department Head - Sales',
     appraisalPeriod: 'January - September 2025',
     appraisalDate: '2025-09-30',
     status: 'pending_dept_head',
@@ -615,7 +501,7 @@ export const SEED_EVALUATIONS: Evaluation[] = [
       {
         id: 'audit_01',
         timestamp: '2025-09-30 14:30:00',
-        performedBy: 'Maritess Bacle',
+        performedBy: 'Grazie Esguerra',
         performedByRole: 'EMPLOYEE',
         assignedTo: 'Grazie Esguerra (Sales Department Head)',
         actionPerformed: 'Submitted Self-Evaluation',
@@ -710,8 +596,8 @@ export const getStoredUsers = (): User[] => {
   if (data) {
     try {
       let users: User[] = JSON.parse(data);
-      // Remove deprecated users if present
-      users = users.filter(u => u.id !== 'usr_sys_01' && u.id !== 'usr_depthead_01');
+      const legacyIds = new Set(['usr_sys_01', 'usr_depthead_01', 'usr_emp_01', 'usr_sup_01', 'usr_pres_01', 'usr_pod_01', 'usr_hr_01']);
+      users = users.filter(u => !legacyIds.has(u.id));
 
       // Ensure default department heads exist in user list
       SEED_USERS.forEach(seedU => {
