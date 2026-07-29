@@ -2,6 +2,7 @@ import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { User, Role } from '../types';
 import { getStoredUsers, saveUsers, getStoredCurrentUser, setCurrentUserStore } from './storage';
 import { triggerRegistrationNotification } from './notificationService';
+import { ensureUuid, saveEmployeeToSupabase } from './supabaseService';
 
 export interface LoginCredentials {
   identifier: string; // Email or Employee ID
@@ -119,7 +120,7 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
 
   const fullName = `${data.firstName} ${data.middleName ? data.middleName + ' ' : ''}${data.lastName}`;
   const newUser: User = {
-    id: `usr_${Date.now()}`,
+    id: ensureUuid(`usr_${Date.now()}`),
     employeeNumber: data.employeeNumber || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
     firstName: data.firstName,
     middleName: data.middleName,
@@ -142,6 +143,7 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
 
   const updatedUsers = [newUser, ...users];
   saveUsers(updatedUsers);
+  await saveEmployeeToSupabase(newUser);
   triggerRegistrationNotification(newUser);
 
   if (isSupabaseConfigured && supabase) {

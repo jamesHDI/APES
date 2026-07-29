@@ -212,23 +212,15 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ==============================================================================
 
-ALTER TABLE public.employees ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.evaluations ENABLE ROW LEVEL SECURITY;
+-- Allow employees, notifications, departments, and evaluations open read/write access for application usage
+CREATE POLICY "Allow public registration insert" ON public.employees FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public select employees" ON public.employees FOR SELECT USING (true);
+CREATE POLICY "Allow public update employees" ON public.employees FOR UPDATE USING (true);
 
-CREATE POLICY "Employees view own records" ON public.evaluations
-    FOR SELECT USING (auth.uid() = employee_id OR auth.uid() IN (
-        SELECT user_id FROM public.employees WHERE role IN ('hr_admin', 'system_admin', 'pod')
-    ));
-
-CREATE POLICY "Supervisors view direct reports" ON public.evaluations
-    FOR SELECT USING (employee_id IN (
-        SELECT id FROM public.employees WHERE immediate_superior_id = auth.uid()
-    ));
-
-CREATE POLICY "HR and System Admins Full Access" ON public.employees
-    FOR ALL USING (auth.uid() IN (
-        SELECT user_id FROM public.employees WHERE role IN ('hr_admin', 'system_admin')
-    ));
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public notifications insert" ON public.notifications FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public notifications select" ON public.notifications FOR SELECT USING (true);
+CREATE POLICY "Allow public notifications update" ON public.notifications FOR UPDATE USING (true);
 
 -- STORAGE BUCKETS SETUP
 INSERT INTO storage.buckets (id, name, public) VALUES ('apes-signatures', 'apes-signatures', true) ON CONFLICT DO NOTHING;
