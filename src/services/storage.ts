@@ -378,14 +378,15 @@ export const SEED_TEMPLATES: EvaluationTemplate[] = [
 export const SEED_EVALUATIONS: Evaluation[] = [
   // Regular Employee (Maritess Bacle) -> Routed to Sales Department Head (Grazie Esguerra)
   {
-    id: 'eval_grazie_2025',
+    id: 'eval_maritess_2025',
     cycleId: 'cycle_2025_annual',
     templateId: 'template_sales',
-    workflowType: 'WORKFLOW_DEPT_HEAD',
-    employeeId: 'usr_dh_sls',
-    employeeName: 'Grazie Esguerra',
+    workflowType: 'WORKFLOW_REGULAR',
+    employeeId: 'usr_emp_sls',
+    employeeName: 'Maritess Bacle',
     departmentName: 'Sales',
-    position: 'Department Head - Sales',
+    position: 'Account Executive',
+    isDepartmentHead: false,
     appraisalPeriod: 'January - September 2025',
     appraisalDate: '2025-09-30',
     status: 'pending_dept_head',

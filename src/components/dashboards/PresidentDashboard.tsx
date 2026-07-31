@@ -22,7 +22,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({
   onOpenEvaluation,
 }) => {
   const deptHeadEvals = evaluations.filter(
-    (e) => e.workflowType === 'WORKFLOW_B' || (e as any).isDepartmentHead,
+    (e) => e.workflowType === 'WORKFLOW_DEPT_HEAD' || e.workflowType === 'WORKFLOW_B' || e.isDepartmentHead,
   );
   const pendingPresidentReviews = deptHeadEvals.filter(
     (e) => e.status === 'pending_president' || e.status === 'department_head_submitted',

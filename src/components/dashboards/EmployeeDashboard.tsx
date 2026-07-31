@@ -11,6 +11,8 @@ import {
   CalendarDays,
 } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
+import { EvaluationProgressCard } from '../workflow/EvaluationProgressCard';
+import { EvaluationTimeline } from '../workflow/EvaluationTimeline';
 
 interface EmployeeDashboardProps {
   currentUser: User;
@@ -100,6 +102,14 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Evaluation Progress Card */}
+      {myEvaluation && (
+        <EvaluationProgressCard 
+          evaluation={myEvaluation} 
+          onOpenEvaluation={onOpenEvaluation}
+        />
+      )}
 
       {/* Next Action Banner */}
       <div className={`flex items-start sm:items-center gap-4 p-4 rounded-2xl border ${

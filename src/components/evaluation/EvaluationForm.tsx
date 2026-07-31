@@ -11,6 +11,9 @@ import {
 import { validateEvaluationForSubmission } from '../../services/validationService';
 import { triggerWorkflowNotification } from '../../services/notificationService';
 import { WorkflowProgressBar } from '../workflow/WorkflowProgressBar';
+import { EvaluationProgressCard } from '../workflow/EvaluationProgressCard';
+import { EvaluationTimeline } from '../workflow/EvaluationTimeline';
+import { isUserDepartmentHead, determineWorkflowType } from '../../utils/workflowUtils';
 import { SignatureModal } from '../common/SignatureModal';
 import { EvidenceUploadModal } from '../common/EvidenceUploadModal';
 import { WorkflowAuditTrailModal } from './WorkflowAuditTrailModal';
@@ -50,6 +53,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   const [sigRole, setSigRole] = useState<'employee' | 'supervisor' | 'dept_head' | 'president' | 'pod' | 'hr'>('employee');
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
   const [activeTab, setActiveTab] = useState<'part1a' | 'part1b' | 'part2' | 'part3'>('part1a');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -184,39 +188,85 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   };
 
   const doSubmitEmployee = () => {
-    const deptName = currentUser.departmentName || evalData.departmentName;
-    const deptHeadUser = allUsers.find(
-      u => (u.id === currentUser.departmentHeadId) || 
-           (u.role === 'dept_head' && u.departmentName === deptName) ||
-           (u.isDepartmentHead && u.departmentName === deptName)
-    );
+    const isDeptHeadUser = isUserDepartmentHead(currentUser) || evalData.isDepartmentHead || evalData.workflowType === 'WORKFLOW_DEPT_HEAD';
 
-    const nextStatus = 'pending_dept_head';
-    const assignedTo = deptHeadUser ? `${deptHeadUser.name} (${deptName} Department Head)` : `${deptName} Department Head`;
+    if (isDeptHeadUser) {
+      const presidentUser = allUsers.find(u => u.role === 'president') || { id: 'usr_pres_01', name: 'President & CEO' };
+      const nextStatus = 'pending_president';
+      const assignedTo = `${presidentUser.name} (President & CEO)`;
 
-    const updatedAudit = addAuditEntry('Evaluation Submitted', evalData.status, nextStatus, assignedTo, 'Submitted for Department Head review.');
+      const updatedAudit = addAuditEntry(
+        'Department Head Self-Evaluation Submitted',
+        evalData.status,
+        nextStatus,
+        assignedTo,
+        'Submitted for President executive review.'
+      );
 
-    const updated: Evaluation = {
-      ...evalData,
-      status: nextStatus as any,
-      auditTrail: updatedAudit,
-      updatedAt: new Date().toISOString()
-    };
+      const updated: Evaluation = {
+        ...evalData,
+        workflowType: 'WORKFLOW_DEPT_HEAD',
+        isDepartmentHead: true,
+        status: nextStatus as any,
+        auditTrail: updatedAudit,
+        updatedAt: new Date().toISOString()
+      };
 
-    onSave(updated);
+      onSave(updated);
 
-    if (deptHeadUser) {
       triggerWorkflowNotification(
-        deptHeadUser.id,
+        presidentUser.id,
         updated,
-        'Action Required: Employee Self-Evaluation Submitted',
-        `${currentUser.name} (${deptName}) has submitted their self-evaluation for your review.`,
+        'Action Required: Department Head Self-Evaluation Submitted',
+        `Department Head ${currentUser.name} (${evalData.departmentName}) submitted their self-evaluation for executive review.`,
         currentUser.name
       );
-    }
 
-    confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
-    showToast(`Evaluation submitted! Routed to Department Head: ${assignedTo}`);
+      confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
+      showToast(`Self-evaluation submitted! Automatically routed to President: ${assignedTo}`);
+    } else {
+      const deptName = currentUser.departmentName || evalData.departmentName;
+      const deptHeadUser = allUsers.find(
+        u => (u.id === currentUser.departmentHeadId) || 
+             (u.role === 'dept_head' && u.departmentName === deptName) ||
+             (u.isDepartmentHead && u.departmentName === deptName)
+      );
+
+      const nextStatus = 'pending_dept_head';
+      const assignedTo = deptHeadUser ? `${deptHeadUser.name} (${deptName} Department Head)` : `${deptName} Department Head`;
+
+      const updatedAudit = addAuditEntry(
+        'Self-Evaluation Submitted',
+        evalData.status,
+        nextStatus,
+        assignedTo,
+        'Submitted for Department Head review.'
+      );
+
+      const updated: Evaluation = {
+        ...evalData,
+        workflowType: 'WORKFLOW_REGULAR',
+        isDepartmentHead: false,
+        status: nextStatus as any,
+        auditTrail: updatedAudit,
+        updatedAt: new Date().toISOString()
+      };
+
+      onSave(updated);
+
+      if (deptHeadUser) {
+        triggerWorkflowNotification(
+          deptHeadUser.id,
+          updated,
+          'Action Required: Employee Self-Evaluation Submitted',
+          `${currentUser.name} (${deptName}) has submitted their self-evaluation for your review.`,
+          currentUser.name
+        );
+      }
+
+      confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
+      showToast(`Self-evaluation submitted! Automatically routed to Department Head: ${assignedTo}`);
+    }
   };
 
   const handleFinalizeSupervisor = () => setConfirmAction('supervisor');
@@ -355,7 +405,22 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       <WorkflowProgressBar 
         status={evalData.status} 
         workflowType={evalData.workflowType} 
+        isDepartmentHead={evalData.isDepartmentHead || isUserDepartmentHead(currentUser)}
       />
+
+      {/* Evaluation Progress Card */}
+      <EvaluationProgressCard 
+        evaluation={evalData} 
+        allUsers={allUsers} 
+        showActions={false} 
+      />
+
+      {/* Optional Timeline View */}
+      {showTimeline && (
+        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+          <EvaluationTimeline evaluation={evalData} allUsers={allUsers} />
+        </div>
+      )}
 
       {/* Header Info Card */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
@@ -406,8 +471,12 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               <Paperclip className="w-3.5 h-3.5 text-brand-500" />
               Evidence ({evalData.evidenceFiles.length})
             </button>
+            <button onClick={() => setShowTimeline(!showTimeline)} className={`btn btn-sm ${showTimeline ? 'btn-primary' : 'btn-secondary'}`}>
+              <History className="w-3.5 h-3.5 text-brand-500" />
+              {showTimeline ? 'Hide Timeline' : 'View Timeline'}
+            </button>
             <button onClick={() => setShowAuditModal(true)} className="btn btn-secondary btn-sm">
-              <History className="w-3.5 h-3.5 text-purple-500" />
+              <Sparkles className="w-3.5 h-3.5 text-purple-500" />
               Audit Trail
             </button>
           </div>

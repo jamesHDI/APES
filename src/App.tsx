@@ -49,6 +49,8 @@ import { LoginModal } from './components/auth/LoginModal';
 import { MyProfile } from './components/profile/MyProfile';
 import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
 
+import { determineWorkflowType, isUserDepartmentHead } from './utils/workflowUtils';
+
 export const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>(getStoredUsers());
   const [currentUser, setCurrentUser] = useState<User>(getStoredCurrentUser());
@@ -341,11 +343,12 @@ export const App: React.FC = () => {
       id: `eval_${currentUser.id}_2025`,
       cycleId: 'cycle_2025_annual',
       templateId: 'template_sales',
-      workflowType: currentUser.isDepartmentHead || currentUser.role === 'dept_head' ? 'WORKFLOW_DEPT_HEAD' : 'WORKFLOW_REGULAR',
+      workflowType: determineWorkflowType(currentUser),
       employeeId: currentUser.id,
       employeeName: currentUser.name,
       departmentName: currentUser.departmentName || 'General',
       position: currentUser.position || 'Staff Specialist',
+      isDepartmentHead: isUserDepartmentHead(currentUser),
       appraisalPeriod: 'January - December 2025',
       appraisalDate: new Date().toISOString().substring(0, 10),
       status: 'draft',

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Evaluation } from '../../types';
 import { Building2, Clock, FileCheck, ArrowRight, TrendingUp, Users, AlertCircle, Search, ShieldCheck } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
+import { EvaluationProgressCard } from '../workflow/EvaluationProgressCard';
 
 interface DeptHeadDashboardProps {
   currentUser: User;
@@ -24,9 +25,12 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'COMPLETED'>('PENDING');
 
+  // Find personal Department Head evaluation
+  const mySelfEvaluation = evaluations.find((e) => e.employeeId === currentUser.id);
+
   // Filter evaluations belonging to the department head's department or assigned to them
   const deptEvaluations = evaluations.filter(
-    (e) => e.departmentName === currentUser.departmentName || true
+    (e) => e.employeeId !== currentUser.id && (e.departmentName === currentUser.departmentName || true)
   );
 
   const pendingDeptHeadReviews = deptEvaluations.filter(
@@ -79,6 +83,14 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Personal Dept Head Self-Evaluation Progress */}
+      {mySelfEvaluation && (
+        <EvaluationProgressCard 
+          evaluation={mySelfEvaluation} 
+          onOpenEvaluation={onOpenEvaluation} 
+        />
+      )}
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

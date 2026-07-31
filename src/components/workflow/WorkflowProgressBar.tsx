@@ -1,45 +1,37 @@
 import React from 'react';
 import { EvaluationStatus, EvaluationWorkflowType, EvaluationStepHistory } from '../../types';
-import { CheckCircle2, Clock, FileEdit, Send, ShieldCheck, Archive, Crown } from 'lucide-react';
+import { CheckCircle2, Clock, FileEdit, ShieldCheck, Archive, Crown, UserCheck } from 'lucide-react';
 
 interface WorkflowProgressBarProps {
   status: EvaluationStatus;
   workflowType?: EvaluationWorkflowType;
   stepHistory?: EvaluationStepHistory[];
+  isDepartmentHead?: boolean;
 }
 
 export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
   status,
   workflowType = 'WORKFLOW_REGULAR',
   stepHistory = [],
+  isDepartmentHead = false,
 }) => {
-  const stepsRegular = [
-    { id: 'draft', label: 'Self-Evaluation', role: 'Employee', icon: FileEdit },
-    { id: 'pending_supervisor', label: 'Supervisor Review', role: 'Immediate Superior', icon: Clock },
-    { id: 'pending_pod', label: 'POD Review', role: 'POD Officer', icon: ShieldCheck },
-    { id: 'archived', label: 'Completed', role: 'Archived', icon: Archive },
-  ];
+  const isDeptHeadTrack = workflowType === 'WORKFLOW_DEPT_HEAD' || workflowType === 'WORKFLOW_B' || isDepartmentHead;
 
-  const stepsNoIS = [
-    { id: 'draft', label: 'Self-Evaluation', role: 'Employee', icon: FileEdit },
-    { id: 'pending_dept_head', label: 'Dept Head Review', role: 'Department Head', icon: Clock },
+  const stepsRegular = [
+    { id: 'draft', label: 'Self Evaluation', role: 'Employee', icon: FileEdit },
+    { id: 'pending_dept_head', label: 'Department Head Review', role: 'Department Head', icon: UserCheck },
     { id: 'pending_pod', label: 'POD Review', role: 'POD Officer', icon: ShieldCheck },
-    { id: 'archived', label: 'Completed', role: 'Archived', icon: Archive },
+    { id: 'archived', label: 'Evaluation Completed', role: 'Completed', icon: Archive },
   ];
 
   const stepsDeptHead = [
-    { id: 'draft', label: 'Self-Evaluation', role: 'Department Head', icon: FileEdit },
+    { id: 'draft', label: 'Self Evaluation', role: 'Department Head', icon: FileEdit },
     { id: 'pending_president', label: 'President Review', role: 'President & CEO', icon: Crown },
     { id: 'pending_pod', label: 'POD Review', role: 'POD Officer', icon: ShieldCheck },
-    { id: 'archived', label: 'Completed', role: 'Archived', icon: Archive },
+    { id: 'archived', label: 'Evaluation Completed', role: 'Completed', icon: Archive },
   ];
 
-  const steps =
-    workflowType === 'WORKFLOW_DEPT_HEAD'
-      ? stepsDeptHead
-      : workflowType === 'WORKFLOW_NO_IS'
-      ? stepsNoIS
-      : stepsRegular;
+  const steps = isDeptHeadTrack ? stepsDeptHead : stepsRegular;
 
   const getActiveStepIndex = (st: EvaluationStatus) => {
     switch (st) {
@@ -55,8 +47,8 @@ export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
       case 'supervisor_completed':
       case 'president_completed':
       case 'pending_pod':
-      case 'pod_validated':
         return 2;
+      case 'pod_validated':
       case 'archived':
         return 3;
       default:
@@ -64,52 +56,59 @@ export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
     }
   };
 
-  const STATUS_PLAIN: Partial<Record<EvaluationStatus, string>> = {
-    draft: 'In Progress',
-    reopened: 'Returned for Revision',
-    employee_submitted: 'Submitted',
-    pending_supervisor: 'Waiting for Supervisor',
-    pending_dept_head: 'Waiting for Dept Head',
-    pending_president: 'Waiting for President',
-    department_head_submitted: 'Dept Head Submitted',
-    supervisor_completed: 'Supervisor Reviewed',
-    president_completed: 'President Reviewed',
-    pending_pod: 'Awaiting POD Review',
-    pod_validated: 'POD Validated',
-    archived: 'Completed & Archived',
+  const getStatusText = (st: EvaluationStatus, isDeptHead: boolean) => {
+    switch (st) {
+      case 'draft':
+        return 'Self Evaluation In Progress';
+      case 'reopened':
+        return 'Returned for Revision';
+      case 'employee_submitted':
+      case 'pending_supervisor':
+      case 'pending_dept_head':
+        return isDeptHead ? 'Under Department Head Review' : 'Under Department Head Review';
+      case 'department_head_submitted':
+      case 'pending_president':
+        return 'Under President Review';
+      case 'supervisor_completed':
+      case 'president_completed':
+      case 'pending_pod':
+        return 'Under POD Review';
+      case 'pod_validated':
+      case 'archived':
+        return 'Evaluation Completed';
+      default:
+        return String(st).replace(/_/g, ' ');
+    }
   };
 
   const currentIndex = getActiveStepIndex(status);
-  const plainStatus = STATUS_PLAIN[status] ?? status.replace(/_/g, ' ');
-
-  const workflowLabel: Record<string, string> = {
-    WORKFLOW_REGULAR: 'Standard Workflow',
-    WORKFLOW_NO_IS: 'Direct to Dept Head',
-    WORKFLOW_DEPT_HEAD: 'Department Head Track',
-    WORKFLOW_B: 'Department Head Track',
-  };
+  const statusText = getStatusText(status, isDeptHeadTrack);
 
   return (
-    <div className="card p-5 mb-6">
+    <div className="card p-5 mb-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md rounded-2xl">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 pb-3 border-b border-slate-100 dark:border-slate-700">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-            workflowType === 'WORKFLOW_DEPT_HEAD' || workflowType === 'WORKFLOW_B'
-              ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
-              : workflowType === 'WORKFLOW_NO_IS'
-              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-              : 'bg-brand-100 text-brand-800 dark:bg-brand-950 dark:text-brand-300'
+          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+            isDeptHeadTrack
+              ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+              : 'bg-brand-100 text-brand-800 dark:bg-brand-950 dark:text-brand-300 border border-brand-200 dark:border-brand-800'
           }`}>
-            {workflowLabel[workflowType] ?? workflowType}
+            {isDeptHeadTrack ? 'Workflow 2 – Department Head Pipeline' : 'Workflow 1 – Regular Employee Pipeline'}
           </span>
           <span className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline">
-            Evaluation Workflow
+            Automatic Hierarchy Routing
           </span>
         </div>
-        <span className="text-xs px-3 py-1 rounded-full font-semibold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-          {plainStatus}
-        </span>
+
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${
+            currentIndex === 3 ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
+          }`} />
+          <span className="text-xs px-3 py-1 rounded-full font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+            {statusText}
+          </span>
+        </div>
       </div>
 
       {/* Stepper */}
@@ -142,23 +141,29 @@ export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
               >
                 {isCompleted ? (
                   <CheckCircle2 className="w-5 h-5" />
-                ) : (
+                ) : isCurrent ? (
                   <Icon className="w-4 h-4" />
+                ) : (
+                  <Clock className="w-4 h-4 opacity-50" />
                 )}
               </div>
 
               {/* Labels */}
               <div className="mt-2.5 text-center px-1">
                 <p
-                  className={`text-xs font-semibold leading-tight ${
+                  className={`text-xs font-bold leading-tight ${
                     isCurrent
                       ? 'text-brand-700 dark:text-brand-300'
                       : isCompleted
-                      ? 'text-slate-700 dark:text-slate-200'
+                      ? 'text-slate-800 dark:text-slate-200'
                       : 'text-slate-400 dark:text-slate-500'
                   }`}
                 >
-                  {step.label}
+                  {isCompleted
+                    ? `✅ ${step.label} Completed`
+                    : isCurrent
+                    ? `🟡 Under ${step.label}`
+                    : `⏳ Pending ${step.label}`}
                 </p>
 
                 {isCompleted && (
@@ -169,7 +174,7 @@ export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
 
                 {isCurrent && (
                   <p className="text-[10px] text-brand-600 dark:text-brand-400 font-semibold mt-0.5">
-                    {step.role}
+                    Assigned: {step.role}
                   </p>
                 )}
 
