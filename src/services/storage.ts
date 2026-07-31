@@ -200,7 +200,7 @@ export const SEED_USERS: User[] = [
     email: 'malene.pellazo@hdiadventures.com',
     username: 'malene.pellazo',
     password: 'password',
-    role: 'dept_head',
+    role: 'pod',
     departmentId: 'dept_pohr',
     departmentName: 'People Operations (HR)',
     position: 'Department Head - People Operations (HR)',

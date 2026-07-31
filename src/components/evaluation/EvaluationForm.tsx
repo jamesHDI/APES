@@ -271,7 +271,10 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
   const handleFinalizeSupervisor = () => setConfirmAction('supervisor');
   const doFinalizeSupervisor = () => {
-    const updatedAudit = addAuditEntry('Department Head Review Completed', evalData.status, 'pending_pod', 'POD Reviewer', 'Review completed and submitted to POD.');
+    const podUser = allUsers.find(u => u.role === 'pod' || u.id === 'usr_dh_pohr') || { id: 'usr_dh_pohr', name: 'Malene Pellazo' };
+    const assignedTo = `${podUser.name} (Department Head - People Operations / POD)`;
+
+    const updatedAudit = addAuditEntry('Department Head Review Completed', evalData.status, 'pending_pod', assignedTo, 'Review completed and submitted to POD.');
 
     const updated: Evaluation = {
       ...evalData,
@@ -282,22 +285,24 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
     onSave(updated);
 
-    const podUser = allUsers.find(u => u.role === 'pod') || { id: 'usr_pod_01' };
     triggerWorkflowNotification(
       podUser.id,
       updated,
       'Action Required: Evaluation Pending POD Validation',
-      `Department Head ${currentUser.name} completed review for ${evalData.employeeName}. Ready for POD validation.`,
+      `Department Head ${currentUser.name} completed review for ${evalData.employeeName}. Ready for final POD review by ${podUser.name}.`,
       currentUser.name
     );
 
     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-    showToast('Department Head review finalized and submitted to POD!');
+    showToast(`Department Head review finalized! Submitted to ${podUser.name} for POD validation.`);
   };
 
   const handleFinalizePresident = () => setConfirmAction('president');
   const doFinalizePresident = () => {
-    const updatedAudit = addAuditEntry('President Executive Review Completed', evalData.status, 'pending_pod', 'POD Reviewer');
+    const podUser = allUsers.find(u => u.role === 'pod' || u.id === 'usr_dh_pohr') || { id: 'usr_dh_pohr', name: 'Malene Pellazo' };
+    const assignedTo = `${podUser.name} (Department Head - People Operations / POD)`;
+
+    const updatedAudit = addAuditEntry('President Executive Review Completed', evalData.status, 'pending_pod', assignedTo);
 
     const updated: Evaluation = {
       ...evalData,
@@ -307,16 +312,17 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     };
 
     onSave(updated);
+
     triggerWorkflowNotification(
-      'usr_pod_01',
+      podUser.id,
       updated,
       'Action Required: Dept Head Scorecard Ready for POD Validation',
-      `Executive review completed for ${evalData.employeeName}.`,
+      `Executive review completed for ${evalData.employeeName}. Submitted for final POD review by ${podUser.name}.`,
       currentUser.name
     );
 
     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-    showToast('Executive review completed and sent to POD!');
+    showToast(`Executive review completed! Submitted to ${podUser.name} for POD validation.`);
   };
 
   const handleValidatePOD = () => setConfirmAction('pod');
