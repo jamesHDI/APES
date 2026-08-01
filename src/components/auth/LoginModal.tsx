@@ -78,21 +78,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
           <div className="relative z-10 space-y-6 flex flex-col items-center">
             {/* Logo */}
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl px-6 py-5 shadow-2xl inline-block border border-white/20">
+            <div className="bg-white rounded-3xl p-6 shadow-2xl flex items-center justify-center mx-auto max-w-[280px] w-full">
               <img
                 src="/hdi-logo.png"
-                alt="HDI Hive"
-                className="h-16 max-w-full w-auto object-contain mx-auto"
+                alt="HDI Logo"
+                className="h-24 w-auto max-w-full object-contain mx-auto"
               />
             </div>
 
             {/* Welcome text */}
-            <div className="space-y-2">
-              <h2 className="text-xl font-black leading-snug tracking-tight text-center">
-                Welcome to APES v3.0<br />
-                <span className="text-brand-400">Performance Evaluation System</span>
+            <div className="space-y-2 text-center w-full">
+              <h2 className="text-2xl font-black leading-snug tracking-tight text-center">
+                Welcome to APES<br />
+                <span className="text-brand-400 font-extrabold text-base">Performance Evaluation System</span>
               </h2>
-              <p className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed">
+              <p className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed text-center">
                 Empowering employees through continuous feedback and core values alignment.
               </p>
             </div>
