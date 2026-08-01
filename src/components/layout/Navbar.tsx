@@ -74,7 +74,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 shadow-sm transition-colors shrink-0">
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16 gap-4">
 
@@ -90,12 +90,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             {/* Brand */}
-            <div className="flex items-center gap-3.5">
-              <div className="shrink-0 bg-white rounded-2xl p-2 shadow-sm border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-3">
+              <div className="shrink-0 bg-white dark:bg-slate-800 rounded-xl p-1.5 flex items-center justify-center border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
                 <img
                   src="/hdi-logo.png"
                   alt="HDI Hive"
-                  className="h-12 sm:h-14 w-auto object-contain"
+                  className="h-8 sm:h-9 w-auto object-contain max-h-9"
                 />
               </div>
               <div className="hidden sm:block">
@@ -107,7 +107,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     APES v3.0
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-brand-600 dark:text-brand-400 font-black tracking-wider uppercase mt-0.5 hidden md:block">
+                <p className="text-xs text-brand-600 dark:text-brand-400 font-extrabold tracking-wider uppercase mt-0.5 hidden md:block">
                   HDI Hive
                 </p>
               </div>
