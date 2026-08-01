@@ -56,7 +56,7 @@ import { determineWorkflowType, isUserDepartmentHead, getUserActiveEvaluation, g
 
 export const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>(getStoredUsers());
-  const [currentUser, setCurrentUser] = useState<User>(getStoredCurrentUser());
+  const [currentUser, setCurrentUser] = useState<User>(() => getStoredCurrentUser() || SEED_USERS[0]);
   
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isSessionLoading, setIsSessionLoading] = useState<boolean>(true);
@@ -102,22 +102,14 @@ export const App: React.FC = () => {
             setNotifications(getStoredNotifications(storedUser.id));
             if (savedTab) setActiveTab(savedTab);
           }
-        } else if (isSupabaseConfigured && supabase) {
-          const { data } = await supabase.auth.getSession();
-          if (data?.session?.user && sessionActive) {
-            const sbUsers = await fetchEmployeesFromSupabase();
-            const matched = (sbUsers || users).find(u => u.email === data.session.user.email);
-            if (matched && matched.isActive !== false && matched.isApproved !== false && isMounted) {
-              setCurrentUser(matched);
-              setCurrentUserStore(matched);
-              setIsAuthenticated(true);
-              sessionStorage.setItem('apes_session_active_v3', 'true');
-              if (savedTab) setActiveTab(savedTab);
-            }
+        } else {
+          if (isMounted) {
+            setIsAuthenticated(false);
           }
         }
       } catch (err) {
         console.warn('Error restoring session:', err);
+        if (isMounted) setIsAuthenticated(false);
       } finally {
         if (isMounted) {
           setIsSessionLoading(false);
@@ -647,7 +639,7 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
+    <div className="h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
       
       {/* Login & Create Account Modal Gating */}
       <LoginModal
@@ -675,7 +667,7 @@ export const App: React.FC = () => {
         isSidebarOpen={isSidebarOpen}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-h-0">
         <Sidebar
           currentRole={currentUser.role}
           activeTab={activeTab}

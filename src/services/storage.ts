@@ -625,25 +625,24 @@ export const saveUsers = (users: User[]) => {
   users.forEach(u => saveEmployeeToSupabase(u));
 };
 
-export const getStoredCurrentUser = (): User => {
+export const getStoredCurrentUser = (): User | null => {
   const data = localStorage.getItem(CURRENT_USER_KEY);
   if (data) {
     try {
       const user: User = JSON.parse(data);
-      // If cached user is an obsolete user, default to admin or first seeded user
-      if (user.id === 'usr_depthead_01') {
-        const grazie = SEED_USERS.find(u => u.id === 'usr_dh_sls');
-        if (grazie) {
-          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(grazie));
-          return grazie;
+      if (user && user.id) {
+        if (user.id === 'usr_depthead_01') {
+          const grazie = SEED_USERS.find(u => u.id === 'usr_dh_sls');
+          if (grazie) {
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(grazie));
+            return grazie;
+          }
         }
+        return user;
       }
-      return user;
     } catch {}
   }
-  const defaultUser = SEED_USERS[0];
-  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(defaultUser));
-  return defaultUser;
+  return null;
 };
 
 export const setCurrentUserStore = (user: User) => {
