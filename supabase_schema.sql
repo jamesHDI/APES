@@ -165,6 +165,9 @@ CREATE TABLE IF NOT EXISTS public.digital_signatures (
     evaluation_id UUID REFERENCES public.evaluations(id) ON DELETE CASCADE,
     signer_role VARCHAR(50) NOT NULL,
     signer_name VARCHAR(150) NOT NULL,
+    position VARCHAR(100),
+    department VARCHAR(100),
+    employee_id VARCHAR(100),
     signature_data_url TEXT NOT NULL,
     signed_at TIMESTAMPTZ DEFAULT NOW(),
     ip_address VARCHAR(50)

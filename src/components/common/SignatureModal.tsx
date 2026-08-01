@@ -8,6 +8,9 @@ interface SignatureModalProps {
   onSaveSignature: (signature: DigitalSignature) => void;
   role: 'employee' | 'supervisor' | 'dept_head' | 'president' | 'pod' | 'hr';
   signerDefaultName: string;
+  signerPosition?: string;
+  signerDepartment?: string;
+  employeeId?: string;
 }
 
 export const SignatureModal: React.FC<SignatureModalProps> = ({
@@ -16,19 +19,29 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
   onSaveSignature,
   role,
   signerDefaultName,
+  signerPosition = '',
+  signerDepartment = '',
+  employeeId = '',
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [signerName, setSignerName] = useState(signerDefaultName);
+  const [positionVal, setPositionVal] = useState(signerPosition);
+  const [deptVal, setDeptVal] = useState(signerDepartment);
+  const [empIdVal, setEmpIdVal] = useState(employeeId);
   const [hasDrawn, setHasDrawn] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
+      setSignerName(signerDefaultName);
+      setPositionVal(signerPosition);
+      setDeptVal(signerDepartment);
+      setEmpIdVal(employeeId);
       setTimeout(() => {
         initCanvas();
       }, 100);
     }
-  }, [isOpen]);
+  }, [isOpen, signerDefaultName, signerPosition, signerDepartment, employeeId]);
 
   const initCanvas = () => {
     const canvas = canvasRef.current;
@@ -89,13 +102,21 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
     if (!canvas || !signerName.trim()) return;
 
     const signatureDataUrl = canvas.toDataURL('image/png');
-    const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const nowObj = new Date();
+    const nowIso = nowObj.toISOString().replace('T', ' ').substring(0, 19);
+    const dateStr = nowObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const timeStr = nowObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     const digitalSig: DigitalSignature = {
       role,
       signerName: signerName.trim(),
       signatureDataUrl,
-      signedAt: now,
+      signedAt: nowIso,
+      dateSigned: dateStr,
+      timeSigned: timeStr,
+      position: positionVal.trim(),
+      department: deptVal.trim(),
+      employeeId: empIdVal.trim(),
       ipAddress: '192.168.1.100 (Verified Audit Log)'
     };
 

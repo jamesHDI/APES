@@ -39,22 +39,49 @@ export function validateEvaluationForSubmission(
     errors.push('No evaluation template is assigned to this scorecard. Contact HR Administrator.');
   }
 
-  // Rule 5: All required sections of the evaluation are complete
-  // Check if all KPIs have self ratings
-  const unratedKpis = evaluation.kpiRatings.filter(k => k.selfRating === undefined || k.selfRating === null || k.selfRating === 0);
-  if (unratedKpis.length > 0) {
-    errors.push(`Form incomplete: ${unratedKpis.length} KPI indicator(s) require self-ratings before submission.`);
+  // Stage-specific validation checks
+  const isEmployeeStage = currentUser.id === evaluation.employeeId || currentUser.role === 'employee';
+  const isDeptHeadStage = currentUser.role === 'dept_head' || Boolean(currentUser.isDepartmentHead);
+  const isPresidentStage = currentUser.role === 'president';
+  const isPODStage = currentUser.role === 'pod' || currentUser.role === 'hr_admin';
+
+  if (isEmployeeStage && (evaluation.status === 'draft' || evaluation.status === 'reopened')) {
+    const unratedKpis = evaluation.kpiRatings.filter(k => !k.selfRating || k.selfRating === 0);
+    if (unratedKpis.length > 0) {
+      errors.push(`Employee Section Incomplete: ${unratedKpis.length} KPI indicator(s) require self-ratings before submission.`);
+    }
+
+    const missingCvComments = evaluation.coreValueRatings.filter(cv => !cv.comments || cv.comments.trim().length === 0);
+    if (missingCvComments.length > 0) {
+      errors.push('Employee Section Incomplete: Core Values Practice section requires narrative comments for all entries.');
+    }
+
+    if (!evaluation.signatures.employee) {
+      errors.push('Employee Digital Signature Required: Please sign the Employee Self Evaluation section before submitting.');
+    }
   }
 
-  // Check if Core Values have mandatory narrative comments
-  const missingCvComments = evaluation.coreValueRatings.filter(cv => !cv.comments || cv.comments.trim().length === 0);
-  if (missingCvComments.length > 0) {
-    errors.push('Form incomplete: Core Values Practice section requires narrative comments for all entries.');
+  if (isDeptHeadStage && (evaluation.status === 'pending_dept_head' || evaluation.status === 'employee_submitted' || evaluation.status === 'pending_supervisor')) {
+    const unratedIsKpis = evaluation.kpiRatings.filter(k => !k.supervisorRating || k.supervisorRating === 0);
+    if (unratedIsKpis.length > 0) {
+      errors.push(`Department Head Section Incomplete: ${unratedIsKpis.length} KPI indicator(s) require Department Head ratings before submission.`);
+    }
+
+    if (!evaluation.signatures.deptHead && !evaluation.signatures.supervisor) {
+      errors.push('Department Head Digital Signature Required: Please add your digital signature before forwarding to the next stage.');
+    }
   }
 
-  // Digital Signature Check
-  if (currentUser.role === 'employee' && !evaluation.signatures.employee) {
-    warnings.push('Digital signature by Appraisee is strongly recommended before final submission.');
+  if (isPresidentStage && (evaluation.status === 'pending_president' || evaluation.status === 'department_head_submitted')) {
+    if (!evaluation.signatures.president) {
+      errors.push('President Digital Signature Required: Executive digital signature must be appended before submitting to POD.');
+    }
+  }
+
+  if (isPODStage && evaluation.status === 'pending_pod') {
+    if (!evaluation.signatures.pod && !evaluation.signatures.hr) {
+      errors.push('POD Digital Signature Required: POD digital signature is mandatory before completing and archiving the evaluation.');
+    }
   }
 
   // If configuration validations (Rules 1-4) fail, automatically notify HR Administrator

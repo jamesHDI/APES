@@ -56,11 +56,51 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
-  const [activeTab, setActiveTab] = useState<'part1a' | 'part1b' | 'part2' | 'part3'>('part1a');
+  const [activeTab, setActiveTab] = useState<'part1a' | 'part1b' | 'part2' | 'part3' | 'part4' | 'signatures'>('part1a');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [confirmAction, setConfirmAction] = useState<null | 'employee' | 'supervisor' | 'president' | 'pod'>(null);
   const [showReturnModal, setShowReturnModal] = useState(false);
+
+  useEffect(() => {
+    setEvalData(initialEvaluation);
+  }, [initialEvaluation]);
+
+  const currentRole = currentUser.role;
+  const isReadOnly = isEvaluationCompleted(evalData);
+  const isSelfEval = currentUser.id === evalData.employeeId;
+
+  // Strict Role-Based Section Locking Permissions
+  const canEditEmployeeSection = !isReadOnly && isSelfEval && (evalData.status === 'draft' || evalData.status === 'reopened');
+
+  const canEditDeptHeadSection = !isReadOnly && !isSelfEval && (
+    evalData.status === 'pending_dept_head' ||
+    evalData.status === 'employee_submitted' ||
+    evalData.status === 'pending_supervisor'
+  ) && (
+    currentRole === 'dept_head' ||
+    currentRole === 'supervisor' ||
+    Boolean(currentUser.isDepartmentHead) ||
+    currentUser.id === currentUser.departmentHeadId ||
+    currentUser.departmentName === evalData.departmentName ||
+    currentRole === 'system_admin'
+  );
+
+  const canEditPresidentSection = !isReadOnly && !isSelfEval && (
+    evalData.status === 'pending_president' ||
+    evalData.status === 'department_head_submitted'
+  ) && (
+    currentRole === 'president' ||
+    currentRole === 'system_admin'
+  );
+
+  const canEditPODSection = !isReadOnly && (
+    evalData.status === 'pending_pod'
+  ) && (
+    currentRole === 'pod' ||
+    currentRole === 'hr_admin' ||
+    currentRole === 'system_admin'
+  );
 
   const handleConfirmReturn = (reason: string) => {
     const updatedEval: Evaluation = {
@@ -90,7 +130,6 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     onSave(updatedEval);
     setShowReturnModal(false);
 
-    // Notify employee or target reviewer
     triggerWorkflowNotification(
       evalData.employeeId,
       updatedEval,
@@ -102,12 +141,6 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
     showToast('Evaluation successfully returned for revision!');
   };
-
-  useEffect(() => {
-    setEvalData(initialEvaluation);
-  }, [initialEvaluation]);
-
-  const currentRole = currentUser.role;
 
   const handleRatingChange = (kpiId: string, roleType: 'self' | 'supervisor' | 'president', ratingValue: number) => {
     const updatedKpis = evalData.kpiRatings.map((kpi) => {
@@ -313,7 +346,16 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     }
   };
 
-  const handleFinalizeSupervisor = () => setConfirmAction('supervisor');
+  const handleFinalizeSupervisor = () => {
+    const validation = validateEvaluationForSubmission(evalData, currentUser, allUsers);
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      return;
+    }
+    setValidationErrors([]);
+    setConfirmAction('supervisor');
+  };
+
   const doFinalizeSupervisor = () => {
     const podUser = allUsers.find(u => u.role === 'pod' || u.id === 'usr_dh_pohr') || { id: 'usr_dh_pohr', name: 'Malene Pellazo' };
     const assignedTo = `${podUser.name} (Department Head - People Operations / POD)`;
@@ -341,7 +383,16 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     showToast(`Department Head review finalized! Submitted to ${podUser.name} for POD validation.`);
   };
 
-  const handleFinalizePresident = () => setConfirmAction('president');
+  const handleFinalizePresident = () => {
+    const validation = validateEvaluationForSubmission(evalData, currentUser, allUsers);
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      return;
+    }
+    setValidationErrors([]);
+    setConfirmAction('president');
+  };
+
   const doFinalizePresident = () => {
     const podUser = allUsers.find(u => u.role === 'pod' || u.id === 'usr_dh_pohr') || { id: 'usr_dh_pohr', name: 'Malene Pellazo' };
     const assignedTo = `${podUser.name} (Department Head - People Operations / POD)`;
@@ -369,7 +420,16 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     showToast(`Executive review completed! Submitted to ${podUser.name} for POD validation.`);
   };
 
-  const handleValidatePOD = () => setConfirmAction('pod');
+  const handleValidatePOD = () => {
+    const validation = validateEvaluationForSubmission(evalData, currentUser, allUsers);
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      return;
+    }
+    setValidationErrors([]);
+    setConfirmAction('pod');
+  };
+
   const doValidatePOD = () => {
     const updatedAudit = addAuditEntry('POD Validation Completed & Archived', evalData.status, 'archived', 'System Archive');
 
@@ -381,6 +441,17 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     };
 
     onSave(updated);
+
+    // Notify employee that evaluation has been finalized
+    triggerWorkflowNotification(
+      evalData.employeeId,
+      updated,
+      'Evaluation Cycle Finalized & Archived',
+      `Your performance evaluation for period "${evalData.appraisalPeriod}" has been validated by POD and officially completed.`,
+      currentUser.name,
+      'success'
+    );
+
     confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
     showToast('Evaluation validated by POD and archived!');
   };
@@ -422,32 +493,6 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     }
     krasMap.get(kpi.kraName)!.push(kpi);
   });
-
-  const isReadOnly = isEvaluationCompleted(evalData);
-  const isSelfEval = currentUser.id === evalData.employeeId;
-
-  const canEditSelfRating = !isReadOnly && isSelfEval && (evalData.status === 'draft' || evalData.status === 'reopened');
-  const canEditISRating = !isReadOnly && !isSelfEval && (
-    currentRole === 'dept_head' ||
-    currentRole === 'supervisor' ||
-    Boolean(currentUser.isDepartmentHead) ||
-    currentRole === 'pod' ||
-    currentRole === 'hr_admin' ||
-    currentRole === 'system_admin'
-  );
-  const canEditPresidentRating = !isReadOnly && !isSelfEval && (
-    currentRole === 'president' ||
-    currentRole === 'system_admin'
-  );
-  const canEditCoreValueISRating = !isReadOnly && !isSelfEval && (
-    currentRole === 'dept_head' ||
-    currentRole === 'supervisor' ||
-    Boolean(currentUser.isDepartmentHead) ||
-    currentRole === 'president' ||
-    currentRole === 'pod' ||
-    currentRole === 'hr_admin' ||
-    currentRole === 'system_admin'
-  );
 
   return (
     <div className="space-y-6 pb-12">
@@ -627,12 +672,15 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       </div>
 
       {/* Numbered Tab Stepper */}
+      {/* Numbered Tab Stepper */}
       {(() => {
         const tabs = [
-          { id: 'part1a' as const, step: 1, label: 'KPI Evaluation', sub: '85% weight' },
-          { id: 'part1b' as const, step: 2, label: 'Core Values', sub: '15% weight' },
-          { id: 'part2' as const, step: 3, label: 'Development Plan', sub: 'Strengths & signatures' },
-          { id: 'part3' as const, step: 4, label: 'Personnel Action', sub: 'Recommendation' },
+          { id: 'part1a' as const, step: 1, label: '1. KPI Evaluation (85%)', sub: 'Performance indicators' },
+          { id: 'part1b' as const, step: 2, label: '2. Core Values (15%)', sub: 'Suitability factors' },
+          { id: 'part2' as const, step: 3, label: '3. Development Plan', sub: 'Employee Self Section' },
+          { id: 'part3' as const, step: 4, label: '4. Personnel Action', sub: 'Dept Head / President' },
+          { id: 'part4' as const, step: 5, label: '5. POD Evaluation', sub: 'POD / HR Section' },
+          { id: 'signatures' as const, step: 6, label: '6. Digital Signatures', sub: 'Verification & Audit' },
         ];
         return (
           <div className="flex overflow-x-auto gap-1 pb-1">
@@ -641,18 +689,17 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all shrink-0 ${
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-semibold text-xs transition-all shrink-0 ${
                     isActive
                       ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
                     isActive ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                   }`}>{tab.step}</span>
-                  <span className="hidden sm:block">{tab.label}</span>
-                  <span className="sm:hidden">{tab.step}</span>
+                  <span>{tab.label}</span>
                 </button>
               );
             })}
@@ -662,16 +709,16 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
       {/* SECTION CONTENT */}
 
-      {/* PART 1A */}
+      {/* PART 1A: KPI EVALUATION */}
       {activeTab === 'part1a' && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-base">
-                PART 1A: EVALUATION ON ELIGIBILITY FACTORS
+                PART 1A: EVALUATION ON ELIGIBILITY FACTORS (KPIs - 85%)
               </h3>
               <p className="text-xs text-slate-500">
-                Weight: <strong>85%</strong> • Scale: 4 = Exceeds, 3 = Meets, 2 = Barely Meets, 1 = Did Not Meet
+                Scale: 4 = Exceeds Expectations, 3 = Meets Expectations, 2 = Barely Meets, 1 = Did Not Meet
               </p>
             </div>
             <div className="text-right">
@@ -732,35 +779,39 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                               <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Self Rating</p>
                               <select
                                 value={kpi.selfRating || 0}
-                                disabled={!canEditSelfRating}
+                                disabled={!canEditEmployeeSection}
                                 onChange={(e) => handleRatingChange(kpi.kpiId, 'self', Number(e.target.value))}
-                                className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-bold"
-                              >
-                                <option value={0}>Select...</option>
-                                <option value={4}>4</option>
-                                <option value={3}>3</option>
-                                <option value={2}>2</option>
-                                <option value={1}>1</option>
-                              </select>
-                            </div>
-
-                            <div>
-                              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">IS Rating</p>
-                              <select
-                                value={kpi.supervisorRating || 0}
-                                disabled={!canEditISRating}
-                                onChange={(e) => handleRatingChange(kpi.kpiId, 'supervisor', Number(e.target.value))}
                                 className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold ${
-                                  canEditISRating 
-                                    ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/50 text-brand-900 dark:text-brand-100 ring-2 ring-brand-500/20' 
+                                  canEditEmployeeSection
+                                    ? 'border-brand-500 bg-brand-50/50 text-brand-900 ring-2 ring-brand-500/20'
                                     : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100'
                                 }`}
                               >
                                 <option value={0}>Select...</option>
-                                <option value={4}>4</option>
-                                <option value={3}>3</option>
-                                <option value={2}>2</option>
-                                <option value={1}>1</option>
+                                <option value={4}>4 - Exceeds</option>
+                                <option value={3}>3 - Meets</option>
+                                <option value={2}>2 - Barely Meets</option>
+                                <option value={1}>1 - Did Not Meet</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase mb-1">IS Rating</p>
+                              <select
+                                value={kpi.supervisorRating || 0}
+                                disabled={!canEditDeptHeadSection}
+                                onChange={(e) => handleRatingChange(kpi.kpiId, 'supervisor', Number(e.target.value))}
+                                className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold ${
+                                  canEditDeptHeadSection 
+                                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-950 text-purple-900 dark:text-purple-100 ring-2 ring-purple-500/20' 
+                                    : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100'
+                                }`}
+                              >
+                                <option value={0}>Select...</option>
+                                <option value={4}>4 - Exceeds</option>
+                                <option value={3}>3 - Meets</option>
+                                <option value={2}>2 - Barely Meets</option>
+                                <option value={1}>1 - Did Not Meet</option>
                               </select>
                             </div>
 
@@ -768,15 +819,19 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                               <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase mb-1">President</p>
                               <select
                                 value={kpi.presidentRating || 0}
-                                disabled={!canEditPresidentRating}
+                                disabled={!canEditPresidentSection}
                                 onChange={(e) => handleRatingChange(kpi.kpiId, 'president', Number(e.target.value))}
-                                className="w-full px-2 py-1.5 rounded-lg border border-amber-400 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 text-xs font-bold text-amber-900 dark:text-amber-200"
+                                className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold ${
+                                  canEditPresidentSection
+                                    ? 'border-amber-500 bg-amber-50 dark:bg-amber-950 text-amber-900 ring-2 ring-amber-500/20'
+                                    : 'border-slate-300 dark:border-slate-600 bg-amber-50/50 dark:bg-amber-950/30 text-slate-900 dark:text-slate-100'
+                                }`}
                               >
                                 <option value={0}>Select...</option>
-                                <option value={4}>4</option>
-                                <option value={3}>3</option>
-                                <option value={2}>2</option>
-                                <option value={1}>1</option>
+                                <option value={4}>4 - Exceeds</option>
+                                <option value={3}>3 - Meets</option>
+                                <option value={2}>2 - Barely Meets</option>
+                                <option value={1}>1 - Did Not Meet</option>
                               </select>
                             </div>
                           </div>
@@ -789,7 +844,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                           <textarea
                             rows={3}
                             value={kpi.comments}
-                            disabled={isReadOnly}
+                            disabled={!canEditEmployeeSection && !canEditDeptHeadSection && !canEditPresidentSection}
                             onChange={(e) => handleKPICommentChange(kpi.kpiId, e.target.value)}
                             placeholder="Specific evidence details..."
                             className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
@@ -806,7 +861,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         </div>
       )}
 
-      {/* PART 1B */}
+      {/* PART 1B: CORE VALUES / SUITABILITY FACTORS */}
       {activeTab === 'part1b' && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
@@ -841,15 +896,17 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">POD Rating (1-4)</label>
+                    <label className="block text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase mb-1">POD Rating (1-4)</label>
                     <input
                       type="number"
                       min={1}
                       max={4}
                       value={cv.podRating}
-                      disabled={isReadOnly || (currentRole !== 'pod' && currentRole !== 'hr_admin')}
+                      disabled={!canEditPODSection}
                       onChange={(e) => handleCoreValueRatingChange(cv.coreValueId, 'podRating', Number(e.target.value))}
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-bold text-center"
+                      className={`w-full px-3 py-1.5 rounded-lg border text-sm font-bold text-center ${
+                        canEditPODSection ? 'border-indigo-500 bg-indigo-50 text-indigo-900 ring-2 ring-indigo-500/20' : 'border-slate-300 bg-white dark:bg-slate-900 text-slate-900 dark:text-white'
+                      }`}
                     />
                   </div>
                   <div>
@@ -859,31 +916,35 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                       min={1}
                       max={4}
                       value={cv.peerRating}
-                      disabled={isReadOnly || (currentRole !== 'pod' && currentRole !== 'hr_admin' && currentRole !== 'system_admin')}
+                      disabled={!canEditPODSection}
                       onChange={(e) => handleCoreValueRatingChange(cv.coreValueId, 'peerRating', Number(e.target.value))}
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-bold text-center"
+                      className={`w-full px-3 py-1.5 rounded-lg border text-sm font-bold text-center ${
+                        canEditPODSection ? 'border-indigo-500 bg-indigo-50 text-indigo-900' : 'border-slate-300 bg-white dark:bg-slate-900 text-slate-900 dark:text-white'
+                      }`}
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Supervisor / President</label>
+                    <label className="block text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase mb-1">Supervisor / President</label>
                     <input
                       type="number"
                       min={1}
                       max={4}
                       value={cv.isRating}
-                      disabled={isReadOnly || isSelfEval}
+                      disabled={!canEditDeptHeadSection && !canEditPresidentSection}
                       onChange={(e) => handleCoreValueRatingChange(cv.coreValueId, 'isRating', Number(e.target.value))}
-                      className="w-full px-3 py-1.5 rounded-lg border border-brand-400 dark:border-brand-700 bg-brand-50 dark:bg-brand-950/60 text-brand-900 dark:text-brand-200 text-sm font-bold text-center"
+                      className={`w-full px-3 py-1.5 rounded-lg border text-sm font-bold text-center ${
+                        canEditDeptHeadSection || canEditPresidentSection ? 'border-purple-500 bg-purple-50 text-purple-900 ring-2 ring-purple-500/20' : 'border-slate-300 bg-white dark:bg-slate-900 text-slate-900 dark:text-white'
+                      }`}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Core Values Practice Comments (Required)</label>
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Core Values Practice Comments</label>
                   <textarea
                     rows={2}
                     value={cv.comments}
-                    disabled={isReadOnly}
+                    disabled={!canEditEmployeeSection && !canEditPODSection}
                     onChange={(e) => {
                       const updated = evalData.coreValueRatings.map((c) => 
                         c.coreValueId === cv.coreValueId ? { ...c, comments: e.target.value } : c
@@ -900,13 +961,20 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         </div>
       )}
 
-      {/* PART 2 */}
+      {/* PART 2: EMPLOYEE SELF EVALUATION & DEVELOPMENT PLAN */}
       {activeTab === 'part2' && (
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
-            <h3 className="font-bold text-slate-900 dark:text-white text-base pb-3 border-b border-slate-100 dark:border-slate-700">
-              PART 2A: PERSONAL DEVELOPMENT PLAN
-            </h3>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+              <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                SECTION 1: EMPLOYEE SELF EVALUATION & DEVELOPMENT PLAN
+              </h3>
+              {!canEditEmployeeSection && (
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 uppercase">
+                  Locked (Read-Only)
+                </span>
+              )}
+            </div>
 
             <div className="space-y-4">
               <div>
@@ -916,11 +984,12 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 <textarea
                   rows={3}
                   value={evalData.developmentPlan.strengths}
-                  disabled={isReadOnly}
+                  disabled={!canEditEmployeeSection}
                   onChange={(e) => setEvalData({
                     ...evalData,
                     developmentPlan: { ...evalData.developmentPlan, strengths: e.target.value }
                   })}
+                  placeholder="Highlight key accomplishments and professional strengths..."
                   className="w-full px-3.5 py-2.5 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
                 />
               </div>
@@ -932,137 +1001,339 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 <textarea
                   rows={3}
                   value={evalData.developmentPlan.areasForImprovement}
-                  disabled={isReadOnly}
+                  disabled={!canEditEmployeeSection}
                   onChange={(e) => setEvalData({
                     ...evalData,
                     developmentPlan: { ...evalData.developmentPlan, areasForImprovement: e.target.value }
                   })}
+                  placeholder="Identify skills to develop and areas for improvement..."
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                  3. Employee Remarks / Appraisee Summary Comment
+                </label>
+                <textarea
+                  rows={2}
+                  value={evalData.appraiseeSummaryComment || ''}
+                  disabled={!canEditEmployeeSection}
+                  onChange={(e) => setEvalData({
+                    ...evalData,
+                    appraiseeSummaryComment: e.target.value
+                  })}
+                  placeholder="Overall appraisee summary remarks..."
                   className="w-full px-3.5 py-2.5 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
                 />
               </div>
             </div>
           </div>
+        </div>
+      )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
-              <h4 className="font-bold text-xs uppercase text-slate-500 dark:text-slate-400">Employee Signature</h4>
-              {evalData.signatures.employee ? (
-                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center">
-                  <img src={evalData.signatures.employee.signatureDataUrl} alt="Employee Sig" className="h-8 mx-auto" />
-                  <p className="font-bold text-xs mt-1 text-slate-900 dark:text-white">{evalData.signatures.employee.signerName}</p>
-                </div>
-              ) : isSelfEval ? (
-                <button
-                  onClick={() => { setSigRole('employee'); setShowSigModal(true); }}
-                  className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs"
-                >
-                  Sign as Employee
-                </button>
-              ) : (
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-400 font-semibold italic">
-                  Pending Employee Signature
-                </div>
-              )}
+      {/* PART 3: DEPARTMENT HEAD & PRESIDENT EVALUATION */}
+      {activeTab === 'part3' && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+            <h3 className="font-bold text-slate-900 dark:text-white text-base">
+              SECTION 2 & 3: DEPARTMENT HEAD & PRESIDENT EVALUATION
+            </h3>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-purple-700 dark:text-purple-300 uppercase mb-1">
+                Department Head / Immediate Superior Summary Remarks
+              </label>
+              <textarea
+                rows={3}
+                value={evalData.supervisorSummaryComment || ''}
+                disabled={!canEditDeptHeadSection}
+                onChange={(e) => setEvalData({ ...evalData, supervisorSummaryComment: e.target.value })}
+                placeholder="Department Head evaluation remarks & performance summary..."
+                className="w-full px-3.5 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+              />
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
-              <h4 className="font-bold text-xs uppercase text-slate-500 dark:text-slate-400">Supervisor / Dept Head Signature</h4>
-              {evalData.signatures.supervisor || evalData.signatures.deptHead ? (
-                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center">
-                  <img src={(evalData.signatures.supervisor || evalData.signatures.deptHead)?.signatureDataUrl} alt="Sig" className="h-8 mx-auto" />
-                  <p className="font-bold text-xs mt-1 text-slate-900 dark:text-white">{(evalData.signatures.supervisor || evalData.signatures.deptHead)?.signerName}</p>
-                </div>
-              ) : (!isSelfEval && (currentRole === 'dept_head' || currentRole === 'supervisor' || currentUser.isDepartmentHead)) ? (
-                <button
-                  onClick={() => { setSigRole(evalData.workflowType === 'WORKFLOW_DEPT_HEAD' || evalData.workflowType === 'WORKFLOW_B' ? 'dept_head' : 'supervisor'); setShowSigModal(true); }}
-                  className="w-full py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs"
-                >
-                  Sign as Supervisor / Dept Head
-                </button>
-              ) : (
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-400 font-semibold italic">
-                  Pending Supervisor / Dept Head Signature
-                </div>
-              )}
-            </div>
+            {(evalData.workflowType === 'WORKFLOW_DEPT_HEAD' || evalData.isDepartmentHead || canEditPresidentSection || evalData.signatures.president) && (
+              <div>
+                <label className="block text-xs font-bold text-amber-700 dark:text-amber-300 uppercase mb-1">
+                  President & CEO Executive Review Comments
+                </label>
+                <textarea
+                  rows={3}
+                  value={evalData.presidentSummaryComment || ''}
+                  disabled={!canEditPresidentSection}
+                  onChange={(e) => setEvalData({ ...evalData, presidentSummaryComment: e.target.value })}
+                  placeholder="President executive remarks & recommendations for Department Head..."
+                  className="w-full px-3.5 py-2 rounded-xl text-xs border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 text-slate-900 dark:text-white"
+                />
+              </div>
+            )}
 
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
-              <h4 className="font-bold text-xs uppercase text-slate-500 dark:text-slate-400">President / POD Signature</h4>
-              {evalData.signatures.president || evalData.signatures.pod ? (
-                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center">
-                  <img src={(evalData.signatures.president || evalData.signatures.pod)?.signatureDataUrl} alt="Sig" className="h-8 mx-auto" />
-                  <p className="font-bold text-xs mt-1 text-slate-900 dark:text-white">{(evalData.signatures.president || evalData.signatures.pod)?.signerName}</p>
-                </div>
-              ) : (!isSelfEval && currentRole === 'president') ? (
-                <button
-                  onClick={() => { setSigRole('president'); setShowSigModal(true); }}
-                  className="w-full py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs"
-                >
-                  Sign as President
-                </button>
-              ) : (currentRole === 'pod' || currentRole === 'system_admin' || currentRole === 'hr_admin') ? (
-                <button
-                  onClick={() => { setSigRole('pod'); setShowSigModal(true); }}
-                  className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
-                >
-                  Sign as POD / Admin
-                </button>
-              ) : (
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-400 font-semibold italic">
-                  Pending President / POD Signature
-                </div>
-              )}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
+              <h4 className="font-bold text-xs uppercase text-slate-700 dark:text-slate-300 mb-3">
+                Personnel Action Recommendation
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  { type: 'promotion', label: 'Promotion Recommended', desc: 'Advancement to higher position' },
+                  { type: 'salary_adjustment', label: 'Salary Adjustment', desc: 'Merit-based annual increase' },
+                  { type: 'regularization', label: 'Regularization', desc: 'Confirm permanent status' },
+                  { type: 'transfer', label: 'Transfer', desc: 'Reassignment to another unit' },
+                  { type: 'pip', label: 'Performance Improvement Plan (PIP)', desc: 'Required for NI/Satisfactory rating' },
+                  { type: 'termination', label: 'Termination', desc: 'Separation of employment' },
+                  { type: 'no_action', label: 'No Action Required', desc: 'Maintain current status' },
+                ].map((item) => (
+                  <label
+                    key={item.type}
+                    className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-start space-x-3 ${
+                      evalData.personnelAction.actionType === item.type
+                        ? 'bg-purple-50 dark:bg-purple-950/50 border-purple-500 dark:border-purple-600 ring-2 ring-purple-500/20'
+                        : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="personnelActionType"
+                      checked={evalData.personnelAction.actionType === item.type}
+                      disabled={!canEditDeptHeadSection && !canEditPresidentSection}
+                      onChange={() => setEvalData({
+                        ...evalData,
+                        personnelAction: { ...evalData.personnelAction, actionType: item.type as ActionType }
+                      })}
+                      className="mt-1 text-purple-600"
+                    />
+                    <div>
+                      <p className="font-bold text-xs text-slate-900 dark:text-white">{item.label}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* PART 3 */}
-      {activeTab === 'part3' && (
+      {/* PART 4: POD / HR EVALUATION SECTION */}
+      {activeTab === 'part4' && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-base">
-                PART 3: PERSONNEL ACTION RECOMMENDATION
+                SECTION 4: DEDICATED POD / HR EVALUATION & VALIDATION
               </h3>
+              <p className="text-xs text-slate-500">
+                To be accomplished by People Operations Development (POD)
+              </p>
+            </div>
+            {!canEditPODSection && (
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 uppercase">
+                Read-Only
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-3">
+              <h4 className="font-bold text-xs uppercase text-indigo-900 dark:text-indigo-200">
+                POD Suitability & Quality Validation
+              </h4>
+              <p className="text-xs text-indigo-700 dark:text-indigo-300">
+                Overall Core Values Weighted Rating: <strong>{evalData.totalCoreValuesWeightedRating.toFixed(2)}</strong> / 15.00%
+              </p>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                  POD Quality Audit & Validation Comments
+                </label>
+                <textarea
+                  rows={3}
+                  value={evalData.podValidationComment || ''}
+                  disabled={!canEditPODSection}
+                  onChange={(e) => setEvalData({ ...evalData, podValidationComment: e.target.value })}
+                  placeholder="Enter POD validation notes, quality checks, and final approval remarks..."
+                  className="w-full px-3.5 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <div>
+                <p className="font-bold text-xs text-slate-900 dark:text-white">Personnel Action HR Enforcement</p>
+                <p className="text-xs text-slate-500">Confirm and validate personnel recommendation for HR processing.</p>
+              </div>
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={Boolean(evalData.personnelAction?.isApproved)}
+                  disabled={!canEditPODSection}
+                  onChange={(e) => setEvalData({
+                    ...evalData,
+                    personnelAction: { ...evalData.personnelAction, isApproved: e.target.checked }
+                  })}
+                  className="w-4 h-4 text-indigo-600 rounded"
+                />
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Approved by HR</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SIGNATURES TAB */}
+      {activeTab === 'signatures' && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                SECTION 5: DIGITAL SIGNATURES & AUDIT VERIFICATION
+              </h3>
+              <p className="text-xs text-slate-500">
+                Timestamped digital signatures for each evaluation stage
+              </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { type: 'promotion', label: 'Promotion Recommended', desc: 'Advancement to higher position' },
-              { type: 'salary_adjustment', label: 'Salary Adjustment', desc: 'Merit-based annual increase' },
-              { type: 'regularization', label: 'Regularization', desc: 'Confirm permanent status' },
-              { type: 'transfer', label: 'Transfer', desc: 'Reassignment to another unit' },
-              { type: 'pip', label: 'Performance Improvement Plan (PIP)', desc: 'Required for NI/Satisfactory rating' },
-              { type: 'termination', label: 'Termination', desc: 'Separation of employment' },
-              { type: 'no_action', label: 'No Action Required', desc: 'Maintain current status' },
-            ].map((item) => (
-              <label
-                key={item.type}
-                className={`p-4 rounded-xl border cursor-pointer transition-all flex items-start space-x-3 ${
-                  evalData.personnelAction.actionType === item.type
-                    ? 'bg-purple-50 dark:bg-purple-950/50 border-purple-500 dark:border-purple-600 ring-2 ring-purple-500/20'
-                    : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="personnelActionType"
-                  checked={evalData.personnelAction.actionType === item.type}
-                  disabled={isReadOnly}
-                  onChange={() => setEvalData({
-                    ...evalData,
-                    personnelAction: { ...evalData.personnelAction, actionType: item.type as ActionType }
-                  })}
-                  className="mt-1 text-purple-600"
-                />
-                <div>
-                  <p className="font-bold text-xs text-slate-900 dark:text-white">{item.label}</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.desc}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            {/* Employee Signature Card */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase text-slate-500">1. Employee Signature</span>
+                {evalData.signatures.employee && (
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">Signed</span>
+                )}
+              </div>
+              {evalData.signatures.employee ? (
+                <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-center space-y-1">
+                  <img src={evalData.signatures.employee.signatureDataUrl} alt="Employee Sig" className="h-10 mx-auto object-contain" />
+                  <p className="font-extrabold text-xs text-slate-900 dark:text-white border-t border-slate-100 dark:border-slate-700 pt-1">
+                    {evalData.signatures.employee.signerName}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-semibold">{evalData.signatures.employee.position || evalData.position}</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">{evalData.signatures.employee.department || evalData.departmentName}</p>
+                  <p className="text-[9.5px] text-slate-400 font-mono mt-1">
+                    {evalData.signatures.employee.dateSigned || evalData.signatures.employee.signedAt} {evalData.signatures.employee.timeSigned || ''}
+                  </p>
                 </div>
-              </label>
-            ))}
+              ) : canEditEmployeeSection ? (
+                <button
+                  onClick={() => { setSigRole('employee'); setShowSigModal(true); }}
+                  className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-sm"
+                >
+                  Sign as Employee
+                </button>
+              ) : (
+                <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-center text-xs text-slate-400 italic">
+                  Pending Employee Signature
+                </div>
+              )}
+            </div>
+
+            {/* Department Head Signature Card */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase text-slate-500">2. Department Head</span>
+                {(evalData.signatures.deptHead || evalData.signatures.supervisor) && (
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">Signed</span>
+                )}
+              </div>
+              {(evalData.signatures.deptHead || evalData.signatures.supervisor) ? (
+                <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-center space-y-1">
+                  <img src={(evalData.signatures.deptHead || evalData.signatures.supervisor)?.signatureDataUrl} alt="DH Sig" className="h-10 mx-auto object-contain" />
+                  <p className="font-extrabold text-xs text-slate-900 dark:text-white border-t border-slate-100 dark:border-slate-700 pt-1">
+                    {(evalData.signatures.deptHead || evalData.signatures.supervisor)?.signerName}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-semibold">{(evalData.signatures.deptHead || evalData.signatures.supervisor)?.position || 'Department Head'}</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">{(evalData.signatures.deptHead || evalData.signatures.supervisor)?.department || evalData.departmentName}</p>
+                  <p className="text-[9.5px] text-slate-400 font-mono mt-1">
+                    {(evalData.signatures.deptHead || evalData.signatures.supervisor)?.dateSigned || (evalData.signatures.deptHead || evalData.signatures.supervisor)?.signedAt} {(evalData.signatures.deptHead || evalData.signatures.supervisor)?.timeSigned || ''}
+                  </p>
+                </div>
+              ) : canEditDeptHeadSection ? (
+                <button
+                  onClick={() => { setSigRole('dept_head'); setShowSigModal(true); }}
+                  className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-sm"
+                >
+                  Sign as Department Head
+                </button>
+              ) : (
+                <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-center text-xs text-slate-400 italic">
+                  Pending Department Head Signature
+                </div>
+              )}
+            </div>
+
+            {/* President Signature Card */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase text-amber-600 dark:text-amber-400">3. President & CEO</span>
+                {evalData.signatures.president && (
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">Signed</span>
+                )}
+              </div>
+              {evalData.signatures.president ? (
+                <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-center space-y-1">
+                  <img src={evalData.signatures.president.signatureDataUrl} alt="President Sig" className="h-10 mx-auto object-contain" />
+                  <p className="font-extrabold text-xs text-slate-900 dark:text-white border-t border-slate-100 dark:border-slate-700 pt-1">
+                    {evalData.signatures.president.signerName}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-semibold">{evalData.signatures.president.position || 'President & CEO'}</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">Executive Office</p>
+                  <p className="text-[9.5px] text-slate-400 font-mono mt-1">
+                    {evalData.signatures.president.dateSigned || evalData.signatures.president.signedAt} {evalData.signatures.president.timeSigned || ''}
+                  </p>
+                </div>
+              ) : canEditPresidentSection ? (
+                <button
+                  onClick={() => { setSigRole('president'); setShowSigModal(true); }}
+                  className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm"
+                >
+                  Sign as President
+                </button>
+              ) : (
+                <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-center text-xs text-slate-400 italic">
+                  {evalData.workflowType === 'WORKFLOW_DEPT_HEAD' || evalData.isDepartmentHead ? 'Pending President Signature' : 'N/A (Regular Track)'}
+                </div>
+              )}
+            </div>
+
+            {/* POD / HR Signature Card */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase text-indigo-600 dark:text-indigo-400">4. POD / HR Officer</span>
+                {(evalData.signatures.pod || evalData.signatures.hr) && (
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">Signed</span>
+                )}
+              </div>
+              {(evalData.signatures.pod || evalData.signatures.hr) ? (
+                <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-center space-y-1">
+                  <img src={(evalData.signatures.pod || evalData.signatures.hr)?.signatureDataUrl} alt="POD Sig" className="h-10 mx-auto object-contain" />
+                  <p className="font-extrabold text-xs text-slate-900 dark:text-white border-t border-slate-100 dark:border-slate-700 pt-1">
+                    {(evalData.signatures.pod || evalData.signatures.hr)?.signerName}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-semibold">{(evalData.signatures.pod || evalData.signatures.hr)?.position || 'POD Quality Lead'}</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">People Operations Dev</p>
+                  <p className="text-[9.5px] text-slate-400 font-mono mt-1">
+                    {(evalData.signatures.pod || evalData.signatures.hr)?.dateSigned || (evalData.signatures.pod || evalData.signatures.hr)?.signedAt} {(evalData.signatures.pod || evalData.signatures.hr)?.timeSigned || ''}
+                  </p>
+                </div>
+              ) : canEditPODSection ? (
+                <button
+                  onClick={() => { setSigRole('pod'); setShowSigModal(true); }}
+                  className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm"
+                >
+                  Sign as POD Officer
+                </button>
+              ) : (
+                <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-center text-xs text-slate-400 italic">
+                  Pending POD Signature
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       )}
@@ -1098,6 +1369,9 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         onSaveSignature={handleSaveSignature}
         role={sigRole}
         signerDefaultName={currentUser.name}
+        signerPosition={currentUser.position || ''}
+        signerDepartment={currentUser.departmentName || ''}
+        employeeId={currentUser.employeeNumber || currentUser.id || ''}
       />
 
       <EvidenceUploadModal

@@ -362,34 +362,86 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
             </div>
           </div>
 
-          {/* PEOPLE'S OPTN / HR BLOCK */}
-          <div className="border border-slate-400 p-3 text-center bg-slate-50">
-            <h5 className="font-bold uppercase text-[10px] text-slate-700 mb-2">
-              TO BE ACCOMPLISHED BY PEOPLE'S OPTN / HR
+          {/* PEOPLE'S OPTN / POD & OFFICIAL DIGITAL SIGNATURES BLOCK */}
+          <div className="border border-slate-400 p-3 bg-slate-50 space-y-3">
+            <h5 className="font-bold uppercase text-[10px] text-slate-800 border-b border-slate-300 pb-1 text-center">
+              PART 4: POD / HR EVALUATION & DIGITAL SIGNATURE VERIFICATION
             </h5>
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-300">
-              <div>
-                {evaluation.signatures.deptHead ? (
-                  <div className="flex flex-col items-center">
-                    <img src={evaluation.signatures.deptHead.signatureDataUrl} alt="Dept Head Signature" className="h-8 object-contain" />
-                    <p className="font-bold underline text-[10px]">{evaluation.signatures.deptHead.signerName}</p>
-                    <p className="text-[9px] text-slate-500">DEPARTMENT HEAD SIGNATURE</p>
+            
+            {/* POD Remarks & Validation summary */}
+            <div className="text-[10px] space-y-1 bg-white p-2 border border-slate-200">
+              <p><strong>POD Core Values Validation Rating:</strong> {evaluation.totalCoreValuesWeightedRating.toFixed(2)} (15%)</p>
+              <p><strong>POD / HR Remarks & Comments:</strong> {evaluation.podValidationComment || 'Validated by People Operations Development (POD).'}</p>
+              <p><strong>Personnel Action Final Status:</strong> {evaluation.personnelAction?.isApproved ? 'Approved & Enforced' : 'Pending Final HR Enforcement'}</p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-300 text-center">
+              {/* Employee Signature */}
+              <div className="border border-slate-200 bg-white p-2 rounded">
+                <p className="font-bold text-[9px] text-slate-500 uppercase">1. Employee Signature</p>
+                {evaluation.signatures.employee ? (
+                  <div className="flex flex-col items-center mt-1">
+                    <img src={evaluation.signatures.employee.signatureDataUrl} alt="Employee Sig" className="h-8 object-contain" />
+                    <p className="font-bold underline text-[9.5px] mt-0.5">{evaluation.signatures.employee.signerName}</p>
+                    <p className="text-[8px] text-slate-600 font-semibold">{evaluation.signatures.employee.position || evaluation.position}</p>
+                    <p className="text-[8px] text-slate-500">{evaluation.signatures.employee.department || evaluation.departmentName}</p>
+                    <p className="text-[7.5px] text-slate-400 font-mono mt-0.5">Date: {evaluation.signatures.employee.dateSigned || evaluation.signatures.employee.signedAt} {evaluation.signatures.employee.timeSigned || ''}</p>
                   </div>
                 ) : (
-                  <p className="text-[10px] text-slate-400 pt-4">____________________________<br />DEPARTMENT HEAD SIGNATURE & DATE</p>
+                  <p className="text-[9px] text-slate-400 py-3 italic">Pending Signature</p>
                 )}
               </div>
-              <div>
-                {evaluation.signatures.hr ? (
-                  <div className="flex flex-col items-center">
-                    <img src={evaluation.signatures.hr.signatureDataUrl} alt="HR Signature" className="h-8 object-contain" />
-                    <p className="font-bold underline text-[10px]">{evaluation.signatures.hr.signerName}</p>
-                    <p className="text-[9px] text-slate-500">PEOPLE'S OPTN / HR SIGNATURE</p>
+
+              {/* Department Head Signature */}
+              <div className="border border-slate-200 bg-white p-2 rounded">
+                <p className="font-bold text-[9px] text-slate-500 uppercase">2. Department Head</p>
+                {(evaluation.signatures.deptHead || evaluation.signatures.supervisor) ? (
+                  <div className="flex flex-col items-center mt-1">
+                    <img src={(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.signatureDataUrl} alt="DH Sig" className="h-8 object-contain" />
+                    <p className="font-bold underline text-[9.5px] mt-0.5">{(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.signerName}</p>
+                    <p className="text-[8px] text-slate-600 font-semibold">{(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.position || 'Department Head'}</p>
+                    <p className="text-[8px] text-slate-500">{(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.department || evaluation.departmentName}</p>
+                    <p className="text-[7.5px] text-slate-400 font-mono mt-0.5">Date: {(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.dateSigned || (evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.signedAt} {(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.timeSigned || ''}</p>
                   </div>
                 ) : (
-                  <p className="text-[10px] text-slate-400 pt-4">____________________________<br />PEOPLE'S OPTN / HR SIGNATURE & DATE</p>
+                  <p className="text-[9px] text-slate-400 py-3 italic">Pending Signature</p>
                 )}
               </div>
+
+              {/* President Signature */}
+              <div className="border border-slate-200 bg-white p-2 rounded">
+                <p className="font-bold text-[9px] text-amber-700 uppercase">3. President & CEO</p>
+                {evaluation.signatures.president ? (
+                  <div className="flex flex-col items-center mt-1">
+                    <img src={evaluation.signatures.president.signatureDataUrl} alt="Pres Sig" className="h-8 object-contain" />
+                    <p className="font-bold underline text-[9.5px] mt-0.5">{evaluation.signatures.president.signerName}</p>
+                    <p className="text-[8px] text-slate-600 font-semibold">{evaluation.signatures.president.position || 'President & CEO'}</p>
+                    <p className="text-[8px] text-slate-500">Executive Office</p>
+                    <p className="text-[7.5px] text-slate-400 font-mono mt-0.5">Date: {evaluation.signatures.president.dateSigned || evaluation.signatures.president.signedAt} {evaluation.signatures.president.timeSigned || ''}</p>
+                  </div>
+                ) : (
+                  <p className="text-[9px] text-slate-400 py-3 italic">
+                    {evaluation.workflowType === 'WORKFLOW_DEPT_HEAD' || evaluation.isDepartmentHead ? 'Pending President Signature' : 'N/A (Regular Track)'}
+                  </p>
+                )}
+              </div>
+
+              {/* POD / HR Signature */}
+              <div className="border border-slate-200 bg-white p-2 rounded">
+                <p className="font-bold text-[9px] text-indigo-700 uppercase">4. POD / HR Officer</p>
+                {(evaluation.signatures.pod || evaluation.signatures.hr) ? (
+                  <div className="flex flex-col items-center mt-1">
+                    <img src={(evaluation.signatures.pod || evaluation.signatures.hr)?.signatureDataUrl} alt="POD Sig" className="h-8 object-contain" />
+                    <p className="font-bold underline text-[9.5px] mt-0.5">{(evaluation.signatures.pod || evaluation.signatures.hr)?.signerName}</p>
+                    <p className="text-[8px] text-slate-600 font-semibold">{(evaluation.signatures.pod || evaluation.signatures.hr)?.position || 'POD Quality Lead'}</p>
+                    <p className="text-[8px] text-slate-500">People Operations Dev</p>
+                    <p className="text-[7.5px] text-slate-400 font-mono mt-0.5">Date: {(evaluation.signatures.pod || evaluation.signatures.hr)?.dateSigned || (evaluation.signatures.pod || evaluation.signatures.hr)?.signedAt} {(evaluation.signatures.pod || evaluation.signatures.hr)?.timeSigned || ''}</p>
+                  </div>
+                ) : (
+                  <p className="text-[9px] text-slate-400 py-3 italic">Pending POD Signature</p>
+                )}
+              </div>
+
             </div>
           </div>
 

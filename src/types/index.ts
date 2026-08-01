@@ -215,6 +215,11 @@ export interface DigitalSignature {
   signatureDataUrl: string;
   signedAt: string;
   ipAddress?: string;
+  employeeId?: string;
+  position?: string;
+  department?: string;
+  dateSigned?: string;
+  timeSigned?: string;
 }
 
 export interface EvidenceFile {
