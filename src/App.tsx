@@ -91,7 +91,7 @@ export const App: React.FC = () => {
 
     const initSession = async () => {
       try {
-        const sessionActive = localStorage.getItem('apes_session_active_v3') === 'true';
+        const sessionActive = sessionStorage.getItem('apes_session_active_v3') === 'true';
         const savedTab = localStorage.getItem('apes_active_tab_v3');
         const storedUser = getStoredCurrentUser();
 
@@ -104,14 +104,14 @@ export const App: React.FC = () => {
           }
         } else if (isSupabaseConfigured && supabase) {
           const { data } = await supabase.auth.getSession();
-          if (data?.session?.user) {
+          if (data?.session?.user && sessionActive) {
             const sbUsers = await fetchEmployeesFromSupabase();
             const matched = (sbUsers || users).find(u => u.email === data.session.user.email);
             if (matched && matched.isActive !== false && matched.isApproved !== false && isMounted) {
               setCurrentUser(matched);
               setCurrentUserStore(matched);
               setIsAuthenticated(true);
-              localStorage.setItem('apes_session_active_v3', 'true');
+              sessionStorage.setItem('apes_session_active_v3', 'true');
               if (savedTab) setActiveTab(savedTab);
             }
           }
@@ -207,7 +207,8 @@ export const App: React.FC = () => {
   const handleLoginSuccess = async (authenticatedUser: User) => {
     setCurrentUser(authenticatedUser);
     setCurrentUserStore(authenticatedUser);
-    localStorage.setItem('apes_session_active_v3', 'true');
+    sessionStorage.setItem('apes_session_active_v3', 'true');
+    localStorage.removeItem('apes_session_active_v3');
     setIsAuthenticated(true);
 
     // Fetch all fresh data from Supabase on login
@@ -232,6 +233,7 @@ export const App: React.FC = () => {
 
   const handleLogout = async () => {
     await logoutUser();
+    sessionStorage.removeItem('apes_session_active_v3');
     localStorage.removeItem('apes_session_active_v3');
     localStorage.removeItem('apes_active_tab_v3');
     setIsAuthenticated(false);
