@@ -21,6 +21,7 @@ interface NavbarProps {
   onResetData: () => void;
   notifications: Notification[];
   onMarkNotificationRead: (id: string) => void;
+  onSelectEvaluation?: (evalId: string) => void;
   onToggleSidebar: () => void;
   isSidebarOpen: boolean;
 }
@@ -33,6 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onResetData,
   notifications,
   onMarkNotificationRead,
+  onSelectEvaluation,
   onToggleSidebar,
   isSidebarOpen,
 }) => {
@@ -180,7 +182,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                       notifications.map((n) => (
                         <button
                           key={n.id}
-                          onClick={() => onMarkNotificationRead(n.id)}
+                          onClick={() => {
+                            onMarkNotificationRead(n.id);
+                            setShowNotifications(false);
+                            if (n.evaluationId && onSelectEvaluation) {
+                              onSelectEvaluation(n.evaluationId);
+                            }
+                          }}
                           className={`w-full text-left px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-750 ${
                             !n.read ? 'bg-brand-50/60 dark:bg-brand-950/30' : ''
                           }`}

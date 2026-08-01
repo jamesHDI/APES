@@ -666,6 +666,11 @@ export const App: React.FC = () => {
         onResetData={handleResetAllData}
         notifications={notifications}
         onMarkNotificationRead={handleMarkNotificationRead}
+        onSelectEvaluation={(id) => {
+          setSelectedEvalId(id);
+          setActiveTab('evaluations');
+          setViewMode('normal');
+        }}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         isSidebarOpen={isSidebarOpen}
       />

@@ -426,6 +426,29 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   const isReadOnly = isEvaluationCompleted(evalData);
   const isSelfEval = currentUser.id === evalData.employeeId;
 
+  const canEditSelfRating = !isReadOnly && isSelfEval && (evalData.status === 'draft' || evalData.status === 'reopened');
+  const canEditISRating = !isReadOnly && !isSelfEval && (
+    currentRole === 'dept_head' ||
+    currentRole === 'supervisor' ||
+    Boolean(currentUser.isDepartmentHead) ||
+    currentRole === 'pod' ||
+    currentRole === 'hr_admin' ||
+    currentRole === 'system_admin'
+  );
+  const canEditPresidentRating = !isReadOnly && !isSelfEval && (
+    currentRole === 'president' ||
+    currentRole === 'system_admin'
+  );
+  const canEditCoreValueISRating = !isReadOnly && !isSelfEval && (
+    currentRole === 'dept_head' ||
+    currentRole === 'supervisor' ||
+    Boolean(currentUser.isDepartmentHead) ||
+    currentRole === 'president' ||
+    currentRole === 'pod' ||
+    currentRole === 'hr_admin' ||
+    currentRole === 'system_admin'
+  );
+
   return (
     <div className="space-y-6 pb-12">
       
@@ -709,7 +732,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                               <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Self Rating</p>
                               <select
                                 value={kpi.selfRating || 0}
-                                disabled={isReadOnly || !isSelfEval || (evalData.status !== 'draft' && evalData.status !== 'reopened')}
+                                disabled={!canEditSelfRating}
                                 onChange={(e) => handleRatingChange(kpi.kpiId, 'self', Number(e.target.value))}
                                 className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-bold"
                               >
@@ -725,9 +748,13 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                               <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">IS Rating</p>
                               <select
                                 value={kpi.supervisorRating || 0}
-                                disabled={isReadOnly || isSelfEval || (!currentUser.isDepartmentHead && currentRole !== 'dept_head' && currentRole !== 'supervisor')}
+                                disabled={!canEditISRating}
                                 onChange={(e) => handleRatingChange(kpi.kpiId, 'supervisor', Number(e.target.value))}
-                                className="w-full px-2 py-1.5 rounded-lg border border-brand-300 dark:border-brand-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-bold"
+                                className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold ${
+                                  canEditISRating 
+                                    ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/50 text-brand-900 dark:text-brand-100 ring-2 ring-brand-500/20' 
+                                    : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100'
+                                }`}
                               >
                                 <option value={0}>Select...</option>
                                 <option value={4}>4</option>
@@ -741,7 +768,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                               <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase mb-1">President</p>
                               <select
                                 value={kpi.presidentRating || 0}
-                                disabled={isReadOnly || isSelfEval || currentRole !== 'president'}
+                                disabled={!canEditPresidentRating}
                                 onChange={(e) => handleRatingChange(kpi.kpiId, 'president', Number(e.target.value))}
                                 className="w-full px-2 py-1.5 rounded-lg border border-amber-400 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 text-xs font-bold text-amber-900 dark:text-amber-200"
                               >
