@@ -77,17 +77,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-48 h-48 bg-brand-500/10 rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative z-10 space-y-6 flex flex-col items-center">
-            {/* Logo */}
-            <div className="bg-white rounded-2xl py-4 px-6 shadow-xl flex items-center justify-center mx-auto max-w-[220px] w-full border border-white">
-              <img
-                src="/hdi-logo.png"
-                alt="HDI Logo"
-                className="h-16 w-auto max-w-full object-contain mx-auto filter drop-shadow-sm transition-transform duration-200 hover:scale-105"
-              />
-            </div>
-
             {/* Welcome text */}
-            <div className="space-y-2 text-center w-full">
+            <div className="space-y-1.5 text-center w-full">
               <h2 className="text-xl font-black leading-snug tracking-tight text-center">
                 Welcome to APES<br />
                 <span className="text-brand-400 font-extrabold text-sm">Performance Evaluation System</span>
@@ -95,6 +86,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <p className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed text-center">
                 Empowering employees through continuous feedback and core values alignment.
               </p>
+            </div>
+
+            {/* Logo */}
+            <div className="bg-white rounded-2xl py-4 px-6 shadow-xl flex items-center justify-center mx-auto max-w-[220px] w-full border border-white">
+              <img
+                src="/hdi-logo.png"
+                alt="HDI Logo"
+                className="h-16 w-auto max-w-full object-contain mx-auto filter drop-shadow-sm transition-transform duration-200 hover:scale-105"
+              />
             </div>
 
             {/* Core Motto Chips */}
