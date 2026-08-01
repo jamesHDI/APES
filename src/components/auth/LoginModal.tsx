@@ -77,15 +77,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-48 h-48 bg-brand-500/10 rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative z-10 space-y-6 flex flex-col items-center">
-            {/* Welcome text */}
-            <div className="space-y-1.5 text-center w-full">
-              <h2 className="text-xl font-black leading-snug tracking-tight text-center">
-                Welcome to APES<br />
-                <span className="text-brand-400 font-extrabold text-sm">Performance Evaluation System</span>
+            {/* Top Welcome Title */}
+            <div className="text-center w-full">
+              <h2 className="text-2xl font-black tracking-tight text-center text-white">
+                Welcome to APES
               </h2>
-              <p className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed text-center">
-                Empowering employees through continuous feedback and core values alignment.
-              </p>
             </div>
 
             {/* Logo */}
@@ -95,6 +91,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 alt="HDI Logo"
                 className="h-16 w-auto max-w-full object-contain mx-auto filter drop-shadow-sm transition-transform duration-200 hover:scale-105"
               />
+            </div>
+
+            {/* Subtitle & Description Under Logo */}
+            <div className="space-y-2 text-center w-full">
+              <p className="text-brand-400 font-extrabold text-sm tracking-wide uppercase">
+                Performance Evaluation System
+              </p>
+              <p className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed text-center">
+                Empowering employees through continuous feedback and core values alignment.
+              </p>
             </div>
 
             {/* Core Motto Chips */}
