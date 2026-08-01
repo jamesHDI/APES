@@ -91,11 +91,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Brand */}
             <div className="flex items-center gap-3">
-              <div className="shrink-0 bg-white dark:bg-slate-800 rounded-xl p-1.5 flex items-center justify-center border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
+              <div className="shrink-0 bg-white dark:bg-slate-800 rounded-xl p-1 flex items-center justify-center border border-slate-200/60 dark:border-slate-700/60 shadow-2xs">
                 <img
                   src="/hdi-logo.png"
                   alt="HDI Hive"
-                  className="h-8 sm:h-9 w-auto object-contain max-h-9"
+                  className="h-10 sm:h-11 md:h-12 w-auto object-contain max-h-12"
                 />
               </div>
               <div className="hidden sm:block">
