@@ -84,13 +84,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </h2>
             </div>
 
-            {/* Logo */}
-            <div className="bg-white rounded-2xl py-4 px-6 shadow-xl flex items-center justify-center mx-auto max-w-[220px] w-full border border-white">
-              <img
-                src="/hdi-logo.png"
-                alt="HDI Logo"
-                className="h-16 w-auto max-w-full object-contain mx-auto filter drop-shadow-sm transition-transform duration-200 hover:scale-105"
-              />
+            {/* Hexagon Logo Container */}
+            <div className="filter drop-shadow-2xl mx-auto flex items-center justify-center my-1">
+              <div 
+                className="bg-white px-10 py-5 flex items-center justify-center transition-transform duration-300 hover:scale-105"
+                style={{ clipPath: 'polygon(15% 0%, 85% 0%, 100% 50%, 85% 100%, 15% 100%, 0% 50%)' }}
+              >
+                <img
+                  src="/hdi-logo.png"
+                  alt="HDI Logo"
+                  className="h-16 w-auto max-w-full object-contain mx-auto"
+                />
+              </div>
             </div>
 
             {/* Subtitle & Description Under Logo */}
