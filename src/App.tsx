@@ -42,6 +42,8 @@ import { AdminDashboard } from './components/dashboards/AdminDashboard';
 import { ReportsCenter } from './components/reports/ReportsCenter';
 import { SystemAdminPanel } from './components/admin/SystemAdminPanel';
 import { WorkflowMonitoring } from './components/admin/WorkflowMonitoring';
+import { EvaluationDeploymentManager } from './components/admin/EvaluationDeploymentManager';
+import { EvaluationHistoryView } from './components/evaluation/EvaluationHistoryView';
 import { EmployeeManagement } from './components/admin/EmployeeManagement';
 import { DepartmentManagement } from './components/admin/DepartmentManagement';
 import { OrgHierarchyViewer } from './components/admin/OrgHierarchyViewer';
@@ -494,6 +496,33 @@ export const App: React.FC = () => {
           }}
           onRefreshEvaluations={() => {
             setEvaluations(getStoredEvaluations());
+          }}
+        />
+      );
+    }
+
+    if (activeTab === 'evaluation_deployment') {
+      return (
+        <EvaluationDeploymentManager
+          currentUser={currentUser}
+          users={users}
+          departments={departments}
+          templates={templates}
+          onRefreshData={() => {
+            setEvaluations(getStoredEvaluations());
+          }}
+        />
+      );
+    }
+
+    if (activeTab === 'my_history') {
+      return (
+        <EvaluationHistoryView
+          currentUser={currentUser}
+          evaluations={evaluations}
+          onOpenEvaluation={(id) => {
+            setSelectedEvalId(id);
+            setActiveTab('evaluations');
           }}
         />
       );

@@ -272,14 +272,15 @@ export const WorkflowMonitoring: React.FC<WorkflowMonitoringProps> = ({
                 <th className="py-3 px-4">Appraisal Period</th>
                 <th className="py-3 px-4">Current Reviewer</th>
                 <th className="py-3 px-4">Stage Status</th>
-                <th className="py-3 px-4">Last Updated</th>
+                <th className="py-3 px-4">Days Waiting</th>
+                <th className="py-3 px-4">Deadline</th>
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700 text-xs">
               {filteredEvaluations.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     No evaluations match the specified criteria.
                   </td>
                 </tr>
@@ -287,6 +288,10 @@ export const WorkflowMonitoring: React.FC<WorkflowMonitoringProps> = ({
                 filteredEvaluations.map((ev) => {
                   const revInfo = getCurrentReviewerInfo(ev, users);
                   const isDone = isEvaluationCompleted(ev);
+                  const updatedDate = new Date(ev.updatedAt || ev.createdAt || Date.now());
+                  const daysWaiting = Math.max(0, Math.floor((Date.now() - updatedDate.getTime()) / (1000 * 3600 * 24)));
+                  const deadlineDate = ev.deadline || '2026-12-31';
+                  const isOverdue = !isDone && new Date().getTime() > new Date(deadlineDate).getTime();
 
                   return (
                     <tr key={ev.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
@@ -309,8 +314,17 @@ export const WorkflowMonitoring: React.FC<WorkflowMonitoringProps> = ({
                       <td className="py-3.5 px-4">
                         <StatusBadge status={ev.status} size="sm" />
                       </td>
-                      <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
-                        {ev.updatedAt || ev.appraisalDate}
+                      <td className="py-3.5 px-4 font-semibold text-slate-700 dark:text-slate-300 font-mono">
+                        {isDone ? '-' : `${daysWaiting} d`}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-medium">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          isOverdue 
+                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300'
+                            : 'text-slate-600 dark:text-slate-400'
+                        }`}>
+                          {deadlineDate} {isOverdue ? '(OVERDUE)' : ''}
+                        </span>
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <button

@@ -19,6 +19,7 @@ import { EvidenceUploadModal } from '../common/EvidenceUploadModal';
 import { WorkflowAuditTrailModal } from './WorkflowAuditTrailModal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import confetti from 'canvas-confetti';
+import { ReturnRevisionModal } from './ReturnRevisionModal';
 import { 
   Save, 
   Send, 
@@ -30,7 +31,8 @@ import {
   ShieldCheck,
   Sparkles,
   History,
-  AlertTriangle
+  AlertTriangle,
+  RotateCcw
 } from 'lucide-react';
 
 interface EvaluationFormProps {
@@ -58,6 +60,48 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [confirmAction, setConfirmAction] = useState<null | 'employee' | 'supervisor' | 'president' | 'pod'>(null);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+
+  const handleConfirmReturn = (reason: string) => {
+    const updatedEval: Evaluation = {
+      ...evalData,
+      status: 'reopened',
+      returnReason: reason,
+      returnedBy: currentUser.name,
+      returnedByRole: currentUser.role,
+      updatedAt: new Date().toISOString().substring(0, 10),
+      auditTrail: [
+        ...(evalData.auditTrail || []),
+        {
+          id: `audit_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          performedBy: currentUser.name,
+          performedByRole: currentUser.role,
+          assignedTo: evalData.employeeName,
+          actionPerformed: 'Returned for Revision',
+          previousStatus: evalData.status,
+          newStatus: 'reopened',
+          remarks: reason
+        }
+      ]
+    };
+
+    setEvalData(updatedEval);
+    onSave(updatedEval);
+    setShowReturnModal(false);
+
+    // Notify employee or target reviewer
+    triggerWorkflowNotification(
+      evalData.employeeId,
+      updatedEval,
+      'Evaluation Returned for Revision',
+      `Your evaluation was returned by ${currentUser.name} (${currentUser.role}). Reason: "${reason}". Please revise and resubmit.`,
+      currentUser.name,
+      'action_required'
+    );
+
+    showToast('Evaluation successfully returned for revision!');
+  };
 
   useEffect(() => {
     setEvalData(initialEvaluation);
@@ -544,6 +588,16 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 Validate & Archive
               </button>
             )}
+
+            {!isReadOnly && currentRole !== 'employee' && evalData.status !== 'draft' && (
+              <button
+                onClick={() => setShowReturnModal(true)}
+                className="btn btn-sm bg-amber-600 hover:bg-amber-500 text-white font-bold shadow-sm"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Return for Revision
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1012,6 +1066,14 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         onClose={() => setShowAuditModal(false)}
         auditTrail={evalData.auditTrail || []}
         employeeName={evalData.employeeName}
+      />
+
+      <ReturnRevisionModal
+        isOpen={showReturnModal}
+        evaluation={evalData}
+        currentUser={currentUser}
+        onClose={() => setShowReturnModal(false)}
+        onConfirmReturn={handleConfirmReturn}
       />
 
     </div>

@@ -1,4 +1,4 @@
-import { User, Department, EvaluationTemplate, EvaluationCycle, Evaluation, AuditLog, Role } from '../types';
+import { User, Department, EvaluationTemplate, EvaluationCycle, EvaluationDeployment, Evaluation, AuditLog, Role } from '../types';
 import { 
   saveEmployeeToSupabase, 
   saveDepartmentToSupabase, 
@@ -10,6 +10,7 @@ const CURRENT_USER_KEY = 'apes_current_user_v3';
 const DEPARTMENTS_KEY = 'apes_departments_v3';
 const TEMPLATES_KEY = 'apes_templates_v3';
 const CYCLES_KEY = 'apes_cycles_v3';
+const DEPLOYMENTS_KEY = 'apes_deployments_v3';
 const EVALUATIONS_KEY = 'apes_evaluations_v3';
 const AUDIT_LOGS_KEY = 'apes_audit_logs_v3';
 
@@ -679,6 +680,38 @@ export const getStoredTemplates = (): EvaluationTemplate[] => {
 
 export const saveTemplates = (templates: EvaluationTemplate[]) => {
   localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+};
+
+export const SEED_DEPLOYMENTS: EvaluationDeployment[] = [
+  {
+    id: 'deploy_2026_annual',
+    title: 'FY 2026 Annual Performance Evaluation Cycle',
+    period: 'January 1, 2026 - December 31, 2026',
+    year: 2026,
+    templateId: 'template_sales',
+    templateTitle: 'Sales & Corporate Operations Template',
+    description: 'Annual enterprise-wide performance evaluation cycle for all HDI departments.',
+    startDate: '2026-01-15',
+    endDate: '2026-12-31',
+    assignmentType: 'all',
+    status: 'active',
+    totalAssigned: 10,
+    completedCount: 2,
+    createdBy: 'People Operations Development (POD)',
+    createdAt: '2026-01-15',
+    updatedAt: '2026-01-15'
+  }
+];
+
+export const getStoredDeployments = (): EvaluationDeployment[] => {
+  const data = localStorage.getItem(DEPLOYMENTS_KEY);
+  if (data) return JSON.parse(data);
+  localStorage.setItem(DEPLOYMENTS_KEY, JSON.stringify(SEED_DEPLOYMENTS));
+  return SEED_DEPLOYMENTS;
+};
+
+export const saveDeployments = (deployments: EvaluationDeployment[]) => {
+  localStorage.setItem(DEPLOYMENTS_KEY, JSON.stringify(deployments));
 };
 
 export const getStoredCycles = (): EvaluationCycle[] => {

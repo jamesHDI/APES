@@ -108,6 +108,30 @@ export interface EvaluationTemplate {
   createdAt: string;
 }
 
+export type DeploymentStatus = 'draft' | 'scheduled' | 'active' | 'closed' | 'archived';
+export type AssignmentType = 'all' | 'departments' | 'employees';
+
+export interface EvaluationDeployment {
+  id: string;
+  title: string;
+  period: string;
+  year: number | string;
+  templateId: string;
+  templateTitle?: string;
+  description?: string;
+  startDate: string;
+  endDate: string; // Deadline
+  assignmentType: AssignmentType;
+  targetDepartmentIds?: string[];
+  targetEmployeeIds?: string[];
+  status: DeploymentStatus;
+  totalAssigned: number;
+  completedCount: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface EvaluationCycle {
   id: string;
   name: string;
@@ -256,6 +280,11 @@ export interface Evaluation {
   isDepartmentHead?: boolean;
   appraisalPeriod: string;
   appraisalDate: string;
+  deploymentId?: string;
+  deadline?: string;
+  returnReason?: string;
+  returnedBy?: string;
+  returnedByRole?: string;
   status: EvaluationStatus;
   
   // Real-time Calculated Metrics

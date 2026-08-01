@@ -19,6 +19,7 @@ import {
   History,
   Settings,
   UserCircle,
+  Rocket,
 } from 'lucide-react';
 
 interface NavItem {
@@ -102,6 +103,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ...common,
         { id: 'pod_validation', label: 'POD Governance', icon: ShieldCheck },
         { id: 'workflow_monitoring', label: 'Workflow Monitoring', icon: GitBranch },
+        { id: 'evaluation_deployment', label: 'Evaluation Deployment', icon: Rocket },
+        { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'reports', label: 'Analytics', icon: BarChart3 },
       ];
     } else if (currentRole === 'hr_admin') {
@@ -123,10 +126,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Settings,
           children: [
             { id: 'workflow_monitoring', label: 'Workflow Monitoring', icon: GitBranch },
+            { id: 'evaluation_deployment', label: 'Evaluation Deployment', icon: Rocket },
             { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal },
             { id: 'admin_panel', label: 'Evaluation Cycles', icon: Settings },
           ],
         },
+        { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'reports', label: 'HR Reports', icon: BarChart3 },
       ];
     } else if (currentRole === 'system_admin') {
@@ -149,10 +154,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Settings,
           children: [
             { id: 'workflow_monitoring', label: 'Workflow Monitoring', icon: GitBranch },
+            { id: 'evaluation_deployment', label: 'Evaluation Deployment', icon: Rocket },
             { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal },
             { id: 'admin_panel', label: 'Users, Roles & Config', icon: Settings },
           ],
         },
+        { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'reports', label: 'Audit & Reports', icon: BarChart3 },
       ];
     } else {
