@@ -101,6 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items = [
         ...common,
         { id: 'pod_validation', label: 'POD Governance', icon: ShieldCheck },
+        { id: 'workflow_monitoring', label: 'Workflow Monitoring', icon: GitBranch },
         { id: 'reports', label: 'Analytics', icon: BarChart3 },
       ];
     } else if (currentRole === 'hr_admin') {
@@ -121,6 +122,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label: 'Configuration',
           icon: Settings,
           children: [
+            { id: 'workflow_monitoring', label: 'Workflow Monitoring', icon: GitBranch },
             { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal },
             { id: 'admin_panel', label: 'Evaluation Cycles', icon: Settings },
           ],
@@ -146,6 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label: 'System Configuration',
           icon: Settings,
           children: [
+            { id: 'workflow_monitoring', label: 'Workflow Monitoring', icon: GitBranch },
             { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal },
             { id: 'admin_panel', label: 'Users, Roles & Config', icon: Settings },
           ],

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Evaluation, Department } from '../../types';
-import { ShieldCheck, CheckCircle2, Clock, Archive, BarChart3, ArrowRight, Search } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, Clock, Archive, BarChart3, ArrowRight, Search, GitBranch } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
 
 interface PODDashboardProps {
@@ -9,6 +9,7 @@ interface PODDashboardProps {
   departments: Department[];
   onOpenEvaluation: (evalId: string) => void;
   onOpenReports: () => void;
+  onOpenWorkflowMonitoring?: () => void;
 }
 
 const getGreeting = () => {
@@ -24,6 +25,7 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
   departments,
   onOpenEvaluation,
   onOpenReports,
+  onOpenWorkflowMonitoring,
 }) => {
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('all');
@@ -59,13 +61,24 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
               POD Officer &nbsp;·&nbsp; Quality Governance & Validation
             </p>
           </div>
-          <button
-            onClick={onOpenReports}
-            className="btn btn-sm bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold shrink-0"
-          >
-            <BarChart3 className="w-3.5 h-3.5" />
-            Core Values Analytics
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {onOpenWorkflowMonitoring && (
+              <button
+                onClick={onOpenWorkflowMonitoring}
+                className="btn btn-sm bg-white/10 hover:bg-white/20 text-white font-bold"
+              >
+                <GitBranch className="w-3.5 h-3.5" />
+                Workflow Monitoring & Assignments
+              </button>
+            )}
+            <button
+              onClick={onOpenReports}
+              className="btn btn-sm bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              Core Values Analytics
+            </button>
+          </div>
         </div>
       </div>
 

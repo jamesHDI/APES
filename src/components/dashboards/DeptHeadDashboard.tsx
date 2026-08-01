@@ -3,6 +3,7 @@ import { User, Evaluation } from '../../types';
 import { Building2, Clock, FileCheck, ArrowRight, TrendingUp, Users, AlertCircle, Search, ShieldCheck } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
 import { EvaluationProgressCard } from '../workflow/EvaluationProgressCard';
+import { getUserActiveEvaluation } from '../../utils/workflowUtils';
 
 interface DeptHeadDashboardProps {
   currentUser: User;
@@ -25,12 +26,12 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'COMPLETED'>('PENDING');
 
-  // Find personal Department Head evaluation
-  const mySelfEvaluation = evaluations.find((e) => e.employeeId === currentUser.id);
+  // Find active personal Department Head evaluation strictly for current user
+  const mySelfEvaluation = getUserActiveEvaluation(currentUser, evaluations);
 
-  // Filter evaluations belonging to the department head's department or assigned to them
+  // Filter evaluations belonging strictly to the department head's department
   const deptEvaluations = evaluations.filter(
-    (e) => e.employeeId !== currentUser.id && (e.departmentName === currentUser.departmentName || true)
+    (e) => e.employeeId !== currentUser.id && e.departmentName === currentUser.departmentName
   );
 
   const pendingDeptHeadReviews = deptEvaluations.filter(

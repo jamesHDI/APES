@@ -41,6 +41,7 @@ import { PODDashboard } from './components/dashboards/PODDashboard';
 import { AdminDashboard } from './components/dashboards/AdminDashboard';
 import { ReportsCenter } from './components/reports/ReportsCenter';
 import { SystemAdminPanel } from './components/admin/SystemAdminPanel';
+import { WorkflowMonitoring } from './components/admin/WorkflowMonitoring';
 import { EmployeeManagement } from './components/admin/EmployeeManagement';
 import { DepartmentManagement } from './components/admin/DepartmentManagement';
 import { OrgHierarchyViewer } from './components/admin/OrgHierarchyViewer';
@@ -49,7 +50,7 @@ import { LoginModal } from './components/auth/LoginModal';
 import { MyProfile } from './components/profile/MyProfile';
 import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
 
-import { determineWorkflowType, isUserDepartmentHead } from './utils/workflowUtils';
+import { determineWorkflowType, isUserDepartmentHead, getUserActiveEvaluation, getUserLatestEvaluation, isEvaluationCompleted } from './utils/workflowUtils';
 
 export const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>(getStoredUsers());
@@ -336,12 +337,15 @@ export const App: React.FC = () => {
       if (found) return found;
     }
 
-    const userEval = evaluations.find((e) => e.employeeId === currentUser.id);
-    if (userEval) return userEval;
+    const activeEval = getUserActiveEvaluation(currentUser, evaluations);
+    if (activeEval) return activeEval;
+
+    const latestEval = getUserLatestEvaluation(currentUser, evaluations);
+    if (latestEval) return latestEval;
 
     return {
-      id: `eval_${currentUser.id}_2025`,
-      cycleId: 'cycle_2025_annual',
+      id: `eval_${currentUser.id}_${Date.now()}`,
+      cycleId: 'cycle_2026_annual',
       templateId: 'template_sales',
       workflowType: determineWorkflowType(currentUser),
       employeeId: currentUser.id,
@@ -349,7 +353,7 @@ export const App: React.FC = () => {
       departmentName: currentUser.departmentName || 'General',
       position: currentUser.position || 'Staff Specialist',
       isDepartmentHead: isUserDepartmentHead(currentUser),
-      appraisalPeriod: 'January - December 2025',
+      appraisalPeriod: 'January - December 2026',
       appraisalDate: new Date().toISOString().substring(0, 10),
       status: 'draft',
       eligibilityScore: 0,
@@ -476,6 +480,25 @@ export const App: React.FC = () => {
       );
     }
 
+    if (activeTab === 'workflow_monitoring') {
+      return (
+        <WorkflowMonitoring
+          currentUser={currentUser}
+          users={users}
+          evaluations={evaluations}
+          departments={departments}
+          templates={templates}
+          onOpenEvaluation={(id) => {
+            setSelectedEvalId(id);
+            setActiveTab('evaluations');
+          }}
+          onRefreshEvaluations={() => {
+            setEvaluations(getStoredEvaluations());
+          }}
+        />
+      );
+    }
+
     // Position-Based Access Control (PBAC) Dashboard Router
     switch (currentUser.role) {
       case 'employee':
@@ -533,6 +556,7 @@ export const App: React.FC = () => {
               setActiveTab('evaluations');
             }}
             onOpenReports={() => setActiveTab('reports')}
+            onOpenWorkflowMonitoring={() => setActiveTab('workflow_monitoring')}
           />
         );
       case 'hr_admin':
@@ -558,6 +582,7 @@ export const App: React.FC = () => {
             departments={departments}
             auditLogs={auditLogs}
             onOpenAdminPanel={() => setActiveTab('admin_panel')}
+            onOpenWorkflowMonitoring={() => setActiveTab('workflow_monitoring')}
           />
         );
       default:

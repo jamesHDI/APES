@@ -9,6 +9,7 @@ import {
   SlidersHorizontal,
   ArrowRight,
   RotateCcw,
+  GitBranch,
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -17,6 +18,7 @@ interface AdminDashboardProps {
   departments: Department[];
   auditLogs: AuditLog[];
   onOpenAdminPanel: () => void;
+  onOpenWorkflowMonitoring?: () => void;
 }
 
 const getGreeting = () => {
@@ -32,14 +34,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   departments,
   auditLogs,
   onOpenAdminPanel,
+  onOpenWorkflowMonitoring,
 }) => {
   const activeUsers = users.filter((u) => u.isActive);
 
   const quickLinks = [
+    { label: 'Workflow Monitoring', icon: GitBranch, action: onOpenWorkflowMonitoring || onOpenAdminPanel },
     { label: 'Manage Users & Roles', icon: Users, action: onOpenAdminPanel },
     { label: 'Departments', icon: Building2, action: onOpenAdminPanel },
     { label: 'Evaluation Templates', icon: SlidersHorizontal, action: onOpenAdminPanel },
-    { label: 'Full Admin Panel', icon: ShieldCheck, action: onOpenAdminPanel },
   ];
 
   return (

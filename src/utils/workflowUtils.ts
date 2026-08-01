@@ -42,6 +42,35 @@ export const determineWorkflowType = (user?: User): EvaluationWorkflowType => {
 };
 
 /**
+ * Checks if an evaluation cycle is completed and archived.
+ */
+export const isEvaluationCompleted = (evaluation?: Evaluation | null): boolean => {
+  if (!evaluation) return false;
+  return evaluation.status === 'pod_validated' || evaluation.status === 'archived';
+};
+
+/**
+ * Retrieves the active non-completed evaluation strictly for a specific user ID.
+ */
+export const getUserActiveEvaluation = (user: User, evaluations: Evaluation[] = []): Evaluation | null => {
+  if (!user?.id) return null;
+  const userEvals = evaluations.filter((e) => e.employeeId === user.id);
+  const activeEval = userEvals.find((e) => !isEvaluationCompleted(e));
+  return activeEval || null;
+};
+
+/**
+ * Retrieves the latest evaluation record (active or completed) strictly for a specific user ID.
+ */
+export const getUserLatestEvaluation = (user: User, evaluations: Evaluation[] = []): Evaluation | null => {
+  if (!user?.id) return null;
+  const userEvals = evaluations.filter((e) => e.employeeId === user.id);
+  if (userEvals.length === 0) return null;
+  // Sort by updatedAt descending
+  return [...userEvals].sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())[0];
+};
+
+/**
  * Gets details about the current reviewer and status for an evaluation.
  */
 export const getCurrentReviewerInfo = (evaluation: Evaluation, allUsers: User[] = []): ReviewerInfo => {

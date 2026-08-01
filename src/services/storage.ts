@@ -713,6 +713,88 @@ export const saveSingleEvaluation = (evaluation: Evaluation) => {
   saveEvaluationToSupabase(evaluation);
 };
 
+export const assignNewEvaluationToEmployee = (
+  employee: User,
+  template: EvaluationTemplate,
+  appraisalPeriod: string = 'January - December 2026',
+  assignedByName: string = 'People Operations (POD)'
+): Evaluation => {
+  const isDeptHeadTrack = employee.isDepartmentHead || employee.role === 'dept_head';
+  const workflowType = isDeptHeadTrack ? ('WORKFLOW_DEPT_HEAD' as const) : ('WORKFLOW_REGULAR' as const);
+
+  const kpiRatings = template.kraCategories.flatMap((kra) =>
+    kra.kpis.map((kpi) => ({
+      kpiId: kpi.id,
+      kraId: kra.id,
+      kraName: kra.name,
+      name: kpi.name,
+      weightPercent: kpi.weightPercent,
+      selfRating: 0,
+      supervisorRating: 0,
+      presidentRating: 0,
+      weightedScore: 0,
+      comments: '',
+      standards: kpi.standards,
+      evidenceRequired: kpi.evidenceRequired,
+    }))
+  );
+
+  const defaultCoreValues = [
+    { coreValueId: 'cv_integrity', name: 'Integrity & Ethics', description: 'Upholds highest standards of honesty, fairness, and business ethics.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
+    { coreValueId: 'cv_excellence', name: 'Excellence & Performance', description: 'Consistently delivers top-tier results and strives for continuous improvement.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
+    { coreValueId: 'cv_teamwork', name: 'Teamwork & Collaboration', description: 'Fosters positive collaboration across departments and supports team goals.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
+    { coreValueId: 'cv_accountability', name: 'Accountability & Ownership', description: 'Takes full ownership of duties, commitments, and professional conduct.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' }
+  ];
+
+  const nowIso = new Date().toISOString();
+  const dateStr = nowIso.substring(0, 10);
+
+  const newEval: Evaluation = {
+    id: `eval_${employee.id}_${Date.now()}`,
+    cycleId: 'cycle_2026_annual',
+    templateId: template.id,
+    workflowType,
+    employeeId: employee.id,
+    employeeName: employee.name,
+    departmentName: employee.departmentName || template.departmentName || 'General',
+    position: employee.position || 'Staff Specialist',
+    isDepartmentHead: isDeptHeadTrack,
+    appraisalPeriod,
+    appraisalDate: dateStr,
+    status: 'draft',
+    eligibilityScore: 0,
+    coreValuesScore: 0,
+    totalEligibilityWeightedRating: 0,
+    totalCoreValuesWeightedRating: 0,
+    finalRating: 0,
+    ratingClassification: 'Pending Evaluation',
+    kpiRatings,
+    coreValueRatings: defaultCoreValues,
+    developmentPlan: { strengths: '', areasForImprovement: '', learningNeeds: [] },
+    personnelAction: { actionType: 'no_action' },
+    signatures: {},
+    evidenceFiles: [],
+    auditTrail: [
+      {
+        id: `audit_${Date.now()}`,
+        timestamp: new Date().toLocaleString(),
+        performedBy: assignedByName,
+        performedByRole: 'ADMIN_POD',
+        assignedTo: employee.name,
+        actionPerformed: 'Assigned New Evaluation Template',
+        previousStatus: 'none',
+        newStatus: 'draft',
+        remarks: `Assigned new evaluation scorecard for ${appraisalPeriod}.`
+      }
+    ],
+    createdAt: dateStr,
+    updatedAt: dateStr
+  };
+
+  saveSingleEvaluation(newEval);
+  return newEval;
+};
+
 export const getStoredAuditLogs = (): AuditLog[] => {
   const data = localStorage.getItem(AUDIT_LOGS_KEY);
   if (data) return JSON.parse(data);

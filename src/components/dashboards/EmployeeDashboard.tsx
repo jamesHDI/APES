@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
 import { EvaluationProgressCard } from '../workflow/EvaluationProgressCard';
-import { EvaluationTimeline } from '../workflow/EvaluationTimeline';
+import { getUserActiveEvaluation, getUserLatestEvaluation, isEvaluationCompleted } from '../../utils/workflowUtils';
 
 interface EmployeeDashboardProps {
   currentUser: User;
@@ -32,46 +32,22 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
   evaluations,
   onOpenEvaluation,
 }) => {
-  const myEvaluation = evaluations.find((e) => e.employeeId === currentUser.id) || {
-    id: `eval_${currentUser.id}_2025`,
-    cycleId: 'cycle_2025_annual',
-    templateId: 'template_sales',
-    workflowType: currentUser.isDepartmentHead || currentUser.role === 'dept_head' ? 'WORKFLOW_DEPT_HEAD' : 'WORKFLOW_REGULAR',
-    employeeId: currentUser.id,
-    employeeName: currentUser.name,
-    departmentName: currentUser.departmentName || 'General',
-    position: currentUser.position || 'Staff Specialist',
-    appraisalPeriod: 'January - December 2025',
-    appraisalDate: new Date().toISOString().substring(0, 10),
-    status: 'draft',
-    eligibilityScore: 0,
-    coreValuesScore: 0,
-    totalEligibilityWeightedRating: 0,
-    totalCoreValuesWeightedRating: 0,
-    finalRating: 0,
-    ratingClassification: 'Pending Evaluation',
-    kpiRatings: [],
-    coreValueRatings: [],
-    developmentPlan: { strengths: '', areasForImprovement: '', learningNeeds: [] },
-    personnelAction: { actionType: 'no_action' },
-    signatures: {},
-    evidenceFiles: [],
-    auditTrail: [],
-    createdAt: new Date().toISOString().substring(0, 10),
-    updatedAt: new Date().toISOString().substring(0, 10)
-  };
+  const activeEvaluation = getUserActiveEvaluation(currentUser, evaluations);
+  const latestEvaluation = getUserLatestEvaluation(currentUser, evaluations);
+  const displayEvaluation = activeEvaluation || latestEvaluation;
 
   const statusMessages: Partial<Record<string, string>> = {
     draft: 'Your evaluation is ready. Please complete and submit it.',
     pending_dept_head: 'Your evaluation has been submitted and is waiting for your Department Head\'s review.',
     pending_supervisor: 'Your evaluation has been submitted and is waiting for review.',
     pending_pod: 'Your Department Head has reviewed your evaluation. It is now with the POD team for final review.',
-    archived: 'Your evaluation is complete and has been archived.',
+    archived: 'Your current evaluation has been completed and archived.',
+    pod_validated: 'Your evaluation has been validated and archived.',
     reopened: 'Your evaluation has been returned for revision. Please update and resubmit.',
   };
 
-  const nextActionMessage = statusMessages[myEvaluation?.status] ?? 'No pending actions at this time.';
-  const needsAction = myEvaluation?.status === 'draft' || myEvaluation?.status === 'reopened';
+  const nextActionMessage = activeEvaluation ? (statusMessages[activeEvaluation.status] ?? 'No pending actions at this time.') : 'Your evaluation cycle is completed. Please wait for POD/Admin to assign your next evaluation.';
+  const needsAction = activeEvaluation?.status === 'draft' || activeEvaluation?.status === 'reopened';
 
   return (
     <div className="space-y-6 pb-12">
@@ -92,23 +68,46 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           </div>
 
           <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/10 text-center shrink-0">
-            <p className="text-[11px] text-brand-300 uppercase font-semibold tracking-wide">Current Rating</p>
+            <p className="text-[11px] text-brand-300 uppercase font-semibold tracking-wide">Latest Rating</p>
             <p className="text-3xl font-black text-amber-400 mt-1">
-              {myEvaluation?.finalRating.toFixed(2) ?? '—'}
+              {displayEvaluation?.finalRating ? displayEvaluation.finalRating.toFixed(2) : '—'}
             </p>
             <p className="text-[11px] text-brand-200 font-medium mt-0.5">
-              {myEvaluation?.ratingClassification ?? 'Not yet rated'}
+              {displayEvaluation?.ratingClassification ?? 'Not yet rated'}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Evaluation Progress Card */}
-      {myEvaluation && (
+      {/* Evaluation Progress Card or Friendly No Active Evaluation State */}
+      {activeEvaluation ? (
         <EvaluationProgressCard 
-          evaluation={myEvaluation} 
+          evaluation={activeEvaluation} 
           onOpenEvaluation={onOpenEvaluation}
         />
+      ) : (
+        <div className="card p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 shadow-lg rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-start space-x-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-base">No Active Evaluation</h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 max-w-xl leading-relaxed">
+                Your current evaluation has been completed. Please wait for People Operations Development (POD) or the System Administrator to assign your next evaluation.
+              </p>
+            </div>
+          </div>
+          {latestEvaluation && (
+            <button
+              onClick={() => onOpenEvaluation(latestEvaluation.id)}
+              className="btn btn-secondary btn-sm shrink-0 font-semibold"
+            >
+              <span>View Completed Scorecard</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       )}
 
       {/* Next Action Banner */}
@@ -129,15 +128,15 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           <p className={`text-sm font-semibold ${needsAction ? 'text-amber-900 dark:text-amber-200' : 'text-slate-700 dark:text-slate-300'}`}>
             {nextActionMessage}
           </p>
-          {myEvaluation && (
+          {displayEvaluation && (
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Period: <strong>{myEvaluation.appraisalPeriod}</strong>
+              Period: <strong>{displayEvaluation.appraisalPeriod}</strong>
             </p>
           )}
         </div>
-        {needsAction && myEvaluation && (
+        {needsAction && activeEvaluation && (
           <button
-            onClick={() => onOpenEvaluation(myEvaluation.id)}
+            onClick={() => onOpenEvaluation(activeEvaluation.id)}
             className="btn-primary btn btn-sm shrink-0"
           >
             Open <ArrowRight className="w-3.5 h-3.5" />
@@ -154,7 +153,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           <div>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Appraisal Period</p>
             <p className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 leading-tight">
-              {myEvaluation?.appraisalPeriod ?? '—'}
+              {displayEvaluation?.appraisalPeriod ?? '—'}
             </p>
           </div>
         </div>
@@ -166,7 +165,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           <div>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">KPI Score (85%)</p>
             <p className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
-              {myEvaluation?.eligibilityScore.toFixed(2) ?? '—'}
+              {displayEvaluation?.eligibilityScore ? displayEvaluation.eligibilityScore.toFixed(2) : '0.00'}
               <span className="text-xs text-slate-400 font-normal"> / 3.40</span>
             </p>
           </div>
@@ -179,7 +178,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           <div>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Core Values (15%)</p>
             <p className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
-              {myEvaluation?.totalCoreValuesWeightedRating.toFixed(2) ?? '—'}
+              {displayEvaluation?.totalCoreValuesWeightedRating ? displayEvaluation.totalCoreValuesWeightedRating.toFixed(2) : '0.00'}
               <span className="text-xs text-slate-400 font-normal"> / 0.60</span>
             </p>
           </div>
@@ -192,29 +191,29 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           <div>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Status</p>
             <div className="mt-1">
-              {myEvaluation && <StatusBadge status={myEvaluation.status} size="sm" />}
+              {displayEvaluation ? <StatusBadge status={displayEvaluation.status} size="sm" /> : <span className="text-xs text-slate-400">Completed</span>}
             </div>
           </div>
         </div>
       </div>
 
       {/* Evaluation Card */}
-      {myEvaluation && (
+      {displayEvaluation && (
         <div className="card p-6 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-700">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white">
-                Active Evaluation
+                {activeEvaluation ? 'Active Evaluation' : 'Completed Evaluation Scorecard'}
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                {myEvaluation.appraisalPeriod}
+                {displayEvaluation.appraisalPeriod}
               </p>
             </div>
             <button
-              onClick={() => onOpenEvaluation(myEvaluation.id)}
+              onClick={() => onOpenEvaluation(displayEvaluation.id)}
               className="btn btn-primary btn-sm"
             >
-              Open Evaluation
+              {activeEvaluation ? 'Open Evaluation' : 'View Scorecard'}
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -225,7 +224,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
               KPI Performance Highlights
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {myEvaluation.kpiRatings.slice(0, 4).map((kpi) => {
+              {displayEvaluation.kpiRatings.slice(0, 4).map((kpi) => {
                 const rating = kpi.supervisorRating || kpi.selfRating || 0;
                 const ratingColors = [
                   '',
@@ -263,14 +262,14 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           {/* Quick Actions */}
           <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
             <button
-              onClick={() => onOpenEvaluation(myEvaluation.id)}
+              onClick={() => onOpenEvaluation(displayEvaluation.id)}
               className="btn btn-secondary btn-sm"
             >
               <Paperclip className="w-3.5 h-3.5" />
               Upload Evidence
             </button>
             <button
-              onClick={() => onOpenEvaluation(myEvaluation.id)}
+              onClick={() => onOpenEvaluation(displayEvaluation.id)}
               className="btn btn-secondary btn-sm"
             >
               <CalendarDays className="w-3.5 h-3.5" />

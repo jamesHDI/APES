@@ -13,7 +13,7 @@ import { triggerWorkflowNotification } from '../../services/notificationService'
 import { WorkflowProgressBar } from '../workflow/WorkflowProgressBar';
 import { EvaluationProgressCard } from '../workflow/EvaluationProgressCard';
 import { EvaluationTimeline } from '../workflow/EvaluationTimeline';
-import { isUserDepartmentHead, determineWorkflowType } from '../../utils/workflowUtils';
+import { isUserDepartmentHead, determineWorkflowType, isEvaluationCompleted } from '../../utils/workflowUtils';
 import { SignatureModal } from '../common/SignatureModal';
 import { EvidenceUploadModal } from '../common/EvidenceUploadModal';
 import { WorkflowAuditTrailModal } from './WorkflowAuditTrailModal';
@@ -379,7 +379,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     krasMap.get(kpi.kraName)!.push(kpi);
   });
 
-  const isReadOnly = evalData.status === 'archived' && currentRole !== 'hr_admin' && currentRole !== 'pod';
+  const isReadOnly = isEvaluationCompleted(evalData);
 
   return (
     <div className="space-y-6 pb-12">
@@ -404,6 +404,26 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               <li key={idx}>{err}</li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Read Only Alert Banner */}
+      {isReadOnly && (
+        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex items-center justify-between shadow-sm">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-extrabold text-sm">Evaluation Cycle Completed & Archived</p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
+                This evaluation cycle has been fully validated and archived. Form is in read-only view mode and cannot be modified.
+              </p>
+            </div>
+          </div>
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-600 text-white uppercase tracking-wider shrink-0">
+            Read-Only Mode
+          </span>
         </div>
       )}
 
