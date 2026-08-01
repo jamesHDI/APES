@@ -424,6 +424,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   });
 
   const isReadOnly = isEvaluationCompleted(evalData);
+  const isSelfEval = currentUser.id === evalData.employeeId;
 
   return (
     <div className="space-y-6 pb-12">
@@ -708,7 +709,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                               <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Self Rating</p>
                               <select
                                 value={kpi.selfRating || 0}
-                                disabled={isReadOnly || (currentRole !== 'employee' && currentRole !== 'dept_head')}
+                                disabled={isReadOnly || !isSelfEval || (evalData.status !== 'draft' && evalData.status !== 'reopened')}
                                 onChange={(e) => handleRatingChange(kpi.kpiId, 'self', Number(e.target.value))}
                                 className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-bold"
                               >
@@ -724,7 +725,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                               <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">IS Rating</p>
                               <select
                                 value={kpi.supervisorRating || 0}
-                                disabled={isReadOnly || currentRole !== 'supervisor'}
+                                disabled={isReadOnly || isSelfEval || (!currentUser.isDepartmentHead && currentRole !== 'dept_head' && currentRole !== 'supervisor')}
                                 onChange={(e) => handleRatingChange(kpi.kpiId, 'supervisor', Number(e.target.value))}
                                 className="w-full px-2 py-1.5 rounded-lg border border-brand-300 dark:border-brand-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-bold"
                               >
@@ -740,7 +741,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                               <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase mb-1">President</p>
                               <select
                                 value={kpi.presidentRating || 0}
-                                disabled={isReadOnly || currentRole !== 'president'}
+                                disabled={isReadOnly || isSelfEval || currentRole !== 'president'}
                                 onChange={(e) => handleRatingChange(kpi.kpiId, 'president', Number(e.target.value))}
                                 className="w-full px-2 py-1.5 rounded-lg border border-amber-400 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 text-xs font-bold text-amber-900 dark:text-amber-200"
                               >
@@ -831,7 +832,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                       min={1}
                       max={4}
                       value={cv.peerRating}
-                      disabled={isReadOnly}
+                      disabled={isReadOnly || (currentRole !== 'pod' && currentRole !== 'hr_admin' && currentRole !== 'system_admin')}
                       onChange={(e) => handleCoreValueRatingChange(cv.coreValueId, 'peerRating', Number(e.target.value))}
                       className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm font-bold text-center"
                     />
@@ -843,7 +844,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                       min={1}
                       max={4}
                       value={cv.isRating}
-                      disabled={isReadOnly}
+                      disabled={isReadOnly || isSelfEval}
                       onChange={(e) => handleCoreValueRatingChange(cv.coreValueId, 'isRating', Number(e.target.value))}
                       className="w-full px-3 py-1.5 rounded-lg border border-brand-400 dark:border-brand-700 bg-brand-50 dark:bg-brand-950/60 text-brand-900 dark:text-brand-200 text-sm font-bold text-center"
                     />
@@ -923,13 +924,17 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                   <img src={evalData.signatures.employee.signatureDataUrl} alt="Employee Sig" className="h-8 mx-auto" />
                   <p className="font-bold text-xs mt-1 text-slate-900 dark:text-white">{evalData.signatures.employee.signerName}</p>
                 </div>
-              ) : (
+              ) : isSelfEval ? (
                 <button
                   onClick={() => { setSigRole('employee'); setShowSigModal(true); }}
                   className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs"
                 >
                   Sign as Employee
                 </button>
+              ) : (
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-400 font-semibold italic">
+                  Pending Employee Signature
+                </div>
               )}
             </div>
 
@@ -940,13 +945,17 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                   <img src={(evalData.signatures.supervisor || evalData.signatures.deptHead)?.signatureDataUrl} alt="Sig" className="h-8 mx-auto" />
                   <p className="font-bold text-xs mt-1 text-slate-900 dark:text-white">{(evalData.signatures.supervisor || evalData.signatures.deptHead)?.signerName}</p>
                 </div>
-              ) : (
+              ) : (!isSelfEval && (currentRole === 'dept_head' || currentRole === 'supervisor' || currentUser.isDepartmentHead)) ? (
                 <button
                   onClick={() => { setSigRole(evalData.workflowType === 'WORKFLOW_DEPT_HEAD' || evalData.workflowType === 'WORKFLOW_B' ? 'dept_head' : 'supervisor'); setShowSigModal(true); }}
                   className="w-full py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs"
                 >
                   Sign as Supervisor / Dept Head
                 </button>
+              ) : (
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-400 font-semibold italic">
+                  Pending Supervisor / Dept Head Signature
+                </div>
               )}
             </div>
 
@@ -957,13 +966,24 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                   <img src={(evalData.signatures.president || evalData.signatures.pod)?.signatureDataUrl} alt="Sig" className="h-8 mx-auto" />
                   <p className="font-bold text-xs mt-1 text-slate-900 dark:text-white">{(evalData.signatures.president || evalData.signatures.pod)?.signerName}</p>
                 </div>
-              ) : (
+              ) : (!isSelfEval && currentRole === 'president') ? (
                 <button
-                  onClick={() => { setSigRole(currentRole === 'president' ? 'president' : 'pod'); setShowSigModal(true); }}
+                  onClick={() => { setSigRole('president'); setShowSigModal(true); }}
                   className="w-full py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs"
                 >
-                  Sign as President / POD
+                  Sign as President
                 </button>
+              ) : (currentRole === 'pod' || currentRole === 'system_admin' || currentRole === 'hr_admin') ? (
+                <button
+                  onClick={() => { setSigRole('pod'); setShowSigModal(true); }}
+                  className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+                >
+                  Sign as POD / Admin
+                </button>
+              ) : (
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-400 font-semibold italic">
+                  Pending President / POD Signature
+                </div>
               )}
             </div>
           </div>
