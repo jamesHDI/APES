@@ -2,6 +2,7 @@ import { Notification, Evaluation, User, NotificationCategory, Role } from '../t
 import { saveNotificationToSupabase } from './supabaseService';
 
 const NOTIF_KEY = 'apes_notifications_v3';
+const READ_MAP_KEY = 'apes_user_read_map_v3';
 
 export const INITIAL_SEED_NOTIFICATIONS: Notification[] = [
   {
@@ -66,18 +67,52 @@ export const getStoredNotifications = (): Notification[] => {
   }
 };
 
+export const getUserReadMap = (): Record<string, Record<string, boolean>> => {
+  const data = localStorage.getItem(READ_MAP_KEY);
+  if (!data) return {};
+  try {
+    return JSON.parse(data);
+  } catch (e) {
+    return {};
+  }
+};
+
+export const saveUserReadMap = (map: Record<string, Record<string, boolean>>) => {
+  localStorage.setItem(READ_MAP_KEY, JSON.stringify(map));
+};
+
 /**
- * Filter notifications strictly according to recipient rules & security policies:
- * 1. Company-wide announcements (isAnnouncement === true or recipientRole === 'ALL') -> visible to ALL logged-in users.
- * 2. Targeted by exact User ID -> visible ONLY to that user.
- * 3. Targeted by System Admin / HR Admin roles -> visible ONLY to system_admin / hr_admin.
- * 4. Targeted by Department Head / Supervisor / President / POD roles -> visible ONLY to users matching that role and department.
+ * Checks whether a specific notification has been read by the given user.
+ */
+export const isNotificationReadForUser = (notif: Notification, userId?: string): boolean => {
+  if (!userId) return notif.read || false;
+
+  const readMap = getUserReadMap();
+  if (readMap[userId]?.[notif.id]) {
+    return true;
+  }
+
+  if (notif.readByUsers && notif.readByUsers.includes(userId)) {
+    return true;
+  }
+
+  // If directly targeted to single user ID and marked read
+  if (notif.userId === userId && notif.read) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Filter notifications strictly according to recipient rules & security policies,
+ * and dynamically evaluate the read status for the specified logged-in user.
  */
 export const getRoleBasedNotifications = (currentUser?: User | null): Notification[] => {
   const all = getStoredNotifications();
   if (!currentUser) return [];
 
-  return all.filter((n) => {
+  const filtered = all.filter((n) => {
     // Rule A: Organization-Wide Announcements (Explicitly marked as announcement or ALL)
     if (n.isAnnouncement || n.recipientRole === 'ALL') {
       return true;
@@ -101,7 +136,6 @@ export const getRoleBasedNotifications = (currentUser?: User | null): Notificati
 
     // Rule D: Role-Based Workflow match
     if (n.recipientRole && n.recipientRole === currentUser.role) {
-      // If a department constraint is present, check department match
       if (n.recipientDepartment && currentUser.role === 'dept_head') {
         return n.recipientDepartment.toLowerCase() === currentUser.departmentName.toLowerCase();
       }
@@ -109,6 +143,56 @@ export const getRoleBasedNotifications = (currentUser?: User | null): Notificati
     }
 
     return false;
+  });
+
+  // Dynamically attach user-specific read status
+  return filtered.map((n) => ({
+    ...n,
+    read: isNotificationReadForUser(n, currentUser.id)
+  }));
+};
+
+/**
+ * Marks a notification as READ for the specified user ONLY, keeping read status independent per user.
+ */
+export const markNotificationAsRead = (notifId: string, currentUserId?: string) => {
+  const notifications = getStoredNotifications();
+
+  if (currentUserId) {
+    const readMap = getUserReadMap();
+    if (!readMap[currentUserId]) readMap[currentUserId] = {};
+    readMap[currentUserId][notifId] = true;
+    saveUserReadMap(readMap);
+  }
+
+  const updated = notifications.map((n) => {
+    if (n.id === notifId) {
+      const readByUsers = Array.from(new Set([...(n.readByUsers || []), ...(currentUserId ? [currentUserId] : [])]));
+      const isTargetedDirect = currentUserId && n.userId === currentUserId;
+      return {
+        ...n,
+        readByUsers,
+        read: isTargetedDirect ? true : n.read
+      };
+    }
+    return n;
+  });
+
+  localStorage.setItem(NOTIF_KEY, JSON.stringify(updated));
+
+  const target = updated.find(n => n.id === notifId);
+  if (target) {
+    saveNotificationToSupabase(target);
+  }
+};
+
+/**
+ * Marks all notifications as READ for the logged in user.
+ */
+export const markAllNotificationsAsReadForUser = (currentUser: User) => {
+  const userNotifs = getRoleBasedNotifications(currentUser);
+  userNotifs.forEach((n) => {
+    markNotificationAsRead(n.id, currentUser.id);
   });
 };
 
@@ -153,7 +237,7 @@ export const triggerRegistrationNotification = (newUser: User) => {
   const notifications = getStoredNotifications();
   const newNotif: Notification = {
     id: `notif_reg_${Date.now()}`,
-    recipientRole: 'system_admin', // Target System Admins & HR Admins ONLY
+    recipientRole: 'system_admin',
     recipientDepartment: newUser.departmentName,
     title: 'New Employee Registration Pending Approval',
     message: `${newUser.name} (${newUser.email}) registered for ${newUser.position} in ${newUser.departmentName} and requires HR/Admin approval.`,
@@ -200,14 +284,3 @@ export const triggerAnnouncementNotification = (
   localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
   saveNotificationToSupabase(newNotif);
 };
-
-export const markNotificationAsRead = (notifId: string) => {
-  const notifications = getStoredNotifications();
-  const updated = notifications.map(n => n.id === notifId ? { ...n, read: true } : n);
-  localStorage.setItem(NOTIF_KEY, JSON.stringify(updated));
-  const target = updated.find(n => n.id === notifId);
-  if (target) {
-    saveNotificationToSupabase(target);
-  }
-};
-

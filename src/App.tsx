@@ -260,7 +260,7 @@ export const App: React.FC = () => {
   };
 
   const handleMarkNotificationRead = async (notifId: string) => {
-    markNotificationAsRead(notifId);
+    markNotificationAsRead(notifId, currentUser.id);
     if (isSupabaseConfigured) {
       const sbNotifs = await fetchNotificationsFromSupabase(currentUser.id);
       if (sbNotifs && sbNotifs.length > 0) {

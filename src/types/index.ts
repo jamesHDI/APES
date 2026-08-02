@@ -335,6 +335,7 @@ export interface Notification {
   category?: NotificationCategory;
   date: string;
   read: boolean;
+  readByUsers?: string[];
   link?: string;
   actionLink?: string;
   type: 'info' | 'action_required' | 'success' | 'alert';
