@@ -24,6 +24,7 @@ interface NavbarProps {
   onSelectEvaluation?: (evalId: string) => void;
   onToggleSidebar: () => void;
   isSidebarOpen: boolean;
+  onOpenAnnouncementModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -37,6 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectEvaluation,
   onToggleSidebar,
   isSidebarOpen,
+  onOpenAnnouncementModal,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -150,9 +152,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
                   {/* Panel Header */}
                   <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                      Notifications
-                    </h4>
+                    <div className="flex items-center space-x-2">
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                        Notifications
+                      </h4>
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300">
+                        Role: {roleLabel[currentUser.role] || currentUser.role}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-2">
                       {unreadCount > 0 && (
                         <button
@@ -169,13 +176,34 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                   </div>
 
+                  {/* Announcement Trigger for Admins & POD */}
+                  {(currentUser.role === 'system_admin' || currentUser.role === 'hr_admin' || currentUser.role === 'pod') && onOpenAnnouncementModal && (
+                    <div className="px-3 py-2 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/50 flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+                        Broadcast Company Announcement
+                      </span>
+                      <button
+                        onClick={() => {
+                          setShowNotifications(false);
+                          onOpenAnnouncementModal();
+                        }}
+                        className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition-colors flex items-center gap-1"
+                      >
+                        + Create
+                      </button>
+                    </div>
+                  )}
+
                   {/* Notification List */}
                   <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700">
                     {notifications.length === 0 ? (
                       <div className="py-10 text-center">
                         <Bell className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-                        <p className="text-sm text-slate-400 dark:text-slate-500">
-                          No notifications yet
+                        <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">
+                          No notifications for your account
+                        </p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                          Evaluations & role-specific alerts will appear here
                         </p>
                       </div>
                     ) : (
@@ -191,18 +219,33 @@ export const Navbar: React.FC<NavbarProps> = ({
                           }}
                           className={`w-full text-left px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-750 ${
                             !n.read ? 'bg-brand-50/60 dark:bg-brand-950/30' : ''
-                          }`}
+                          } ${n.isAnnouncement ? 'border-l-4 border-amber-500 bg-amber-50/30 dark:bg-amber-950/20' : ''}`}
                         >
                           <div className="flex items-start gap-3">
-                            <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${!n.read ? 'bg-brand-500' : 'bg-transparent'}`} />
+                            <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!n.read ? (n.isAnnouncement ? 'bg-amber-500' : 'bg-brand-500') : 'bg-transparent'}`} />
                             <div className="flex-1 min-w-0">
-                              <p className={`text-sm leading-snug ${!n.read ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
+                              <div className="flex items-center justify-between gap-1 mb-0.5">
+                                <span className={`text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
+                                  n.isAnnouncement ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300' :
+                                  n.category === 'account' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300' :
+                                  n.category === 'approval' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300' :
+                                  'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                                }`}>
+                                  {n.isAnnouncement ? 'Announcement' : (n.category || 'Notification')}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono">{n.date}</span>
+                              </div>
+                              <p className={`text-xs leading-snug ${!n.read ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
                                 {n.title}
                               </p>
                               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
                                 {n.message}
                               </p>
-                              <p className="text-[10px] text-slate-400 mt-1">{n.date}</p>
+                              {n.senderName && (
+                                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 italic">
+                                  From: {n.senderName}
+                                </p>
+                              )}
                             </div>
                           </div>
                         </button>

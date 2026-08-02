@@ -223,16 +223,22 @@ export const fetchNotificationsFromSupabase = async (userId?: string): Promise<N
     const mapped = data.map((n: any) => ({
       id: n.id,
       userId: n.user_id,
+      recipientRole: n.recipient_role,
+      recipientDepartment: n.recipient_department,
       title: n.title,
       message: n.message,
+      category: n.category || 'evaluation',
       type: n.type || 'action_required',
       read: n.read || false,
+      isAnnouncement: Boolean(n.is_announcement),
+      senderName: n.sender_name,
+      actionLink: n.action_link,
+      expirationDate: n.expiration_date,
       evaluationId: n.evaluation_id,
       date: 'Just now',
       dateTime: n.created_at ? new Date(n.created_at).toLocaleString() : new Date().toLocaleString(),
     }));
 
-    // Return all notifications — let the UI filter by role rather than exact UUID
     return mapped;
   } catch (err) {
     console.warn('Error fetching notifications from Supabase:', err);
@@ -246,12 +252,18 @@ export const saveNotificationToSupabase = async (notif: Notification): Promise<b
   try {
     const payload = {
       id: ensureUuid(notif.id),
-      // user_id references public.employees(id) FK - must be null if employee doesn't exist in DB yet
-      user_id: null,
+      user_id: isValidUuid(notif.userId) ? notif.userId : null,
+      recipient_role: notif.recipientRole || null,
+      recipient_department: notif.recipientDepartment || null,
       title: notif.title,
       message: notif.message,
+      category: notif.category || 'evaluation',
       type: notif.type || 'action_required',
       read: notif.read || false,
+      is_announcement: Boolean(notif.isAnnouncement),
+      sender_name: notif.senderName || null,
+      action_link: notif.actionLink || null,
+      expiration_date: notif.expirationDate || null,
       evaluation_id: isValidUuid(notif.evaluationId) ? notif.evaluationId : null,
       created_at: new Date().toISOString()
     };

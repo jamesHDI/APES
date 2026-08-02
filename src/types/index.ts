@@ -323,15 +323,23 @@ export interface Evaluation {
   updatedAt: string;
 }
 
+export type NotificationCategory = 'evaluation' | 'account' | 'approval' | 'system' | 'announcement';
+
 export interface Notification {
   id: string;
-  userId: string;
+  userId?: string;
+  recipientRole?: Role | 'ALL' | 'ALL_ADMINS';
+  recipientDepartment?: string;
   title: string;
   message: string;
+  category?: NotificationCategory;
   date: string;
   read: boolean;
   link?: string;
+  actionLink?: string;
   type: 'info' | 'action_required' | 'success' | 'alert';
+  isAnnouncement?: boolean;
+  expirationDate?: string;
   employeeName?: string;
   departmentName?: string;
   appraisalPeriod?: string;

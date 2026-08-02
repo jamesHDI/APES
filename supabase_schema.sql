@@ -188,10 +188,17 @@ CREATE TABLE IF NOT EXISTS public.evidence_files (
 CREATE TABLE IF NOT EXISTS public.notifications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES public.employees(id) ON DELETE CASCADE,
+    recipient_role VARCHAR(50),
+    recipient_department VARCHAR(100),
     title VARCHAR(200) NOT NULL,
     message TEXT NOT NULL,
+    category VARCHAR(50) DEFAULT 'evaluation',
     type VARCHAR(50) DEFAULT 'action_required',
     read BOOLEAN DEFAULT FALSE,
+    is_announcement BOOLEAN DEFAULT FALSE,
+    sender_name VARCHAR(150),
+    action_link TEXT,
+    expiration_date TIMESTAMPTZ,
     evaluation_id UUID REFERENCES public.evaluations(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -25,7 +25,8 @@ import {
   saveEmployeeToSupabase
 } from './services/supabaseService';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
-import { getStoredNotifications, markNotificationAsRead } from './services/notificationService';
+import { getStoredNotifications, getRoleBasedNotifications, markNotificationAsRead } from './services/notificationService';
+import { AnnouncementModal } from './components/common/AnnouncementModal';
 import { logoutUser } from './services/authService';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
@@ -66,7 +67,8 @@ export const App: React.FC = () => {
   const [cycles, setCycles] = useState<EvaluationCycle[]>(getStoredCycles());
   const [evaluations, setEvaluations] = useState<Evaluation[]>(getStoredEvaluations());
   const [auditLogs, setAuditLogs] = useState(getStoredAuditLogs());
-  const [notifications, setNotifications] = useState<Notification[]>(getStoredNotifications(currentUser.id));
+  const [notifications, setNotifications] = useState<Notification[]>(() => getRoleBasedNotifications(currentUser));
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState<boolean>(false);
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedEvalId, setSelectedEvalId] = useState<string>(evaluations[0]?.id || 'eval_maritess_2025');
@@ -99,7 +101,7 @@ export const App: React.FC = () => {
           if (isMounted) {
             setCurrentUser(storedUser);
             setIsAuthenticated(true);
-            setNotifications(getStoredNotifications(storedUser.id));
+            setNotifications(getRoleBasedNotifications(storedUser));
             if (savedTab) setActiveTab(savedTab);
           }
         } else {
@@ -151,15 +153,15 @@ export const App: React.FC = () => {
 
         const sbNotifs = await fetchNotificationsFromSupabase(currentUser?.id);
         if (sbNotifs && sbNotifs.length > 0) {
-          setNotifications(sbNotifs);
+          setNotifications(getRoleBasedNotifications(currentUser));
         } else if (currentUser?.id) {
-          setNotifications(getStoredNotifications(currentUser.id));
+          setNotifications(getRoleBasedNotifications(currentUser));
         }
       } else {
         const storedUsers = getStoredUsers();
         setUsers(storedUsers);
         if (currentUser?.id) {
-          setNotifications(getStoredNotifications(currentUser.id));
+          setNotifications(getRoleBasedNotifications(currentUser));
         }
       }
     };
@@ -205,18 +207,11 @@ export const App: React.FC = () => {
 
     // Fetch all fresh data from Supabase on login
     if (isSupabaseConfigured) {
-      const [sbUsers, sbNotifs] = await Promise.all([
-        fetchEmployeesFromSupabase(),
-        fetchNotificationsFromSupabase(authenticatedUser.id),
-      ]);
+      const sbUsers = await fetchEmployeesFromSupabase();
       if (sbUsers && sbUsers.length > 0) { setUsers(sbUsers); saveUsers(sbUsers); }
-      if (sbNotifs && sbNotifs.length > 0) {
-        setNotifications(sbNotifs);
-      } else {
-        setNotifications(getStoredNotifications(authenticatedUser.id));
-      }
+      setNotifications(getRoleBasedNotifications(authenticatedUser));
     } else {
-      setNotifications(getStoredNotifications(authenticatedUser.id));
+      setNotifications(getRoleBasedNotifications(authenticatedUser));
     }
 
     const savedTab = localStorage.getItem('apes_active_tab_v3') || 'dashboard';
@@ -269,11 +264,11 @@ export const App: React.FC = () => {
     if (isSupabaseConfigured) {
       const sbNotifs = await fetchNotificationsFromSupabase(currentUser.id);
       if (sbNotifs && sbNotifs.length > 0) {
-        setNotifications(sbNotifs);
+        setNotifications(getRoleBasedNotifications(currentUser));
         return;
       }
     }
-    setNotifications(getStoredNotifications(currentUser.id));
+    setNotifications(getRoleBasedNotifications(currentUser));
   };
 
   const handleSaveUsers = (updatedUsers: User[]) => {
@@ -298,7 +293,7 @@ export const App: React.FC = () => {
     saveSingleEvaluation(updatedEval);
     const updatedList = evaluations.map((e) => e.id === updatedEval.id ? updatedEval : e);
     setEvaluations(updatedList);
-    setNotifications(getStoredNotifications(currentUser.id));
+    setNotifications(getRoleBasedNotifications(currentUser));
   };
 
   const handleSaveTemplate = (updatedTemplate: EvaluationTemplate) => {
@@ -665,6 +660,7 @@ export const App: React.FC = () => {
         }}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         isSidebarOpen={isSidebarOpen}
+        onOpenAnnouncementModal={() => setShowAnnouncementModal(true)}
       />
 
       <div className="flex flex-1 overflow-hidden min-h-0">
@@ -687,6 +683,16 @@ export const App: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {/* Organization Announcement Modal */}
+      <AnnouncementModal
+        isOpen={showAnnouncementModal}
+        onClose={() => setShowAnnouncementModal(false)}
+        senderName={currentUser.name}
+        onAnnouncementCreated={() => {
+          setNotifications(getRoleBasedNotifications(currentUser));
+        }}
+      />
 
       {/* Forced Password Change Modal for Default Admin / Flagged Accounts */}
       {isAuthenticated && currentUser.requiresPasswordChange && (
