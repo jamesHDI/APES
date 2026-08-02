@@ -84,11 +84,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </h2>
             </div>
 
-            {/* SVG Rounded Flat Hexagon Logo Container */}
+            {/* SVG Hexagon Logo Container */}
             <div className="relative mx-auto flex items-center justify-center my-1 w-full max-w-[280px] transition-transform duration-300 hover:scale-105">
               <svg viewBox="0 0 320 180" className="w-full h-auto drop-shadow-2xl overflow-visible">
                 <path
-                  d="M 60,8 L 260,8 Q 275,8 285,22 L 312,82 Q 320,90 312,98 L 285,158 Q 275,172 260,172 L 60,172 Q 45,172 35,158 L 8,98 Q 0,90 8,82 L 35,22 Q 45,8 60,8 Z"
+                  d="M 82,10 L 238,10 Q 250,10 256,18 L 304,82 Q 310,90 304,98 L 256,162 Q 250,170 238,170 L 82,170 Q 70,170 64,162 L 16,98 Q 10,90 16,82 L 64,18 Q 70,10 82,10 Z"
                   fill="#ffffff"
                   stroke="#ffffff"
                   strokeWidth="4"
@@ -99,7 +99,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <img
                   src="/hdi-logo.png"
                   alt="HDI Logo"
-                  className="w-[86%] h-auto max-h-[82%] object-contain mx-auto"
+                  className="w-[82%] h-auto max-h-[80%] object-contain mx-auto"
                 />
               </div>
             </div>
