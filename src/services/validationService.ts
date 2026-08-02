@@ -40,12 +40,14 @@ export function validateEvaluationForSubmission(
   }
 
   // Stage-specific validation checks
-  const isEmployeeStage = currentUser.id === evaluation.employeeId || currentUser.role === 'employee';
-  const isDeptHeadStage = currentUser.role === 'dept_head' || Boolean(currentUser.isDepartmentHead);
-  const isPresidentStage = currentUser.role === 'president';
-  const isPODStage = currentUser.role === 'pod' || currentUser.role === 'hr_admin';
+  const isSelfEvalStage = (evaluation.status === 'draft' || evaluation.status === 'reopened') && (currentUser.id === evaluation.employeeId || currentUser.role === 'employee');
+  const isDeptHeadReviewerStage = (currentUser.role === 'dept_head' || Boolean(currentUser.isDepartmentHead)) && 
+    currentUser.id !== evaluation.employeeId && 
+    (evaluation.status === 'pending_dept_head' || evaluation.status === 'employee_submitted' || evaluation.status === 'pending_supervisor');
+  const isPresidentStage = currentUser.role === 'president' && (evaluation.status === 'pending_president' || evaluation.status === 'department_head_submitted');
+  const isPODStage = (currentUser.role === 'pod' || currentUser.role === 'hr_admin') && evaluation.status === 'pending_pod';
 
-  if (isEmployeeStage && (evaluation.status === 'draft' || evaluation.status === 'reopened')) {
+  if (isSelfEvalStage) {
     const unratedKpis = evaluation.kpiRatings.filter(k => !k.selfRating || k.selfRating === 0);
     if (unratedKpis.length > 0) {
       errors.push(`Employee Section Incomplete: ${unratedKpis.length} KPI indicator(s) require self-ratings before submission.`);
@@ -56,18 +58,20 @@ export function validateEvaluationForSubmission(
       errors.push('Employee Section Incomplete: Core Values Practice section requires narrative comments for all entries.');
     }
 
-    if (!evaluation.signatures.employee) {
+    const hasEmpSig = evaluation.signatures.employee || evaluation.signatures.deptHead || (evaluation.signatures as any).dept_head;
+    if (!hasEmpSig) {
       errors.push('Employee Digital Signature Required: Please sign the Employee Self Evaluation section before submitting.');
     }
   }
 
-  if (isDeptHeadStage && (evaluation.status === 'pending_dept_head' || evaluation.status === 'employee_submitted' || evaluation.status === 'pending_supervisor')) {
+  if (isDeptHeadReviewerStage) {
     const unratedIsKpis = evaluation.kpiRatings.filter(k => !k.supervisorRating || k.supervisorRating === 0);
     if (unratedIsKpis.length > 0) {
       errors.push(`Department Head Section Incomplete: ${unratedIsKpis.length} KPI indicator(s) require Department Head ratings before submission.`);
     }
 
-    if (!evaluation.signatures.deptHead && !evaluation.signatures.supervisor) {
+    const hasDhSig = evaluation.signatures.deptHead || (evaluation.signatures as any).dept_head || evaluation.signatures.supervisor;
+    if (!hasDhSig) {
       errors.push('Department Head Digital Signature Required: Please add your digital signature before forwarding to the next stage.');
     }
   }

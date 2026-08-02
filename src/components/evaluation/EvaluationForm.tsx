@@ -457,7 +457,17 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   };
 
   const handleSaveSignature = (signature: DigitalSignature) => {
-    const newSigs = { ...evalData.signatures, [signature.role]: signature };
+    const roleKey = signature.role === 'dept_head' ? 'deptHead' : signature.role;
+    const newSigs = { 
+      ...evalData.signatures, 
+      [signature.role]: signature,
+      [roleKey]: signature,
+      ...(signature.role === 'dept_head' || signature.role === 'supervisor' ? {
+        deptHead: signature,
+        dept_head: signature,
+        supervisor: signature
+      } : {})
+    };
     const updated = { ...evalData, signatures: newSigs };
     setEvalData(updated);
     onSave(updated);
