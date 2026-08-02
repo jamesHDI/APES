@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { EvaluationTemplate, KRACategory, KPITemplateItem, Department } from '../../types';
+import { EvaluationTemplate, KRACategory, KPITemplateItem, Department, User, Evaluation } from '../../types';
 import { 
   SlidersHorizontal, 
   Plus, 
@@ -14,21 +14,63 @@ import {
 } from 'lucide-react';
 
 interface TemplateBuilderProps {
+  currentUser?: User;
   templates: EvaluationTemplate[];
   departments: Department[];
+  evaluations?: Evaluation[];
   onSaveTemplate: (template: EvaluationTemplate) => void;
+  onDeleteTemplate?: (templateId: string) => void;
 }
 
 export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
+  currentUser,
   templates,
   departments,
+  evaluations,
   onSaveTemplate,
+  onDeleteTemplate,
 }) => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(templates[0]?.id || '');
   const [activeTemplate, setActiveTemplate] = useState<EvaluationTemplate>(
     templates.find(t => t.id === selectedTemplateId) || templates[0]
   );
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const canDelete = currentUser?.role === 'system_admin' || currentUser?.role === 'hr_admin' || currentUser?.role === 'pod';
+
+  const handleDeleteTemplateAction = (templateId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+
+    if (!canDelete) {
+      alert('Only System Administrators and POD Officers can delete evaluation templates.');
+      return;
+    }
+
+    const tmplToDelete = templates.find(t => t.id === templateId);
+    if (!tmplToDelete) return;
+
+    // Check if the template is currently active or assigned to an ongoing evaluation
+    const isInUse = evaluations?.some(
+      (ev) => ev.templateId === templateId && ev.status !== 'archived'
+    );
+
+    if (isInUse) {
+      alert('This template cannot be deleted because it is currently in use.');
+      return;
+    }
+
+    if (window.confirm('Are you sure you want to delete this evaluation template?')) {
+      if (onDeleteTemplate) {
+        onDeleteTemplate(templateId);
+      }
+      const remaining = templates.filter(t => t.id !== templateId);
+      if (selectedTemplateId === templateId && remaining.length > 0) {
+        setSelectedTemplateId(remaining[0].id);
+        setActiveTemplate(remaining[0]);
+      }
+      showToast('Evaluation template deleted successfully!');
+    }
+  };
 
   const handleSelectTemplate = (id: string) => {
     setSelectedTemplateId(id);
@@ -201,10 +243,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
           <div className="space-y-2">
             {templates.map((tmpl) => (
-              <button
+              <div
                 key={tmpl.id}
                 onClick={() => handleSelectTemplate(tmpl.id)}
-                className={`w-full text-left p-3.5 rounded-xl border transition-all ${
+                className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
                   selectedTemplateId === tmpl.id
                     ? 'bg-brand-50 dark:bg-brand-950/40 border-brand-500 ring-2 ring-brand-500/20'
                     : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 hover:border-slate-300'
@@ -214,7 +256,19 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   <span className="text-xs font-bold px-2 py-0.5 rounded bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300">
                     {tmpl.departmentName}
                   </span>
-                  <span className="text-[10px] text-slate-400">{tmpl.evaluationPeriod}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[10px] text-slate-400">{tmpl.evaluationPeriod}</span>
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteTemplateAction(tmpl.id, e)}
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                        title="Delete Evaluation Template"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <p className="font-bold text-slate-900 dark:text-white text-xs mt-2">
                   {tmpl.title}
@@ -222,7 +276,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 <p className="text-[10px] text-slate-500 mt-1">
                   {tmpl.kraCategories.length} KRAs • Formula: {tmpl.formulaConfig.eligibilityWeight}% KPI / {tmpl.formulaConfig.coreValuesWeight}% Core Values
                 </p>
-              </button>
+              </div>
             ))}
           </div>
         </div>
@@ -238,13 +292,27 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 <p className="text-xs text-slate-500">Configure department assignment, period, and weights</p>
               </div>
 
-              <button
-                onClick={handleSave}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md flex items-center space-x-1.5"
-              >
-                <Save className="w-4 h-4" />
-                <span>Save Template Changes</span>
-              </button>
+              <div className="flex items-center space-x-2">
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleDeleteTemplateAction(activeTemplate.id, e)}
+                    className="px-3.5 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-bold flex items-center space-x-1.5 transition-colors"
+                    title="Delete Current Template"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={handleSave}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md flex items-center space-x-1.5"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Save Template Changes</span>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

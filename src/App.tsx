@@ -308,6 +308,12 @@ export const App: React.FC = () => {
     saveTemplates(newTemplates);
   };
 
+  const handleDeleteTemplate = (templateId: string) => {
+    const updated = templates.filter((t) => t.id !== templateId);
+    setTemplates(updated);
+    saveTemplates(updated);
+  };
+
   const handleResetAllData = () => {
     if (window.confirm('Reset all evaluation records, employees, departments, and roles to initial seed state?')) {
       resetToDefaultSeedData();
@@ -433,9 +439,12 @@ export const App: React.FC = () => {
     if (activeTab === 'template_builder') {
       return (
         <TemplateBuilder
+          currentUser={currentUser}
           templates={templates}
           departments={departments}
+          evaluations={evaluations}
           onSaveTemplate={handleSaveTemplate}
+          onDeleteTemplate={handleDeleteTemplate}
         />
       );
     }
