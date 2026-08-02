@@ -84,22 +84,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </h2>
             </div>
 
-            {/* SVG Hexagon Logo Container */}
-            <div className="relative mx-auto flex items-center justify-center my-1 w-full max-w-[280px] transition-transform duration-300 hover:scale-105">
-              <svg viewBox="0 0 320 180" className="w-full h-auto drop-shadow-2xl overflow-visible">
+            {/* SVG Equal-Sided Hexagon Logo Container */}
+            <div className="relative mx-auto flex items-center justify-center my-1 w-full max-w-[250px] transition-transform duration-300 hover:scale-105">
+              <svg viewBox="0 0 220 194" className="w-full h-auto drop-shadow-2xl overflow-visible">
                 <path
-                  d="M 82,10 L 238,10 Q 250,10 256,18 L 304,82 Q 310,90 304,98 L 256,162 Q 250,170 238,170 L 82,170 Q 70,170 64,162 L 16,98 Q 10,90 16,82 L 64,18 Q 70,10 82,10 Z"
+                  d="M 70,10.4 L 150,10.4 Q 160,10.4 168.7,25.4 L 201.3,82 Q 210,97 201.3,112 L 168.7,168.6 Q 160,183.6 150,183.6 L 70,183.6 Q 60,183.6 51.3,168.6 L 18.7,112 Q 10,97 18.7,82 L 51.3,25.4 Q 60,10.4 70,10.4 Z"
                   fill="#ffffff"
                   stroke="#ffffff"
                   strokeWidth="4"
                   strokeLinejoin="round"
                 />
               </svg>
-              <div className="absolute inset-0 flex items-center justify-center p-5">
+              <div className="absolute inset-0 flex items-center justify-center p-6">
                 <img
                   src="/hdi-logo.png"
                   alt="HDI Logo"
-                  className="w-[82%] h-auto max-h-[80%] object-contain mx-auto"
+                  className="w-[84%] h-auto max-h-[75%] object-contain mx-auto"
                 />
               </div>
             </div>
