@@ -102,6 +102,23 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     currentRole === 'system_admin'
   );
 
+  // Privacy & Access Control Rules for Private Evaluation Activity History:
+  // - Employee who owns the evaluation -> Can view their own evaluation history only.
+  // - POD & System Administrator -> Can view history of all evaluations.
+  // - Department Head & President -> Cannot access history after completing assigned review (only while assigned).
+  const canViewActivityHistory = Boolean(
+    currentUser.id === evalData.employeeId ||
+    currentRole === 'pod' ||
+    currentRole === 'system_admin' || 
+    currentRole === 'hr_admin' ||
+    ((currentRole === 'dept_head' || Boolean(currentUser.isDepartmentHead)) &&
+      currentUser.id !== evalData.employeeId &&
+      (evalData.status === 'pending_dept_head' || evalData.status === 'employee_submitted' || evalData.status === 'pending_supervisor')) ||
+    (currentRole === 'president' &&
+      currentUser.id !== evalData.employeeId &&
+      (evalData.status === 'pending_president' || evalData.status === 'department_head_submitted'))
+  );
+
   const handleConfirmReturn = (reason: string) => {
     const updatedEval: Evaluation = {
       ...evalData,
@@ -240,7 +257,15 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   };
 
   const handleSaveDraft = () => {
-    onSave(evalData);
+    const updatedAudit = addAuditEntry(
+      'Saved evaluation draft',
+      evalData.status,
+      evalData.status,
+      evalData.employeeName
+    );
+    const updated = { ...evalData, auditTrail: updatedAudit };
+    setEvalData(updated);
+    onSave(updated);
     showToast('Draft saved successfully!');
   };
 
@@ -1344,6 +1369,72 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               )}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Private Evaluation Activity History Timeline */}
+      {canViewActivityHistory && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="p-2 bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 rounded-xl">
+                <History className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+                  Evaluation Activity History
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Private chronological audit trail from assignment to completion
+                </p>
+              </div>
+            </div>
+            <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+              Private Audit Trail ({evalData.auditTrail?.length || 0} events)
+            </span>
+          </div>
+
+          <div className="relative pl-6 border-l-2 border-slate-200 dark:border-slate-800 space-y-6 my-2 pt-1">
+            {(!evalData.auditTrail || evalData.auditTrail.length === 0) ? (
+              <p className="text-xs text-slate-400 italic">No activity recorded yet.</p>
+            ) : (
+              evalData.auditTrail.map((entry, idx) => (
+                <div key={entry.id || idx} className="relative group">
+                  {/* Timeline Node Bullet */}
+                  <div className="absolute -left-[31px] top-0.5 w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-extrabold shadow-xs">
+                    ✓
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2 text-xs">
+                      <span className="font-bold text-slate-900 dark:text-white">
+                        {entry.timestamp || 'Just now'}
+                      </span>
+                    </div>
+
+                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      <strong>{entry.performedBy}</strong> {entry.performedByRole ? `(${entry.performedByRole})` : ''} {entry.actionPerformed}
+                    </p>
+
+                    {entry.newStatus && entry.previousStatus && entry.newStatus !== entry.previousStatus && (
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono flex items-center space-x-1.5 pt-0.5">
+                        <span>Status changed:</span>
+                        <span className="px-2 py-0.5 rounded-md bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 font-bold border border-brand-200 dark:border-brand-800">
+                          {entry.newStatus}
+                        </span>
+                      </div>
+                    )}
+
+                    {entry.remarks && (
+                      <p className="text-xs text-slate-600 dark:text-slate-300 italic bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700/80 mt-1 max-w-2xl leading-relaxed">
+                        "{entry.remarks}"
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
