@@ -167,13 +167,24 @@ export const fetchEmployeesFromSupabase = async (): Promise<User[] | null> => {
   }
 };
 
-export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
-  if (!isSupabaseConfigured || !supabase) return false;
+export interface SupabaseSaveResult {
+  success: boolean;
+  error?: {
+    code?: string;
+    message: string;
+    details?: string;
+    hint?: string;
+  };
+}
+
+export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<SupabaseSaveResult> => {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: false, error: { code: 'NO_SB_CONFIG', message: 'Supabase cloud client is not configured.' } };
+  }
 
   try {
     const cleanEmail = (user.email || '').trim().toLowerCase();
     
-    // Check if employee with same email already exists in Supabase to reuse its UUID and avoid employees_email_key unique constraint error
     let targetId = isValidUuid(user.id) ? user.id : ensureUuid(user.id);
     if (cleanEmail) {
       try {
@@ -230,32 +241,55 @@ export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
 
     // Try INSERT first to guarantee unauthenticated self-registration from mobile devices succeeds under RLS
     const { error: insertErr } = await supabase.from('employees').insert(payload);
-    let isSuccess = !insertErr;
 
     if (insertErr) {
-      console.warn('[Employee Debug] Insert notice, attempting upsert/update fallback:', insertErr.message);
-      // If insert failed (e.g. existing ID or record update), fallback to upsert
+      console.error('Supabase Insert Error:', {
+        code: insertErr.code,
+        message: insertErr.message,
+        details: insertErr.details,
+        hint: insertErr.hint
+      });
+
+      // Try upsert fallback if conflict on ID
       const { error: upsertErr } = await supabase.from('employees').upsert(payload, { onConflict: 'id' });
       if (upsertErr) {
-        console.error('[Employee Debug] Supabase employees save error:', upsertErr.message, upsertErr.details, upsertErr.hint);
-        isSuccess = false;
-      } else {
-        console.log(`[Employee Debug] Successfully updated employee ${user.email} (${targetId}) in Supabase.`);
-        isSuccess = true;
+        console.error('Supabase Upsert Error:', {
+          code: upsertErr.code,
+          message: upsertErr.message,
+          details: upsertErr.details,
+          hint: upsertErr.hint
+        });
+        return {
+          success: false,
+          error: {
+            code: upsertErr.code || insertErr.code,
+            message: upsertErr.message || insertErr.message,
+            details: upsertErr.details || insertErr.details,
+            hint: upsertErr.hint || insertErr.hint
+          }
+        };
       }
-    } else {
-      console.log(`[Employee Debug] Successfully inserted new employee ${user.email} (${targetId}) into Supabase.`);
     }
 
-    if (isSuccess) {
-      triggerRealtimeBroadcast('data_changed', { type: 'employee', email: cleanEmail });
-    }
-
-    return isSuccess;
-  } catch (err) {
-    console.error('[Employee Debug] Exception saving employee to Supabase:', err);
-    return false;
+    triggerRealtimeBroadcast('data_changed', { type: 'employee', email: cleanEmail });
+    return { success: true };
+  } catch (err: any) {
+    console.error('Supabase Exception Error:', err);
+    return {
+      success: false,
+      error: {
+        code: err?.code || 'EXCEPT_500',
+        message: err?.message || String(err),
+        details: err?.details || '',
+        hint: err?.hint || ''
+      }
+    };
   }
+};
+
+export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
+  const result = await saveEmployeeToSupabaseDetailed(user);
+  return result.success;
 };
 
 export const deleteEmployeeFromSupabase = async (userId: string): Promise<boolean> => {

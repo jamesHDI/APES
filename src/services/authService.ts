@@ -2,7 +2,7 @@ import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { User, Role } from '../types';
 import { getStoredUsers, saveUsers, getStoredCurrentUser, setCurrentUserStore } from './storage';
 import { triggerRegistrationNotification } from './notificationService';
-import { ensureUuid, generateUuid, saveEmployeeToSupabase, fetchEmployeesFromSupabase, findEmployeeInSupabase } from './supabaseService';
+import { ensureUuid, generateUuid, saveEmployeeToSupabase, saveEmployeeToSupabaseDetailed, fetchEmployeesFromSupabase, findEmployeeInSupabase } from './supabaseService';
 
 export interface LoginCredentials {
   identifier: string; // Email or Employee ID
@@ -218,18 +218,23 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
   };
 
   // ── TRANSACTIONAL ORDERING: Step 1. Insert Employee Record into Supabase Database ──
-  let isSavedInSupabase = false;
   if (isSupabaseConfigured && supabase) {
-    isSavedInSupabase = await saveEmployeeToSupabase(newUser);
-    if (!isSavedInSupabase) {
-      console.error(`[Registration Error] Could not save employee record for ${normalizedEmail} to Supabase. Aborting registration.`);
+    const sbResult = await saveEmployeeToSupabaseDetailed(newUser);
+    if (!sbResult.success) {
+      const err = sbResult.error || { code: 'UNKNOWN', message: 'Database insert failed' };
+      const fullErrText = `[Supabase Error Code ${err.code || 'N/A'}] ${err.message}${err.details ? ` | Details: ${err.details}` : ''}${err.hint ? ` | Hint: ${err.hint}` : ''}`;
+      console.error('[Registration Supabase DB Error]', {
+        code: err.code,
+        message: err.message,
+        details: err.details,
+        hint: err.hint,
+        email: normalizedEmail
+      });
       return { 
         user: null, 
-        error: `Registration failed: Unable to write employee record (${normalizedEmail}) to Supabase cloud database. Please try again.` 
+        error: `Database Insert Rejected: ${fullErrText}` 
       };
     }
-  } else {
-    isSavedInSupabase = true;
   }
 
   // ── Step 2. Update Local Storage Cache AFTER Database Confirmation ──
