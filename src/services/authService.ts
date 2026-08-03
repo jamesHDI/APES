@@ -28,7 +28,7 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
 
   let matchedUser: User | null = null;
 
-  // 1. Database-Driven Lookup: Query Supabase PostgreSQL employees table directly
+  // 1. Single Source of Truth: Query Supabase PostgreSQL employees table directly
   if (isSupabaseConfigured && supabase) {
     try {
       console.log(`[Supabase Auth] Querying Supabase database directly for identifier: "${cleanId}"`);
@@ -36,10 +36,8 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
     } catch (e) {
       console.error('[Supabase Auth] Error during Supabase employee lookup:', e);
     }
-  }
-
-  // 2. Offline / Unconfigured Local Fallback
-  if (!matchedUser) {
+  } else {
+    // Development fallback when Supabase is completely unconfigured
     const users = getStoredUsers();
     matchedUser = users.find(
       (u) => u.email.toLowerCase() === cleanId || 
@@ -52,18 +50,14 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
     return { user: null, error: `Invalid Employee ID or Email address (${identifier}). Account not found.` };
   }
 
-  // 3. Password Validation
+  // 2. Strict Password Validation against database record
   const inputPw = (password || '').trim();
   const storedPw = (matchedUser.password || '').trim();
 
   let isPwValid = false;
   if (!storedPw) {
     isPwValid = true;
-  } else if (inputPw.toLowerCase() === storedPw.toLowerCase()) {
-    isPwValid = true;
-  } else if (inputPw === '123456' || inputPw === 'password') {
-    isPwValid = true;
-  } else if (matchedUser.email.toLowerCase() === 'admin.systemad@hdiadventures.com' && (inputPw.toLowerCase() === 'admin' || inputPw.toLowerCase() === 'admin.systemad')) {
+  } else if (inputPw === storedPw || inputPw.toLowerCase() === storedPw.toLowerCase()) {
     isPwValid = true;
   }
 

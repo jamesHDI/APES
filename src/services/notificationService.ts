@@ -1,10 +1,6 @@
 import { Notification, Evaluation, User, NotificationCategory, Role } from '../types';
 import { saveNotificationToSupabase, saveNotificationsBatchToSupabase, generateUuid, fetchEmployeesFromSupabase } from './supabaseService';
 import { triggerRealtimeBroadcast } from './supabaseClient';
-import { getStoredUsers } from './storage';
-
-const NOTIF_KEY = 'apes_notifications_v3';
-const READ_MAP_KEY = 'apes_user_read_map_v3';
 
 export const INITIAL_SEED_NOTIFICATIONS: Notification[] = [
   {
@@ -59,76 +55,21 @@ export const INITIAL_SEED_NOTIFICATIONS: Notification[] = [
   }
 ];
 
-export const getStoredNotifications = (): Notification[] => {
-  const data = localStorage.getItem(NOTIF_KEY);
-  if (!data) return INITIAL_SEED_NOTIFICATIONS;
-  try {
-    return JSON.parse(data);
-  } catch (e) {
-    return INITIAL_SEED_NOTIFICATIONS;
-  }
-};
-
-/**
- * Merges remote notifications fetched from Supabase with local notifications store
- * so cross-device/cross-session notifications (like account registration alerts) are persisted locally.
- */
-export const mergeRemoteNotifications = (remoteNotifs: Notification[]): Notification[] => {
-  const local = getStoredNotifications();
-  const map = new Map<string, Notification>();
-
-  // Add existing local notifications
-  local.forEach(n => map.set(n.id, n));
-
-  // Merge remote notifications from Supabase
-  remoteNotifs.forEach(rn => {
-    const existing = map.get(rn.id);
-    if (!existing) {
-      map.set(rn.id, rn);
-    } else {
-      map.set(rn.id, {
-        ...rn,
-        read: existing.read || rn.read,
-        readByUsers: Array.from(new Set([...(existing.readByUsers || []), ...(rn.readByUsers || [])]))
-      });
-    }
-  });
-
-  const merged = Array.from(map.values());
-  localStorage.setItem(NOTIF_KEY, JSON.stringify(merged));
-  return merged;
-};
-
-export const getUserReadMap = (): Record<string, Record<string, boolean>> => {
-  const data = localStorage.getItem(READ_MAP_KEY);
-  if (!data) return {};
-  try {
-    return JSON.parse(data);
-  } catch (e) {
-    return {};
-  }
-};
-
-export const saveUserReadMap = (map: Record<string, Record<string, boolean>>) => {
-  localStorage.setItem(READ_MAP_KEY, JSON.stringify(map));
-};
+export const getStoredNotifications = (): Notification[] => INITIAL_SEED_NOTIFICATIONS;
+export const mergeRemoteNotifications = (remoteNotifs: Notification[]): Notification[] => remoteNotifs;
 
 /**
  * Checks whether a specific notification has been read by the given user.
+ * Evaluated strictly against database-persisted readByUsers array or direct user assignment.
  */
 export const isNotificationReadForUser = (notif: Notification, userId?: string): boolean => {
-  if (!userId) return notif.read || false;
+  if (!userId || !notif) return notif?.read || false;
 
-  const readMap = getUserReadMap();
-  if (readMap[userId]?.[notif.id]) {
+  if (notif.readByUsers && Array.isArray(notif.readByUsers) && notif.readByUsers.includes(userId)) {
     return true;
   }
 
-  if (notif.readByUsers && notif.readByUsers.includes(userId)) {
-    return true;
-  }
-
-  // If directly targeted to single user ID and marked read
+  // Direct user assignment check
   if (notif.userId === userId && notif.read) {
     return true;
   }
@@ -137,14 +78,28 @@ export const isNotificationReadForUser = (notif: Notification, userId?: string):
 };
 
 /**
- * Filter notifications strictly according to recipient rules & security policies,
+ * Filter notifications according to recipient rules & security policies,
  * and dynamically evaluate the read status for the specified logged-in user.
+ * Supports flexible parameters: getRoleBasedNotifications(currentUser) or getRoleBasedNotifications(notifications, currentUser)
  */
-export const getRoleBasedNotifications = (currentUser?: User | null): Notification[] => {
-  const all = getStoredNotifications();
-  if (!currentUser) return [];
+export const getRoleBasedNotifications = (
+  arg1?: Notification[] | User | null,
+  arg2?: User | null
+): Notification[] => {
+  let notifications: Notification[] = [];
+  let currentUser: User | null = null;
 
-  const filtered = all.filter((n) => {
+  if (Array.isArray(arg1)) {
+    notifications = arg1;
+    currentUser = arg2 || null;
+  } else {
+    notifications = INITIAL_SEED_NOTIFICATIONS;
+    currentUser = (arg1 as User) || null;
+  }
+
+  if (!currentUser || !notifications) return [];
+
+  const filtered = notifications.filter((n) => {
     // 1. Administrative / Account / System Alerts (STRICTLY for System Admin or HR Admin)
     if (
       n.category === 'account' || 
@@ -188,47 +143,43 @@ export const getRoleBasedNotifications = (currentUser?: User | null): Notificati
 };
 
 /**
- * Marks a notification as READ for the specified user ONLY, keeping read status independent per user.
+ * Marks a notification as READ for the specified user ONLY, keeping read status independent per user in Supabase.
  */
-export const markNotificationAsRead = (notifId: string, currentUserId?: string) => {
-  const notifications = getStoredNotifications();
+export const markNotificationAsRead = async (notif: Notification, currentUserId?: string): Promise<boolean> => {
+  if (!notif) return false;
 
-  if (currentUserId) {
-    const readMap = getUserReadMap();
-    if (!readMap[currentUserId]) readMap[currentUserId] = {};
-    readMap[currentUserId][notifId] = true;
-    saveUserReadMap(readMap);
-  }
+  const readByUsers = Array.from(new Set([...(notif.readByUsers || []), ...(currentUserId ? [currentUserId] : [])]));
+  const isTargetedDirect = currentUserId && notif.userId === currentUserId;
 
-  const updated = notifications.map((n) => {
-    if (n.id === notifId) {
-      const readByUsers = Array.from(new Set([...(n.readByUsers || []), ...(currentUserId ? [currentUserId] : [])]));
-      const isTargetedDirect = currentUserId && n.userId === currentUserId;
-      return {
-        ...n,
-        readByUsers,
-        read: isTargetedDirect ? true : n.read
-      };
-    }
-    return n;
-  });
+  const updatedNotif: Notification = {
+    ...notif,
+    readByUsers,
+    read: isTargetedDirect ? true : notif.read
+  };
 
-  localStorage.setItem(NOTIF_KEY, JSON.stringify(updated));
-
-  const target = updated.find(n => n.id === notifId);
-  if (target) {
-    saveNotificationToSupabase(target);
-  }
+  const saved = await saveNotificationToSupabase(updatedNotif);
+  triggerRealtimeBroadcast('data_changed', { type: 'notification_read', notifId: notif.id, userId: currentUserId });
+  return saved;
 };
 
 /**
- * Marks all notifications as READ for the logged in user.
+ * Marks all notifications as READ for the logged in user in Supabase.
  */
-export const markAllNotificationsAsReadForUser = (currentUser: User) => {
-  const userNotifs = getRoleBasedNotifications(currentUser);
-  userNotifs.forEach((n) => {
-    markNotificationAsRead(n.id, currentUser.id);
+export const markAllNotificationsAsReadForUser = async (notifications: Notification[], currentUser: User): Promise<boolean> => {
+  const userNotifs = getRoleBasedNotifications(notifications, currentUser);
+  const updatedNotifs = userNotifs.map(n => {
+    const readByUsers = Array.from(new Set([...(n.readByUsers || []), currentUser.id]));
+    const isTargetedDirect = n.userId === currentUser.id;
+    return {
+      ...n,
+      readByUsers,
+      read: isTargetedDirect ? true : n.read
+    };
   });
+
+  const saved = await saveNotificationsBatchToSupabase(updatedNotifs);
+  triggerRealtimeBroadcast('data_changed', { type: 'notifications_read_all', userId: currentUser.id });
+  return saved;
 };
 
 export const triggerWorkflowNotification = async (
@@ -240,7 +191,6 @@ export const triggerWorkflowNotification = async (
   type: 'action_required' | 'info' | 'success' | 'alert' = 'action_required',
   recipientRole?: Role
 ): Promise<boolean> => {
-  const notifications = getStoredNotifications();
   const category: NotificationCategory = evaluation.status.includes('pending') ? 'approval' : 'evaluation';
 
   const newNotif: Notification = {
@@ -263,15 +213,12 @@ export const triggerWorkflowNotification = async (
     evaluationId: evaluation.id
   };
 
-  notifications.unshift(newNotif);
-  localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
   const saved = await saveNotificationToSupabase(newNotif);
   triggerRealtimeBroadcast('data_changed', { type: 'workflow', evaluationId: evaluation.id });
   return saved;
 };
 
 export const triggerRegistrationNotification = async (newUser: User): Promise<boolean> => {
-  const notifications = getStoredNotifications();
   const notifId = generateUuid();
 
   const newNotif: Notification = {
@@ -292,8 +239,6 @@ export const triggerRegistrationNotification = async (newUser: User): Promise<bo
     dateTime: new Date().toLocaleString(),
   };
 
-  notifications.unshift(newNotif);
-  localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
   const saved = await saveNotificationToSupabase(newNotif);
   triggerRealtimeBroadcast('data_changed', { type: 'registration', userId: newUser.id });
   return saved;
@@ -309,27 +254,21 @@ export const triggerAnnouncementNotification = async (
   console.log(`[Broadcast Debug] Broadcast announcement triggered. Target Audience: ${recipientRole}, Title: "${title}"`);
 
   // 1. Fetch ALL active employees directly from Supabase database
-  let allUsers: User[] = [];
+  let targetUsers: User[] = [];
   const sbUsers = await fetchEmployeesFromSupabase();
   if (sbUsers && sbUsers.length > 0) {
-    allUsers = sbUsers;
-  } else {
-    allUsers = getStoredUsers();
-  }
-
-  // 2. Filter target recipient users
-  let targetUsers = allUsers;
-  if (recipientRole === 'ALL' || !recipientRole) {
-    targetUsers = allUsers;
-  } else if (recipientRole === 'ALL_ADMINS') {
-    targetUsers = allUsers.filter(u => u.role === 'system_admin' || u.role === 'hr_admin');
-  } else {
-    targetUsers = allUsers.filter(u => u.role === recipientRole);
+    if (recipientRole === 'ALL' || !recipientRole) {
+      targetUsers = sbUsers;
+    } else if (recipientRole === 'ALL_ADMINS') {
+      targetUsers = sbUsers.filter(u => u.role === 'system_admin' || u.role === 'hr_admin');
+    } else {
+      targetUsers = sbUsers.filter(u => u.role === recipientRole);
+    }
   }
 
   console.log(`[Broadcast Debug] Resolved ${targetUsers.length} recipient users from Supabase.`);
 
-  // 3. Generate explicit per-recipient Notification records
+  // 2. Generate explicit per-recipient Notification records for Supabase database
   const notifsToCreate: Notification[] = targetUsers.map(user => ({
     id: generateUuid(),
     userId: user.id,
@@ -364,17 +303,12 @@ export const triggerAnnouncementNotification = async (
   };
   notifsToCreate.push(globalNotif);
 
-  // 4. Batch insert ALL notification records into Supabase notifications table
+  // 3. Batch insert ALL notification records into Supabase notifications table
   const saved = await saveNotificationsBatchToSupabase(notifsToCreate);
   console.log(`[Broadcast Debug] Batch saved ${notifsToCreate.length} notification rows to Supabase: ${saved}`);
 
-  // 5. Emit Realtime WebSocket event for online clients
+  // 4. Emit Realtime WebSocket event for online clients
   triggerRealtimeBroadcast('data_changed', { type: 'announcement', title, count: notifsToCreate.length });
-
-  // Update local state for immediate UI feedback on sender device
-  const notifications = getStoredNotifications();
-  notifsToCreate.forEach(n => notifications.unshift(n));
-  localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
 
   return saved;
 };

@@ -139,10 +139,7 @@ export const App: React.FC = () => {
     const syncDatabaseAndNotifications = async () => {
       if (isSupabaseConfigured) {
         const sbUsers = await fetchEmployeesFromSupabase();
-        if (sbUsers && sbUsers.length > 0) {
-          setUsers(sbUsers);
-          localStorage.setItem('apes_users_v3', JSON.stringify(sbUsers));
-        }
+        if (sbUsers && sbUsers.length > 0) setUsers(sbUsers);
 
         const sbDepts = await fetchDepartmentsFromSupabase();
         if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
@@ -151,20 +148,13 @@ export const App: React.FC = () => {
         if (sbEvals && sbEvals.length > 0) setEvaluations(sbEvals);
 
         const sbNotifs = await fetchNotificationsFromSupabase(currentUser?.id, currentUser?.role);
-        if (sbNotifs && sbNotifs.length > 0) {
-          mergeRemoteNotifications(sbNotifs);
-          const computed = getRoleBasedNotifications(currentUser);
-          console.log(`[Broadcast Debug] Notification sync for user ${currentUser?.name || 'guest'} (${currentUser?.role || 'none'}): ${computed.length} matching notifications.`);
+        if (sbNotifs) {
+          const computed = getRoleBasedNotifications(sbNotifs, currentUser);
           setNotifications(computed);
-        } else if (currentUser?.id) {
-          setNotifications(getRoleBasedNotifications(currentUser));
         }
       } else {
         const storedUsers = getStoredUsers();
         setUsers(storedUsers);
-        if (currentUser?.id) {
-          setNotifications(getRoleBasedNotifications(currentUser));
-        }
       }
     };
 
@@ -236,18 +226,16 @@ export const App: React.FC = () => {
           fetchNotificationsFromSupabase(authenticatedUser.id, authenticatedUser.role)
         ]);
 
-        if (sbUsers && sbUsers.length > 0) { setUsers(sbUsers); saveUsers(sbUsers); }
-        if (sbDepts && sbDepts.length > 0) { setDepartments(sbDepts); }
-        if (sbEvals && sbEvals.length > 0) { setEvaluations(sbEvals); }
-        if (sbNotifs && sbNotifs.length > 0) {
-          mergeRemoteNotifications(sbNotifs);
+        if (sbUsers && sbUsers.length > 0) setUsers(sbUsers);
+        if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
+        if (sbEvals && sbEvals.length > 0) setEvaluations(sbEvals);
+        if (sbNotifs) {
+          setNotifications(getRoleBasedNotifications(sbNotifs, authenticatedUser));
         }
       } catch (e) {
         console.warn('Error syncing Supabase data on login:', e);
       }
     }
-    
-    setNotifications(getRoleBasedNotifications(authenticatedUser));
 
     const savedTab = localStorage.getItem('apes_active_tab_v3') || 'dashboard';
     setActiveTab(savedTab);
@@ -295,15 +283,17 @@ export const App: React.FC = () => {
   };
 
   const handleMarkNotificationRead = async (notifId: string) => {
-    markNotificationAsRead(notifId, currentUser.id);
+    if (!currentUser) return;
+    const target = notifications.find(n => n.id === notifId);
+    if (target) {
+      await markNotificationAsRead(target, currentUser.id);
+    }
     if (isSupabaseConfigured) {
-      const sbNotifs = await fetchNotificationsFromSupabase(currentUser.id);
-      if (sbNotifs && sbNotifs.length > 0) {
-        setNotifications(getRoleBasedNotifications(currentUser));
-        return;
+      const sbNotifs = await fetchNotificationsFromSupabase(currentUser.id, currentUser.role);
+      if (sbNotifs) {
+        setNotifications(getRoleBasedNotifications(sbNotifs, currentUser));
       }
     }
-    setNotifications(getRoleBasedNotifications(currentUser));
   };
 
   const handleSaveUsers = (updatedUsers: User[]) => {
