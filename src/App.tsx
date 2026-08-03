@@ -142,7 +142,16 @@ export const App: React.FC = () => {
     const syncDatabaseAndNotifications = async () => {
       if (isSupabaseConfigured) {
         const sbUsers = await fetchEmployeesFromSupabase();
-        if (sbUsers && sbUsers.length > 0) setUsers(sbUsers);
+        if (sbUsers && sbUsers.length > 0) {
+          setUsers(sbUsers);
+          if (currentUser) {
+            const updatedSelf = sbUsers.find(u => u.email.toLowerCase() === currentUser.email.toLowerCase());
+            if (updatedSelf) {
+              setCurrentUser(updatedSelf);
+              setCurrentUserStore(updatedSelf);
+            }
+          }
+        }
 
         const sbDepts = await fetchDepartmentsFromSupabase();
         if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
