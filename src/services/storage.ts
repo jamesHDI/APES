@@ -789,9 +789,6 @@ export const getStoredCycles = (): EvaluationCycle[] => {
 };
 
 export const getStoredEvaluations = (): Evaluation[] => {
-  const data = localStorage.getItem(EVALUATIONS_KEY);
-  if (data) return JSON.parse(data);
-  localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(SEED_EVALUATIONS));
   return SEED_EVALUATIONS;
 };
 
