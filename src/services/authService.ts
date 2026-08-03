@@ -217,11 +217,29 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
     avatarUrl: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`
   };
 
+  // ── TRANSACTIONAL ORDERING: Step 1. Insert Employee Record into Supabase Database ──
+  let isSavedInSupabase = false;
+  if (isSupabaseConfigured && supabase) {
+    isSavedInSupabase = await saveEmployeeToSupabase(newUser);
+    if (!isSavedInSupabase) {
+      console.error(`[Registration Error] Could not save employee record for ${normalizedEmail} to Supabase. Aborting registration.`);
+      return { 
+        user: null, 
+        error: `Registration failed: Unable to write employee record (${normalizedEmail}) to Supabase cloud database. Please try again.` 
+      };
+    }
+  } else {
+    isSavedInSupabase = true;
+  }
+
+  // ── Step 2. Update Local Storage Cache AFTER Database Confirmation ──
   const updatedUsers = [newUser, ...users];
   saveUsers(updatedUsers);
-  await saveEmployeeToSupabase(newUser);
-  triggerRegistrationNotification(newUser);
 
+  // ── Step 3. Create Admin Notification ONLY AFTER Database Record Insert Succeeded ──
+  await triggerRegistrationNotification(newUser);
+
+  // ── Step 4. Optional Supabase Auth Sign Up ──
   if (isSupabaseConfigured && supabase) {
     try {
       await supabase.auth.signUp({
