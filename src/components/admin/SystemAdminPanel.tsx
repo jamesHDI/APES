@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Department, EvaluationCycle, AuditLog } from '../../types';
+import { User, Department, EvaluationCycle, AuditLog, isPendingUser } from '../../types';
 import { isSupabaseConfigured } from '../../services/supabaseClient';
 import { 
   saveEmployeeToSupabase, 
@@ -39,7 +39,7 @@ export const SystemAdminPanel: React.FC<SystemAdminPanelProps> = ({
   auditLogs,
   onSelectTab,
 }) => {
-  const pendingApprovalsCount = users.filter((u) => u.approvalStatus === 'pending' || u.isApproved === false).length;
+  const pendingApprovalsCount = users.filter(isPendingUser).length;
   const [syncing, setSyncing] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 

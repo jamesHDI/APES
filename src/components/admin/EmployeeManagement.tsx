@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Department, Role, EmploymentStatus } from '../../types';
+import { User, Department, Role, EmploymentStatus, isPendingUser } from '../../types';
 import { 
   Users, 
   UserPlus, 
@@ -96,7 +96,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
   const totalEmployees = userList.length;
   const totalDeptHeads = userList.filter(isDeptHead).length;
   const activeCount = userList.filter(u => u.isActive !== false && u.isApproved !== false && u.approvalStatus !== 'pending').length;
-  const pendingCount = userList.filter(u => u.approvalStatus === 'pending' || u.isApproved === false).length;
+  const pendingCount = userList.filter(isPendingUser).length;
   const inactiveCount = userList.filter(u => u.isActive === false).length;
 
   const availablePositions = Array.from(new Set(userList.map(u => u.position).filter(Boolean))).sort();

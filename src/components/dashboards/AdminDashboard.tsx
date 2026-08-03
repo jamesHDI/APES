@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Department, AuditLog } from '../../types';
+import { User, Department, AuditLog, isPendingUser } from '../../types';
 import {
   Users,
   Building2,
@@ -40,7 +40,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSelectTab,
 }) => {
   const activeUsers = users.filter((u) => u.isActive);
-  const pendingApprovals = users.filter((u) => u.approvalStatus === 'pending' || u.isApproved === false);
+  const pendingApprovals = users.filter(isPendingUser);
 
   const quickLinks = [
     { label: 'Pending Approvals', icon: UserCheck, action: () => onSelectTab && onSelectTab('pending_approvals'), badge: pendingApprovals.length },
