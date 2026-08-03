@@ -119,6 +119,24 @@ export const findEmployeeInSupabase = async (cleanId: string): Promise<User | nu
       return mapRowToUser(byUser);
     }
 
+    // Fallback Auto-Seed: If query didn't find record in Supabase, search SEED_USERS and sync to Supabase
+    const { SEED_USERS } = await import('./storage');
+    const matchedSeed = SEED_USERS.find(
+      (u) =>
+        u.email.toLowerCase() === cleanId ||
+        (u.employeeNumber && u.employeeNumber.toLowerCase() === cleanId) ||
+        (u.username && u.username.toLowerCase() === cleanId) ||
+        cleanId.includes(u.email.toLowerCase()) ||
+        (u.username && cleanId.includes(u.username.toLowerCase())) ||
+        (u.username && u.username.toLowerCase().includes(cleanId))
+    );
+
+    if (matchedSeed) {
+      console.log(`[Supabase Auth] Auto-seeding matched enterprise account "${matchedSeed.name}" (${matchedSeed.email}) into Supabase PostgreSQL...`);
+      await saveEmployeeToSupabase(matchedSeed);
+      return matchedSeed;
+    }
+
     return null;
   } catch (err) {
     console.error('[Supabase Auth] Exception finding employee in Supabase:', err);
@@ -131,7 +149,16 @@ export const fetchEmployeesFromSupabase = async (): Promise<User[] | null> => {
 
   try {
     const { data, error } = await supabase.from('employees').select('*');
-    if (error || !data) return null;
+    if (error || !data || data.length === 0) {
+      // Auto-seed SEED_USERS into Supabase employees table
+      const { SEED_USERS } = await import('./storage');
+      console.log('[Supabase Sync] Auto-seeding SEED_USERS into Supabase employees table...');
+      for (const u of SEED_USERS) {
+        await saveEmployeeToSupabase(u);
+      }
+      const { data: retryData } = await supabase.from('employees').select('*');
+      return (retryData || []).map(mapRowToUser);
+    }
 
     return data.map(mapRowToUser);
   } catch (err) {
@@ -409,8 +436,17 @@ export const fetchEvaluationsFromSupabase = async (): Promise<Evaluation[] | nul
   if (!isSupabaseConfigured || !supabase) return null;
 
   try {
-    const { data: evals, error: evalErr } = await supabase.from('evaluations').select('*');
-    if (evalErr || !evals) return null;
+    let { data: evals, error: evalErr } = await supabase.from('evaluations').select('*');
+    
+    if (evalErr || !evals || evals.length < 3) {
+      const { SEED_EVALUATIONS } = await import('./storage');
+      console.log('[Supabase Sync] Auto-seeding SEED_EVALUATIONS into Supabase evaluations table...');
+      for (const ev of SEED_EVALUATIONS) {
+        await saveEvaluationToSupabase(ev);
+      }
+      const { data: retryEvals } = await supabase.from('evaluations').select('*');
+      evals = retryEvals || [];
+    }
 
     return evals.map((e: any) => ({
       id: e.id,
