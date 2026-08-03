@@ -185,12 +185,23 @@ export const SystemAdminPanel: React.FC<SystemAdminPanelProps> = ({
         </div>
 
         <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 text-xs space-y-2">
-          <p className="font-bold text-slate-800 dark:text-slate-200">Supabase Connection Credentials Check:</p>
-          <p className="text-slate-600 dark:text-slate-400 font-mono text-[11px]">
-            VITE_SUPABASE_URL: {isSupabaseConfigured ? 'Configured ✓' : 'Unconfigured (Using Local Fallback)'}
+          <p className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+            <Cloud className="w-4 h-4 text-brand-500" />
+            Supabase Connection Credentials Check:
           </p>
           <p className="text-slate-600 dark:text-slate-400 font-mono text-[11px]">
-            SQL Migration File: <a href="file:///c:/Users/john%20laurence/OneDrive/Desktop/Documents/OJT%20FILES/new%20ojt%20files/APES/supabase_schema.sql" className="text-brand-600 font-bold hover:underline">supabase_schema.sql</a>
+            VITE_SUPABASE_URL: {isSupabaseConfigured ? 'Configured ✓ (Cloud Sync Active)' : 'Unconfigured (Missing in Vercel Environment Variables)'}
+          </p>
+          {!isSupabaseConfigured && (
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-900 dark:text-amber-200 text-[11px] font-medium space-y-1">
+              <p className="font-bold">⚠️ To enable Supabase Cloud Database on Vercel:</p>
+              <p>1. Open your Vercel Project Settings &rarr; Environment Variables.</p>
+              <p>2. Add <b>VITE_SUPABASE_URL</b> and <b>VITE_SUPABASE_ANON_KEY</b>.</p>
+              <p>3. Redeploy your Vercel project to activate 100% cloud synchronization across all devices.</p>
+            </div>
+          )}
+          <p className="text-slate-600 dark:text-slate-400 font-mono text-[11px]">
+            SQL Migration Directory: <span className="font-bold text-brand-600">supabase/migrations/</span>
           </p>
         </div>
       </div>
