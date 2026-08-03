@@ -224,10 +224,44 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 )}
               </button>
             </form>
+
+            {/* Quick Demo Accounts Helper */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80">
+              <div className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 text-center">
+                Quick Demo Login (Click to Auto-Fill)
+              </div>
+              <div className="grid grid-cols-3 gap-1.5 text-[10px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => { setIdentifier('Admin.Systemad@hdiadventures.com'); setPassword('ADMIN'); }}
+                  className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-orange-50 dark:hover:bg-slate-700 transition-colors text-center border border-slate-200/80 dark:border-slate-700 truncate"
+                  title="Admin.Systemad@hdiadventures.com"
+                >
+                  🛡️ System Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIdentifier('grazie.esguerra@hdiadventures.com'); setPassword('password'); }}
+                  className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-orange-50 dark:hover:bg-slate-700 transition-colors text-center border border-slate-200/80 dark:border-slate-700 truncate"
+                  title="grazie.esguerra@hdiadventures.com"
+                >
+                  👑 Dept Head
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIdentifier('employee.sales@hdiadventures.com'); setPassword('password'); }}
+                  className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-orange-50 dark:hover:bg-slate-700 transition-colors text-center border border-slate-200/80 dark:border-slate-700 truncate"
+                  title="employee.sales@hdiadventures.com"
+                >
+                  👥 Employee
+                </button>
+              </div>
+            </div>
+
           </div>
 
           {/* Footer */}
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 text-center space-y-1">
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-center space-y-1">
             <p className="text-xs font-bold text-slate-700 dark:text-slate-300">HDI HIVE</p>
             <p className="text-[10px] text-slate-400 dark:text-slate-500">
               Performance Evaluation System v3.0 &nbsp;·&nbsp; Strictly Confidential
