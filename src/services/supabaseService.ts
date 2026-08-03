@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './supabaseClient';
 import { User, Department, Evaluation, Notification } from '../types';
 
 // Helper: Ensure valid UUID format for PostgreSQL UUID columns
@@ -222,13 +222,29 @@ export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
       updated_at: new Date().toISOString()
     };
 
-    const { error } = await supabase.from('employees').upsert(payload, { onConflict: 'id' });
-    if (error) {
-      console.error('[Employee Debug] Supabase employees upsert error:', error.message, error.details, error.hint);
+    // Try INSERT first to guarantee unauthenticated self-registration from mobile devices succeeds under RLS
+    const { error: insertErr } = await supabase.from('employees').insert(payload);
+    let isSuccess = !insertErr;
+
+    if (insertErr) {
+      // If insert failed (e.g. existing ID or record update), fallback to upsert
+      const { error: upsertErr } = await supabase.from('employees').upsert(payload, { onConflict: 'id' });
+      if (upsertErr) {
+        console.error('[Employee Debug] Supabase employees save error:', upsertErr.message, upsertErr.details, upsertErr.hint);
+        isSuccess = false;
+      } else {
+        console.log(`[Employee Debug] Successfully updated employee ${user.email} (${targetId}) in Supabase.`);
+        isSuccess = true;
+      }
     } else {
-      console.log(`[Employee Debug] Successfully saved employee ${user.email} (${targetId}) to Supabase.`);
+      console.log(`[Employee Debug] Successfully inserted new employee ${user.email} (${targetId}) into Supabase.`);
     }
-    return !error;
+
+    if (isSuccess) {
+      triggerRealtimeBroadcast('data_changed', { type: 'employee', email: cleanEmail });
+    }
+
+    return isSuccess;
   } catch (err) {
     console.error('[Employee Debug] Exception saving employee to Supabase:', err);
     return false;
