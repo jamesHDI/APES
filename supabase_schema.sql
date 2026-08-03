@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS public.employees (
     department_head_name VARCHAR(150),
     default_template_id UUID,
     username VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255),
+    requires_password_change BOOLEAN DEFAULT FALSE,
     avatar_url TEXT,
     is_active BOOLEAN DEFAULT FALSE,
     is_approved BOOLEAN DEFAULT FALSE,
@@ -200,6 +202,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     action_link TEXT,
     expiration_date TIMESTAMPTZ,
     evaluation_id UUID REFERENCES public.evaluations(id) ON DELETE SET NULL,
+    read_by_users JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

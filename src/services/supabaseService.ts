@@ -306,6 +306,7 @@ export const fetchNotificationsFromSupabase = async (userId?: string): Promise<N
       category: n.category || 'evaluation',
       type: n.type || 'action_required',
       read: n.read || false,
+      readByUsers: Array.isArray(n.read_by_users) ? n.read_by_users : [],
       isAnnouncement: Boolean(n.is_announcement),
       senderName: n.sender_name,
       actionLink: n.action_link,
@@ -326,7 +327,7 @@ export const saveNotificationToSupabase = async (notif: Notification): Promise<b
   if (!isSupabaseConfigured || !supabase) return false;
 
   try {
-    const payload = {
+    const payload: any = {
       id: ensureUuid(notif.id),
       user_id: isValidUuid(notif.userId) ? notif.userId : null,
       recipient_role: notif.recipientRole || null,
@@ -336,15 +337,15 @@ export const saveNotificationToSupabase = async (notif: Notification): Promise<b
       category: notif.category || 'evaluation',
       type: notif.type || 'action_required',
       read: notif.read || false,
+      read_by_users: notif.readByUsers || [],
       is_announcement: Boolean(notif.isAnnouncement),
       sender_name: notif.senderName || null,
       action_link: notif.actionLink || null,
       expiration_date: notif.expirationDate || null,
-      evaluation_id: isValidUuid(notif.evaluationId) ? notif.evaluationId : null,
-      created_at: new Date().toISOString()
+      evaluation_id: isValidUuid(notif.evaluationId) ? notif.evaluationId : null
     };
 
-    const { error } = await supabase.from('notifications').upsert(payload);
+    const { error } = await supabase.from('notifications').upsert(payload, { onConflict: 'id' });
     if (error) {
       console.error('[Broadcast Debug] Supabase notifications upsert error:', error.message, error.details);
     }
@@ -369,16 +370,16 @@ export const saveNotificationsBatchToSupabase = async (notifs: Notification[]): 
       category: notif.category || 'evaluation',
       type: notif.type || 'action_required',
       read: notif.read || false,
+      read_by_users: notif.readByUsers || [],
       is_announcement: Boolean(notif.isAnnouncement),
       sender_name: notif.senderName || null,
       action_link: notif.actionLink || null,
       expiration_date: notif.expirationDate || null,
-      evaluation_id: isValidUuid(notif.evaluationId) ? notif.evaluationId : null,
-      created_at: new Date().toISOString()
+      evaluation_id: isValidUuid(notif.evaluationId) ? notif.evaluationId : null
     }));
 
     console.log(`[Broadcast Debug] Inserting batch of ${payloads.length} notification rows into Supabase...`);
-    const { error } = await supabase.from('notifications').upsert(payloads);
+    const { error } = await supabase.from('notifications').upsert(payloads, { onConflict: 'id' });
     if (error) {
       console.error('[Broadcast Debug] Supabase batch notifications insert error:', error.message, error.details);
       return false;
