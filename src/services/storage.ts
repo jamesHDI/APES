@@ -638,30 +638,7 @@ export const SEED_EVALUATIONS: Evaluation[] = [
 ];
 
 export const getStoredUsers = (): User[] => {
-  const data = localStorage.getItem(USERS_KEY);
-  if (data) {
-    try {
-      let users: User[] = JSON.parse(data);
-      const legacyIds = new Set(['usr_sys_01', 'usr_depthead_01', 'usr_emp_01', 'usr_sup_01', 'usr_pres_01', 'usr_pod_01', 'usr_hr_01']);
-      users = users.filter(u => !legacyIds.has(u.id));
-
-      // Ensure default department heads exist in user list
-      SEED_USERS.forEach(seedU => {
-        const existingIdx = users.findIndex(u => u.id === seedU.id || (u.email && u.email.toLowerCase() === seedU.email.toLowerCase()));
-        if (existingIdx >= 0) {
-          users[existingIdx] = { ...seedU, ...users[existingIdx] };
-        } else {
-          users.push(seedU);
-        }
-      });
-
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
-      return users;
-    } catch {
-      // JSON parse fallback
-    }
-  }
-  localStorage.setItem(USERS_KEY, JSON.stringify(SEED_USERS));
+  // Deterministic enterprise seed users — dynamic accounts are loaded live from Supabase PostgreSQL
   return SEED_USERS;
 };
 
