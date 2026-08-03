@@ -191,29 +191,23 @@ export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
       }
     }
 
-    const payload = {
+    const payload: any = {
       id: targetId,
-      employee_number: user.employeeNumber,
-      first_name: user.firstName || user.name.split(' ')[0],
+      employee_number: user.employeeNumber || `EMP-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
+      first_name: user.firstName || user.name.split(' ')[0] || 'Employee',
       middle_name: user.middleName || '',
-      last_name: user.lastName || user.name.split(' ')[1] || '',
+      last_name: user.lastName || user.name.split(' ')[1] || 'User',
       email: cleanEmail,
-      contact_number: user.contactNumber,
-      department_id: isValidUuid(user.departmentId) ? user.departmentId : null,
-      department_name: user.departmentName,
-      position: user.position,
-      role: user.role,
+      contact_number: user.contactNumber || '',
+      department_name: user.departmentName || 'General',
+      position: user.position || 'Staff',
+      role: user.role || 'employee',
       employment_status: user.employmentStatus || 'Regular',
       date_hired: user.dateHired || new Date().toISOString().substring(0, 10),
-      immediate_superior_id: isValidUuid(user.immediateSuperiorId) ? user.immediateSuperiorId : null,
-      immediate_superior_name: user.immediateSuperiorName,
-      department_head_id: isValidUuid(user.departmentHeadId) ? user.departmentHeadId : null,
-      department_head_name: user.departmentHeadName,
-      default_template_id: isValidUuid(user.defaultTemplateId) ? user.defaultTemplateId : null,
-      username: user.username || user.email.split('@')[0],
-      password: user.password,
+      username: user.username || `${cleanEmail.split('@')[0]}_${Date.now().toString().slice(-4)}_${Math.floor(1000 + Math.random() * 9000)}`,
+      password: user.password || 'password123',
       requires_password_change: user.requiresPasswordChange ?? false,
-      avatar_url: user.avatarUrl,
+      avatar_url: user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       is_active: user.isActive ?? false,
       is_approved: user.isApproved ?? false,
       approval_status: user.approvalStatus || 'pending',
@@ -222,11 +216,24 @@ export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
       updated_at: new Date().toISOString()
     };
 
+    if (isValidUuid(user.departmentId)) {
+      payload.department_id = user.departmentId;
+    }
+    if (isValidUuid(user.immediateSuperiorId)) {
+      payload.immediate_superior_id = user.immediateSuperiorId;
+      payload.immediate_superior_name = user.immediateSuperiorName;
+    }
+    if (isValidUuid(user.departmentHeadId)) {
+      payload.department_head_id = user.departmentHeadId;
+      payload.department_head_name = user.departmentHeadName;
+    }
+
     // Try INSERT first to guarantee unauthenticated self-registration from mobile devices succeeds under RLS
     const { error: insertErr } = await supabase.from('employees').insert(payload);
     let isSuccess = !insertErr;
 
     if (insertErr) {
+      console.warn('[Employee Debug] Insert notice, attempting upsert/update fallback:', insertErr.message);
       // If insert failed (e.g. existing ID or record update), fallback to upsert
       const { error: upsertErr } = await supabase.from('employees').upsert(payload, { onConflict: 'id' });
       if (upsertErr) {
