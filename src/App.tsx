@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Role, Evaluation, EvaluationTemplate, Department, EvaluationCycle, Notification } from './types';
+import { User, Role, Evaluation, EvaluationTemplate, Department, EvaluationCycle, Notification, isPendingUser } from './types';
 import { 
   getStoredUsers, 
   saveUsers,
@@ -684,7 +684,7 @@ export const App: React.FC = () => {
     );
   }
 
-  const pendingAccountCount = users.filter(u => u.approvalStatus === 'pending' || u.isApproved === false).length;
+  const pendingAccountCount = users.filter(isPendingUser).length;
 
   return (
     <div className="h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">

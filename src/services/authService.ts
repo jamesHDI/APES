@@ -146,7 +146,7 @@ export const changeUserPassword = async (userIdOrEmail: string, newPassword: str
 
   if (idx >= 0) {
     targetUser = { ...users[idx], password: newPassword, requiresPasswordChange: false };
-    users[idx] = targetUser;
+    users[idx] = targetUser as User;
   } else {
     const sbUser = await findEmployeeInSupabase(cleanId);
     if (sbUser) {

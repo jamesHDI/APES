@@ -44,6 +44,24 @@ export interface User {
   requiresPasswordChange?: boolean;   // force change on first login
 }
 
+export const isPendingUser = (u: User): boolean => {
+  if (!u) return false;
+  if (u.role === 'system_admin') return false;
+  if (u.approvalStatus === 'approved' || u.approvalStatus === 'rejected') return false;
+  if (u.isApproved === true) return false;
+
+  const statusStr = (u.approvalStatus || '').toString().toLowerCase();
+  if (statusStr === 'pending' || statusStr === 'pending_approval' || statusStr.includes('pending')) {
+    return true;
+  }
+
+  if (u.isApproved === false || u.isApproved === undefined || u.isApproved === null) {
+    return true;
+  }
+
+  return false;
+};
+
 export interface Department {
   id: string;
   name: string;

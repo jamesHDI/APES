@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Department, Role } from '../../types';
+import { User, Department, Role, isPendingUser } from '../../types';
 import { 
   UserCheck, 
   UserX, 
@@ -27,11 +27,7 @@ export const PendingApprovalsDashboard: React.FC<PendingApprovalsDashboardProps>
   onRejectUser,
 }) => {
   // Only show accounts that are currently pending review — approved & rejected accounts automatically leave the queue
-  const pendingList = users.filter(u => 
-    (u.approvalStatus as string) === 'pending' || 
-    (u.approvalStatus as string) === 'pending_approval' || 
-    (u.isApproved === false && u.approvalStatus !== 'rejected')
-  );
+  const pendingList = users.filter(isPendingUser);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   
@@ -50,11 +46,14 @@ export const PendingApprovalsDashboard: React.FC<PendingApprovalsDashboardProps>
     setTimeout(() => setToastMsg(null), 3000);
   };
 
-  const filteredPending = pendingList.filter((u) => 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.departmentName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPending = pendingList.filter((u) => {
+    const s = searchTerm.toLowerCase();
+    return (
+      (u.name || '').toLowerCase().includes(s) ||
+      (u.email || '').toLowerCase().includes(s) ||
+      (u.departmentName || '').toLowerCase().includes(s)
+    );
+  });
 
   const handleOpenReview = (u: User) => {
     setSelectedUser(u);
