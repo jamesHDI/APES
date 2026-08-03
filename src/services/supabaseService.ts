@@ -95,13 +95,33 @@ export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
   if (!isSupabaseConfigured || !supabase) return false;
 
   try {
+    const cleanEmail = (user.email || '').trim().toLowerCase();
+    
+    // Check if employee with same email already exists in Supabase to reuse its UUID and avoid employees_email_key unique constraint error
+    let targetId = isValidUuid(user.id) ? user.id : ensureUuid(user.id);
+    if (cleanEmail) {
+      try {
+        const { data: existing } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('email', cleanEmail)
+          .maybeSingle();
+
+        if (existing && existing.id) {
+          targetId = existing.id;
+        }
+      } catch (e) {
+        // Fallback to computed targetId
+      }
+    }
+
     const payload = {
-      id: isValidUuid(user.id) ? user.id : ensureUuid(user.id),
+      id: targetId,
       employee_number: user.employeeNumber,
       first_name: user.firstName || user.name.split(' ')[0],
       middle_name: user.middleName || '',
       last_name: user.lastName || user.name.split(' ')[1] || '',
-      email: user.email.toLowerCase(),
+      email: cleanEmail,
       contact_number: user.contactNumber,
       // Set FK references to null to avoid constraint violations if referenced records don't exist in Supabase
       department_id: null,
@@ -129,11 +149,13 @@ export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
 
     const { error } = await supabase.from('employees').upsert(payload, { onConflict: 'id' });
     if (error) {
-      console.warn('Supabase employees upsert error:', error.message, error.details, error.hint);
+      console.error('[Employee Debug] Supabase employees upsert error:', error.message, error.details, error.hint);
+    } else {
+      console.log(`[Employee Debug] Successfully saved employee ${user.email} (${targetId}) to Supabase.`);
     }
     return !error;
   } catch (err) {
-    console.warn('Error saving employee to Supabase:', err);
+    console.error('[Employee Debug] Exception saving employee to Supabase:', err);
     return false;
   }
 };

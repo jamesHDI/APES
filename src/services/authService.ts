@@ -47,13 +47,59 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
 
   // 2. Lookup matched user
   const users = getStoredUsers();
-  const matchedUser = users.find(
+  let matchedUser = users.find(
     (u) => u.email.toLowerCase() === cleanId || 
            (u.employeeNumber && u.employeeNumber.toLowerCase() === cleanId) ||
            (u.username && u.username.toLowerCase() === cleanId) ||
            u.name.toLowerCase() === cleanId ||
            u.name.toLowerCase().includes(cleanId)
   );
+
+  // If not found in local storage, query Supabase directly for fallback user record
+  if (!matchedUser && isSupabaseConfigured && supabase) {
+    try {
+      console.log(`[Auth Debug] Local match failed for ${cleanId}. Querying Supabase employees directly...`);
+      const { data: sbEmp, error: sbErr } = await supabase
+        .from('employees')
+        .select('*')
+        .or(`email.ilike.${cleanId},employee_number.ilike.${cleanId},username.ilike.${cleanId}`)
+        .maybeSingle();
+
+      if (sbEmp && !sbErr) {
+        console.log(`[Auth Debug] User ${sbEmp.email} found in Supabase! Hydrating user record.`);
+        const mappedUser: User = {
+          id: sbEmp.id,
+          employeeNumber: sbEmp.employee_number,
+          firstName: sbEmp.first_name,
+          middleName: sbEmp.middle_name,
+          lastName: sbEmp.last_name,
+          name: `${sbEmp.first_name} ${sbEmp.last_name}`,
+          email: sbEmp.email,
+          contactNumber: sbEmp.contact_number,
+          role: sbEmp.role,
+          departmentId: sbEmp.department_id,
+          departmentName: sbEmp.department_name,
+          position: sbEmp.position,
+          employmentStatus: sbEmp.employment_status,
+          dateHired: sbEmp.date_hired,
+          username: sbEmp.username,
+          password: sbEmp.password || (sbEmp.email === 'Admin.Systemad@hdiadventures.com' ? 'ADMIN' : 'password'),
+          isActive: sbEmp.is_active,
+          isApproved: sbEmp.is_approved,
+          approvalStatus: sbEmp.approval_status,
+        };
+
+        const currentUsers = getStoredUsers();
+        if (!currentUsers.some(u => u.id === mappedUser.id || u.email.toLowerCase() === mappedUser.email.toLowerCase())) {
+          currentUsers.push(mappedUser);
+          saveUsers(currentUsers);
+        }
+        matchedUser = mappedUser;
+      }
+    } catch (e) {
+      console.warn('[Auth Debug] Supabase fallback query exception:', e);
+    }
+  }
 
   if (!matchedUser) {
     return { user: null, error: `Invalid Employee ID or Email address (${identifier}). Account not found.` };

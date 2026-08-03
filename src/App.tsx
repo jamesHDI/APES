@@ -138,6 +138,9 @@ export const App: React.FC = () => {
   useEffect(() => {
     const syncDatabaseAndNotifications = async () => {
       if (isSupabaseConfigured) {
+        const storedUsers = getStoredUsers();
+        storedUsers.forEach(u => saveEmployeeToSupabase(u));
+
         const sbUsers = await fetchEmployeesFromSupabase();
         if (sbUsers && sbUsers.length > 0) {
           // Merge sbUsers with SEED_USERS to ensure seed users and new Supabase registrations coexist cleanly
@@ -148,7 +151,7 @@ export const App: React.FC = () => {
             }
           });
           setUsers(mergedUsers);
-          saveUsers(mergedUsers);
+          localStorage.setItem('apes_users_v3', JSON.stringify(mergedUsers));
         }
 
         const sbDepts = await fetchDepartmentsFromSupabase();
