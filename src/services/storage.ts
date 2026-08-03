@@ -34,7 +34,7 @@ export const SEED_USERS: User[] = [
     position: 'System Administrator',
     employmentStatus: 'Regular',
     dateHired: '2024-01-01',
-    avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     isActive: true,
     isApproved: true,
     approvalStatus: 'approved',
