@@ -90,15 +90,38 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
     return { user: null, error: `Account ${matchedUser.name} is currently Deactivated / Inactive. Contact HR Administrator.` };
   }
 
-  // 5. Supabase Auth Session Sign-In
+  // 5. Supabase Auth Session Establishment
   if (isSupabaseConfigured && supabase) {
     try {
-      await supabase.auth.signInWithPassword({
-        email: matchedUser.email,
-        password: password || matchedUser.password || 'password123',
+      const authEmail = matchedUser.email.toLowerCase();
+      const authPassword = password || matchedUser.password || 'password123';
+
+      let { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+        email: authEmail,
+        password: authPassword,
       });
+
+      // If account does not exist in auth.users yet, provision it on first login
+      if (authErr && (authErr.message.includes('Invalid login credentials') || authErr.message.includes('User not found'))) {
+        const { data: signUpData } = await supabase.auth.signUp({
+          email: authEmail,
+          password: authPassword,
+        });
+
+        if (signUpData?.user) {
+          const retryRes = await supabase.auth.signInWithPassword({
+            email: authEmail,
+            password: authPassword,
+          });
+          authData = retryRes.data;
+        }
+      }
+
+      if (authData?.user) {
+        console.log(`[Supabase Auth Session] Established active session for ${authEmail} (auth.uid: ${authData.user.id})`);
+      }
     } catch (err) {
-      console.warn('Supabase Auth session note:', err);
+      console.warn('[Supabase Auth Session] Session establishment note:', err);
     }
   }
 
