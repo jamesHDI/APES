@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Megaphone, X, Send, Calendar, Sparkles } from 'lucide-react';
+import { Megaphone, X, Send, Calendar, Sparkles, AlertTriangle } from 'lucide-react';
 import { triggerAnnouncementNotification } from '../../services/notificationService';
+import { isSupabaseConfigured } from '../../services/supabaseClient';
 
 interface AnnouncementModalProps {
   isOpen: boolean;
@@ -65,6 +66,18 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {!isSupabaseConfigured && (
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs font-semibold rounded-xl border border-amber-200 dark:border-amber-800 flex items-start space-x-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Offline Local Mode Active</p>
+              <p className="text-[11px] opacity-90 mt-0.5">
+                Your local environment is using placeholder Supabase keys. Announcements published in Offline Local Mode save locally but cannot reach physical devices over the cloud. Update your <code className="bg-amber-100 dark:bg-amber-900/60 px-1 py-0.5 rounded font-mono text-[10px]">.env</code> file with your Supabase credentials to enable cross-device broadcast sync.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
