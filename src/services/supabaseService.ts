@@ -275,11 +275,47 @@ export const saveNotificationToSupabase = async (notif: Notification): Promise<b
 
     const { error } = await supabase.from('notifications').upsert(payload);
     if (error) {
-      console.error('Supabase notifications upsert error:', error.message, error.details);
+      console.error('[Broadcast Debug] Supabase notifications upsert error:', error.message, error.details);
     }
     return !error;
   } catch (err) {
-    console.error('Error saving notification to Supabase:', err);
+    console.error('[Broadcast Debug] Error saving notification to Supabase:', err);
+    return false;
+  }
+};
+
+export const saveNotificationsBatchToSupabase = async (notifs: Notification[]): Promise<boolean> => {
+  if (!isSupabaseConfigured || !supabase || !notifs || notifs.length === 0) return false;
+
+  try {
+    const payloads = notifs.map(notif => ({
+      id: ensureUuid(notif.id),
+      user_id: isValidUuid(notif.userId) ? notif.userId : null,
+      recipient_role: notif.recipientRole || null,
+      recipient_department: notif.recipientDepartment || null,
+      title: notif.title,
+      message: notif.message,
+      category: notif.category || 'evaluation',
+      type: notif.type || 'action_required',
+      read: notif.read || false,
+      is_announcement: Boolean(notif.isAnnouncement),
+      sender_name: notif.senderName || null,
+      action_link: notif.actionLink || null,
+      expiration_date: notif.expirationDate || null,
+      evaluation_id: isValidUuid(notif.evaluationId) ? notif.evaluationId : null,
+      created_at: new Date().toISOString()
+    }));
+
+    console.log(`[Broadcast Debug] Inserting batch of ${payloads.length} notification rows into Supabase...`);
+    const { error } = await supabase.from('notifications').upsert(payloads);
+    if (error) {
+      console.error('[Broadcast Debug] Supabase batch notifications insert error:', error.message, error.details);
+      return false;
+    }
+    console.log(`[Broadcast Debug] Successfully inserted ${payloads.length} notification rows into Supabase.`);
+    return true;
+  } catch (err) {
+    console.error('[Broadcast Debug] Exception saving batch notifications to Supabase:', err);
     return false;
   }
 };

@@ -160,7 +160,9 @@ export const App: React.FC = () => {
         const sbNotifs = await fetchNotificationsFromSupabase(currentUser?.id);
         if (sbNotifs && sbNotifs.length > 0) {
           mergeRemoteNotifications(sbNotifs);
-          setNotifications(getRoleBasedNotifications(currentUser));
+          const computed = getRoleBasedNotifications(currentUser);
+          console.log(`[Broadcast Debug] Notification sync for user ${currentUser?.name || 'guest'} (${currentUser?.role || 'none'}): ${computed.length} matching notifications.`);
+          setNotifications(computed);
         } else if (currentUser?.id) {
           setNotifications(getRoleBasedNotifications(currentUser));
         }

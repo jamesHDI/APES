@@ -1,6 +1,7 @@
 import { Notification, Evaluation, User, NotificationCategory, Role } from '../types';
-import { saveNotificationToSupabase, generateUuid } from './supabaseService';
+import { saveNotificationToSupabase, saveNotificationsBatchToSupabase, generateUuid } from './supabaseService';
 import { triggerRealtimeBroadcast } from './supabaseClient';
+import { getStoredUsers } from './storage';
 
 const NOTIF_KEY = 'apes_notifications_v3';
 const READ_MAP_KEY = 'apes_user_read_map_v3';
@@ -305,11 +306,42 @@ export const triggerAnnouncementNotification = async (
   recipientRole: string = 'ALL',
   expirationDate?: string
 ): Promise<boolean> => {
-  const notifications = getStoredNotifications();
-  const notifId = generateUuid();
+  console.log(`[Broadcast Debug] Broadcast button clicked. Audience: ${recipientRole}, Title: "${title}"`);
 
-  const newNotif: Notification = {
-    id: notifId,
+  const allUsers = getStoredUsers();
+  
+  // Filter eligible recipients based on target audience
+  let targetUsers = allUsers;
+  if (recipientRole === 'ALL' || !recipientRole) {
+    targetUsers = allUsers;
+  } else if (recipientRole === 'ALL_ADMINS') {
+    targetUsers = allUsers.filter(u => u.role === 'system_admin' || u.role === 'hr_admin');
+  } else {
+    targetUsers = allUsers.filter(u => u.role === recipientRole);
+  }
+
+  console.log(`[Broadcast Debug] Target recipients count: ${targetUsers.length}`);
+
+  const notifsToCreate: Notification[] = targetUsers.map(user => ({
+    id: generateUuid(),
+    userId: user.id,
+    recipientRole: user.role,
+    recipientDepartment: user.departmentName,
+    isAnnouncement: true,
+    title,
+    message,
+    category: 'announcement',
+    date: 'Just now',
+    read: false,
+    type: 'info',
+    senderName,
+    expirationDate,
+    dateTime: new Date().toLocaleString()
+  }));
+
+  // Create fallback global notification record with userId = undefined
+  const globalNotif: Notification = {
+    id: generateUuid(),
     recipientRole: (recipientRole || 'ALL') as any,
     isAnnouncement: true,
     title,
@@ -320,12 +352,16 @@ export const triggerAnnouncementNotification = async (
     type: 'info',
     senderName,
     expirationDate,
-    dateTime: new Date().toLocaleString(),
+    dateTime: new Date().toLocaleString()
   };
+  notifsToCreate.push(globalNotif);
 
-  notifications.unshift(newNotif);
+  const notifications = getStoredNotifications();
+  notifsToCreate.forEach(n => notifications.unshift(n));
   localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
-  const saved = await saveNotificationToSupabase(newNotif);
-  triggerRealtimeBroadcast('data_changed', { type: 'announcement' });
+
+  const saved = await saveNotificationsBatchToSupabase(notifsToCreate);
+  console.log(`[Broadcast Debug] Firing Realtime broadcast event across WebSocket channels...`);
+  triggerRealtimeBroadcast('data_changed', { type: 'announcement', title, count: notifsToCreate.length });
   return saved;
 };
