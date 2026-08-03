@@ -185,6 +185,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
   try {
     const cleanEmail = (user.email || '').trim().toLowerCase();
     
+    let isExistingRecord = false;
     let targetId = isValidUuid(user.id) ? user.id : ensureUuid(user.id);
     if (cleanEmail) {
       try {
@@ -196,6 +197,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
 
         if (existing && existing.id) {
           targetId = existing.id;
+          isExistingRecord = true;
         }
       } catch (e) {
         // Fallback to computed targetId
@@ -239,33 +241,33 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       payload.department_head_name = user.departmentHeadName;
     }
 
-    // Try INSERT first to guarantee unauthenticated self-registration from mobile devices succeeds under RLS
-    const { error: insertErr } = await supabase.from('employees').insert(payload);
-
-    if (insertErr) {
-      console.error('Supabase Insert Error:', {
-        code: insertErr.code,
-        message: insertErr.message,
-        details: insertErr.details,
-        hint: insertErr.hint
-      });
-
-      // Try upsert fallback if conflict on ID
-      const { error: upsertErr } = await supabase.from('employees').upsert(payload, { onConflict: 'id' });
-      if (upsertErr) {
-        console.error('Supabase Upsert Error:', {
-          code: upsertErr.code,
-          message: upsertErr.message,
-          details: upsertErr.details,
-          hint: upsertErr.hint
-        });
+    if (isExistingRecord) {
+      // User already exists in database: Update row by ID directly
+      const { error: updateErr } = await supabase.from('employees').update(payload).eq('id', targetId);
+      if (updateErr) {
+        console.error('Supabase Employee Update Error:', updateErr);
         return {
           success: false,
           error: {
-            code: upsertErr.code || insertErr.code,
-            message: upsertErr.message || insertErr.message,
-            details: upsertErr.details || insertErr.details,
-            hint: upsertErr.hint || insertErr.hint
+            code: updateErr.code,
+            message: updateErr.message,
+            details: updateErr.details,
+            hint: updateErr.hint
+          }
+        };
+      }
+    } else {
+      // New user self-registration: Perform INSERT
+      const { error: insertErr } = await supabase.from('employees').insert(payload);
+      if (insertErr) {
+        console.error('Supabase Employee Insert Error:', insertErr);
+        return {
+          success: false,
+          error: {
+            code: insertErr.code,
+            message: insertErr.message,
+            details: insertErr.details,
+            hint: insertErr.hint
           }
         };
       }
