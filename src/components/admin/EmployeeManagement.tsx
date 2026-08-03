@@ -21,7 +21,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { RegisterEmployeeModal } from '../auth/RegisterEmployeeModal';
-import { deleteEmployeeFromSupabase } from '../../services/supabaseService';
+import { deleteEmployeeFromSupabase, saveEmployeeToSupabase } from '../../services/supabaseService';
 import * as XLSX from 'xlsx';
 
 interface EmployeeManagementProps {
@@ -199,12 +199,13 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     showToast('Password reset to default (password123). Click Save Changes to apply.');
   };
 
-  const handleSaveEmployee = () => {
+  const handleSaveEmployee = async () => {
     if (!formData.firstName || !formData.lastName || !formData.email) {
       alert('Please fill in required fields: First Name, Last Name, Email');
       return;
     }
 
+    const cleanEmail = formData.email.trim().toLowerCase();
     const fullName = `${formData.firstName} ${formData.middleName ? formData.middleName + ' ' : ''}${formData.lastName}`.trim();
     const dept = departments.find(d => d.id === formData.departmentId);
     const isDeptHeadPos = Boolean(
@@ -213,31 +214,41 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
       formData.position.toLowerCase().includes('head of')
     );
 
+    let savedTargetUser: User | null = null;
+
     if (editingUser) {
       const updated = userList.map((u) => {
         if (u.id === editingUser.id) {
-          return {
+          const userObj: User = {
             ...u,
             firstName: formData.firstName,
             middleName: formData.middleName,
             lastName: formData.lastName,
             name: fullName,
-            email: formData.email,
+            email: cleanEmail,
             contactNumber: formData.contactNumber,
             departmentId: formData.departmentId,
             departmentName: dept?.name || formData.departmentName,
             position: formData.position,
             role: formData.role,
             employmentStatus: formData.employmentStatus,
-            password: formData.passwordInput || u.password,
+            password: formData.passwordInput || u.password || 'password123',
             requiresPasswordChange: formData.forcePasswordChange,
             isDepartmentHead: isDeptHeadPos,
-          } as User;
+            isActive: true,
+            isApproved: true,
+            approvalStatus: 'approved',
+          };
+          savedTargetUser = userObj;
+          return userObj;
         }
         return u;
       });
       setUserList(updated);
       onSaveUsers(updated);
+      if (savedTargetUser) {
+        await saveEmployeeToSupabase(savedTargetUser);
+      }
       showToast(`Updated personnel profile for ${fullName}`);
     }
 
