@@ -112,13 +112,24 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
   return { user: matchedUser };
 };
 
-export const changeUserPassword = (userId: string, newPassword: string): boolean => {
+export const changeUserPassword = async (userId: string, newPassword: string): Promise<boolean> => {
   const users = getStoredUsers();
   const idx = users.findIndex(u => u.id === userId);
   if (idx < 0) return false;
-  users[idx] = { ...users[idx], password: newPassword, requiresPasswordChange: false };
+
+  const updatedUser = { ...users[idx], password: newPassword, requiresPasswordChange: false };
+  users[idx] = updatedUser;
   saveUsers(users);
-  setCurrentUserStore(users[idx]);
+  setCurrentUserStore(updatedUser);
+
+  if (isSupabaseConfigured && supabase) {
+    const saved = await saveEmployeeToSupabase(updatedUser);
+    if (!saved) {
+      console.error('[Auth Error] Failed to update user password in Supabase cloud database.');
+      return false;
+    }
+  }
+
   return true;
 };
 

@@ -107,7 +107,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
     }, 500);
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (currentUser.password && currentPassword !== currentUser.password) {
       showPasswordFeedback('error', 'Current password is incorrect.');
       return;
@@ -121,7 +121,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       return;
     }
 
-    const ok = changeUserPassword(currentUser.id, newPassword);
+    const ok = await changeUserPassword(currentUser.id, newPassword);
     if (ok) {
       setCurrentPassword('');
       setNewPassword('');
