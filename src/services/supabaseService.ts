@@ -218,7 +218,12 @@ export const fetchNotificationsFromSupabase = async (userId?: string): Promise<N
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error || !data) return null;
+    if (error) {
+      console.error('Supabase fetchNotifications error:', error.message, error.details);
+      return null;
+    }
+
+    if (!data) return [];
 
     const mapped = data.map((n: any) => ({
       id: n.id,
@@ -241,7 +246,7 @@ export const fetchNotificationsFromSupabase = async (userId?: string): Promise<N
 
     return mapped;
   } catch (err) {
-    console.warn('Error fetching notifications from Supabase:', err);
+    console.error('Exception fetching notifications from Supabase:', err);
     return null;
   }
 };
@@ -270,11 +275,11 @@ export const saveNotificationToSupabase = async (notif: Notification): Promise<b
 
     const { error } = await supabase.from('notifications').upsert(payload);
     if (error) {
-      console.warn('Supabase notifications upsert error:', error.message, error.details);
+      console.error('Supabase notifications upsert error:', error.message, error.details);
     }
     return !error;
   } catch (err) {
-    console.warn('Error saving notification to Supabase:', err);
+    console.error('Error saving notification to Supabase:', err);
     return false;
   }
 };

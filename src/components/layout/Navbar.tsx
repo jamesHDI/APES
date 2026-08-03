@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, Notification } from '../../types';
+import { isSupabaseConfigured } from '../../services/supabaseClient';
 import {
   Bell,
   Moon,
@@ -121,6 +122,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right: Notifications + Dark Mode + User */}
           <div className="flex items-center gap-1.5">
+
+            {/* Supabase Cloud Sync Status Badge */}
+            <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold">
+              <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+              <span className="text-slate-600 dark:text-slate-300">
+                {isSupabaseConfigured ? 'Cloud Sync Active' : 'Offline Local Mode'}
+              </span>
+            </div>
 
             {/* Dark / Light Mode Toggle */}
             <button
