@@ -1,5 +1,5 @@
 -- ==============================================================================
--- APES EVALUATIONS JSON PAYLOAD EXTENSIONS MIGRATION
+-- APES EVALUATIONS JSON PAYLOAD EXTENSIONS MIGRATION: 20260803030000_evaluations_json_payloads.sql
 -- Description: Adds JSONB payload columns to public.evaluations for full scorecard persistence
 -- ==============================================================================
 

@@ -1,5 +1,5 @@
 -- ==============================================================================
--- APES DATABASE SCHEMA MIGRATION: 20260803_schema_hardening.sql
+-- APES DATABASE SCHEMA MIGRATION: 20260803010000_schema_hardening.sql
 -- Description: Adds missing columns for persistent authentication, per-user read tracking, and broadcast notifications
 -- ==============================================================================
 

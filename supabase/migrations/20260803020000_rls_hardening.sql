@@ -1,5 +1,5 @@
 -- ==============================================================================
--- APES ROW LEVEL SECURITY (RLS) HARDENING MIGRATION
+-- APES ROW LEVEL SECURITY (RLS) HARDENING MIGRATION: 20260803020000_rls_hardening.sql
 -- Description: Tightens RLS policies across employees, notifications, evaluations, and departments.
 -- ==============================================================================
 
