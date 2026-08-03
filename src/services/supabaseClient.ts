@@ -23,22 +23,32 @@ if (isSupabaseConfigured) {
 
 export const supabase = client;
 
+let broadcastChannelInstance: any = null;
+
 /**
  * Triggers a 0-latency Realtime WebSocket broadcast event across all connected clients/devices.
  */
 export const triggerRealtimeBroadcast = (event: string = 'data_changed', payload: any = {}) => {
   if (!isSupabaseConfigured || !supabase) return;
   try {
-    const channel = supabase.channel('apes_broadcast_events');
-    channel.subscribe((status: string) => {
-      if (status === 'SUBSCRIBED') {
-        channel.send({
-          type: 'broadcast',
-          event,
-          payload: { timestamp: Date.now(), ...payload }
-        });
-      }
-    });
+    if (!broadcastChannelInstance) {
+      broadcastChannelInstance = supabase.channel('apes_broadcast_events');
+      broadcastChannelInstance.subscribe((status: string) => {
+        if (status === 'SUBSCRIBED') {
+          broadcastChannelInstance.send({
+            type: 'broadcast',
+            event,
+            payload: { timestamp: Date.now(), ...payload }
+          });
+        }
+      });
+    } else {
+      broadcastChannelInstance.send({
+        type: 'broadcast',
+        event,
+        payload: { timestamp: Date.now(), ...payload }
+      });
+    }
   } catch (err) {
     console.warn('Realtime broadcast error:', err);
   }
