@@ -233,12 +233,26 @@ export const App: React.FC = () => {
 
     // Fetch all fresh data from Supabase on login
     if (isSupabaseConfigured) {
-      const sbUsers = await fetchEmployeesFromSupabase();
-      if (sbUsers && sbUsers.length > 0) { setUsers(sbUsers); saveUsers(sbUsers); }
-      setNotifications(getRoleBasedNotifications(authenticatedUser));
-    } else {
-      setNotifications(getRoleBasedNotifications(authenticatedUser));
+      try {
+        const [sbUsers, sbDepts, sbEvals, sbNotifs] = await Promise.all([
+          fetchEmployeesFromSupabase(),
+          fetchDepartmentsFromSupabase(),
+          fetchEvaluationsFromSupabase(),
+          fetchNotificationsFromSupabase(authenticatedUser.id)
+        ]);
+
+        if (sbUsers && sbUsers.length > 0) { setUsers(sbUsers); saveUsers(sbUsers); }
+        if (sbDepts && sbDepts.length > 0) { setDepartments(sbDepts); }
+        if (sbEvals && sbEvals.length > 0) { setEvaluations(sbEvals); }
+        if (sbNotifs && sbNotifs.length > 0) {
+          mergeRemoteNotifications(sbNotifs);
+        }
+      } catch (e) {
+        console.warn('Error syncing Supabase data on login:', e);
+      }
     }
+    
+    setNotifications(getRoleBasedNotifications(authenticatedUser));
 
     const savedTab = localStorage.getItem('apes_active_tab_v3') || 'dashboard';
     setActiveTab(savedTab);

@@ -230,7 +230,7 @@ export const markAllNotificationsAsReadForUser = (currentUser: User) => {
   });
 };
 
-export const triggerWorkflowNotification = (
+export const triggerWorkflowNotification = async (
   targetUserId: string,
   evaluation: Evaluation,
   title: string,
@@ -238,7 +238,7 @@ export const triggerWorkflowNotification = (
   senderName: string,
   type: 'action_required' | 'info' | 'success' | 'alert' = 'action_required',
   recipientRole?: Role
-) => {
+): Promise<boolean> => {
   const notifications = getStoredNotifications();
   const category: NotificationCategory = evaluation.status.includes('pending') ? 'approval' : 'evaluation';
 
@@ -264,11 +264,12 @@ export const triggerWorkflowNotification = (
 
   notifications.unshift(newNotif);
   localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
-  saveNotificationToSupabase(newNotif);
+  const saved = await saveNotificationToSupabase(newNotif);
   triggerRealtimeBroadcast('data_changed', { type: 'workflow', evaluationId: evaluation.id });
+  return saved;
 };
 
-export const triggerRegistrationNotification = (newUser: User) => {
+export const triggerRegistrationNotification = async (newUser: User): Promise<boolean> => {
   const notifications = getStoredNotifications();
   const notifId = generateUuid();
 
@@ -292,17 +293,18 @@ export const triggerRegistrationNotification = (newUser: User) => {
 
   notifications.unshift(newNotif);
   localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
-  saveNotificationToSupabase(newNotif);
+  const saved = await saveNotificationToSupabase(newNotif);
   triggerRealtimeBroadcast('data_changed', { type: 'registration', userId: newUser.id });
+  return saved;
 };
 
-export const triggerAnnouncementNotification = (
+export const triggerAnnouncementNotification = async (
   title: string,
   message: string,
   senderName: string,
   recipientRole: string = 'ALL',
   expirationDate?: string
-) => {
+): Promise<boolean> => {
   const notifications = getStoredNotifications();
   const notifId = generateUuid();
 
@@ -323,6 +325,7 @@ export const triggerAnnouncementNotification = (
 
   notifications.unshift(newNotif);
   localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
-  saveNotificationToSupabase(newNotif);
+  const saved = await saveNotificationToSupabase(newNotif);
   triggerRealtimeBroadcast('data_changed', { type: 'announcement' });
+  return saved;
 };

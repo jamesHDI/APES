@@ -23,12 +23,12 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) return;
 
     setIsSubmitting(true);
-    triggerAnnouncementNotification(title.trim(), message.trim(), senderName, recipientRole, expirationDate || undefined);
+    await triggerAnnouncementNotification(title.trim(), message.trim(), senderName, recipientRole, expirationDate || undefined);
 
     setIsSubmitting(false);
     setTitle('');
