@@ -125,6 +125,13 @@ CREATE TABLE IF NOT EXISTS public.evaluations (
     supervisor_summary_comment TEXT,
     president_summary_comment TEXT,
     pod_validation_comment TEXT,
+
+    kpi_ratings_data JSONB DEFAULT '[]'::jsonb,
+    core_value_ratings_data JSONB DEFAULT '[]'::jsonb,
+    signatures_data JSONB DEFAULT '{}'::jsonb,
+    audit_trail_data JSONB DEFAULT '[]'::jsonb,
+    development_plan_data JSONB DEFAULT '{}'::jsonb,
+    personnel_action_data JSONB DEFAULT '{}'::jsonb,
     
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

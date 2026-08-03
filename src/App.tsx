@@ -152,6 +152,8 @@ export const App: React.FC = () => {
           const computed = getRoleBasedNotifications(sbNotifs, currentUser);
           setNotifications(computed);
         }
+
+        console.log(`[APES Sync - Dashboard] Synchronized cloud state from Supabase: ${sbUsers?.length || 0} employees, ${sbDepts?.length || 0} departments, ${sbEvals?.length || 0} scorecards, ${sbNotifs?.length || 0} notifications.`);
       } else {
         const storedUsers = getStoredUsers();
         setUsers(storedUsers);

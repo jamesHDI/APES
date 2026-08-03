@@ -430,12 +430,13 @@ export const fetchEvaluationsFromSupabase = async (): Promise<Evaluation[] | nul
       totalCoreValuesWeightedRating: Number(e.core_values_score || 0),
       finalRating: Number(e.final_rating || 0),
       ratingClassification: e.rating_classification,
-      kpiRatings: [],
-      coreValueRatings: [],
-      developmentPlan: { strengths: '', areasForImprovement: '', learningNeeds: [] },
-      personnelAction: { actionType: 'no_action' },
-      signatures: {},
+      kpiRatings: Array.isArray(e.kpi_ratings_data) ? e.kpi_ratings_data : [],
+      coreValueRatings: Array.isArray(e.core_value_ratings_data) ? e.core_value_ratings_data : [],
+      developmentPlan: e.development_plan_data || { strengths: '', areasForImprovement: '', learningNeeds: [] },
+      personnelAction: e.personnel_action_data || { actionType: 'no_action' },
+      signatures: e.signatures_data || {},
       evidenceFiles: [],
+      auditTrail: Array.isArray(e.audit_trail_data) ? e.audit_trail_data : [],
       createdAt: e.created_at,
       updatedAt: e.updated_at
     }));
@@ -465,10 +466,21 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
       core_values_score: evaluation.coreValuesScore,
       final_rating: evaluation.finalRating,
       rating_classification: evaluation.ratingClassification,
+      kpi_ratings_data: evaluation.kpiRatings || [],
+      core_value_ratings_data: evaluation.coreValueRatings || [],
+      signatures_data: evaluation.signatures || {},
+      audit_trail_data: evaluation.auditTrail || [],
+      development_plan_data: evaluation.developmentPlan || {},
+      personnel_action_data: evaluation.personnelAction || {},
       updated_at: new Date().toISOString()
     };
 
-    const { error } = await supabase.from('evaluations').upsert(payload);
+    const { error } = await supabase.from('evaluations').upsert(payload, { onConflict: 'id' });
+    if (error) {
+      console.error('[Evaluation Debug] Supabase evaluations upsert error:', error.message, error.details);
+    } else {
+      console.log(`[APES Sync - Eval] Saved evaluation ${evaluation.id} (${evaluation.employeeName}) to Supabase.`);
+    }
     return !error;
   } catch (err) {
     console.warn('Error saving evaluation to Supabase:', err);
