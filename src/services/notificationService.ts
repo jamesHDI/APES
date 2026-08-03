@@ -1,12 +1,13 @@
 import { Notification, Evaluation, User, NotificationCategory, Role } from '../types';
-import { saveNotificationToSupabase } from './supabaseService';
+import { saveNotificationToSupabase, generateUuid } from './supabaseService';
+import { triggerRealtimeBroadcast } from './supabaseClient';
 
 const NOTIF_KEY = 'apes_notifications_v3';
 const READ_MAP_KEY = 'apes_user_read_map_v3';
 
 export const INITIAL_SEED_NOTIFICATIONS: Notification[] = [
   {
-    id: 'notif_01',
+    id: '00000000-0000-4000-8000-000000000101',
     userId: 'usr_sup_01',
     recipientRole: 'supervisor',
     recipientDepartment: 'Sales',
@@ -25,7 +26,7 @@ export const INITIAL_SEED_NOTIFICATIONS: Notification[] = [
     evaluationId: 'eval_maritess_2025'
   },
   {
-    id: 'notif_02',
+    id: '00000000-0000-4000-8000-000000000102',
     userId: 'usr_pres_01',
     recipientRole: 'president',
     title: 'Action Required: Department Head Scorecard Review',
@@ -43,7 +44,7 @@ export const INITIAL_SEED_NOTIFICATIONS: Notification[] = [
     evaluationId: 'eval_elena_depthead_2025'
   },
   {
-    id: 'notif_announcement_01',
+    id: '00000000-0000-4000-8000-000000000103',
     recipientRole: 'ALL',
     isAnnouncement: true,
     title: 'System Announcement: 2026 Q3 Performance Appraisal Cycle Launched',
@@ -143,28 +144,31 @@ export const getRoleBasedNotifications = (currentUser?: User | null): Notificati
   if (!currentUser) return [];
 
   const filtered = all.filter((n) => {
-    // Rule A: Organization-Wide Announcements (Explicitly marked as announcement or ALL)
-    if (n.isAnnouncement || n.recipientRole === 'ALL') {
-      return true;
-    }
-
-    // Rule B: Administrative / Account / System Alerts (STRICTLY for System Admin or HR Admin)
+    // 1. Administrative / Account / System Alerts (STRICTLY for System Admin or HR Admin)
     if (
       n.category === 'account' || 
       n.category === 'system' || 
-      n.recipientRole === 'ALL_ADMINS' || 
-      n.recipientRole === 'system_admin' ||
-      n.recipientRole === 'hr_admin'
+      n.status === 'pending_approval'
     ) {
       return currentUser.role === 'system_admin' || currentUser.role === 'hr_admin';
     }
 
-    // Rule C: Direct User ID match (Private to specific user)
+    // 2. Direct User ID match (Private alert targeted to specific user)
     if (n.userId && (n.userId === currentUser.id || n.userId === currentUser.employeeNumber)) {
       return true;
     }
 
-    // Rule D: Role-Based Workflow match
+    // 3. Organization-Wide Announcements to ALL
+    if (n.recipientRole === 'ALL' || (n.isAnnouncement && (!n.recipientRole || n.recipientRole === 'ALL'))) {
+      return true;
+    }
+
+    // 4. Admin Broadcast target
+    if (n.recipientRole === 'ALL_ADMINS') {
+      return currentUser.role === 'system_admin' || currentUser.role === 'hr_admin';
+    }
+
+    // 5. Targeted Role Broadcast or Workflow match
     if (n.recipientRole && n.recipientRole === currentUser.role) {
       if (n.recipientDepartment && currentUser.role === 'dept_head') {
         return n.recipientDepartment.toLowerCase() === currentUser.departmentName.toLowerCase();
@@ -239,7 +243,7 @@ export const triggerWorkflowNotification = (
   const category: NotificationCategory = evaluation.status.includes('pending') ? 'approval' : 'evaluation';
 
   const newNotif: Notification = {
-    id: `notif_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    id: generateUuid(),
     userId: targetUserId,
     recipientRole,
     recipientDepartment: evaluation.departmentName,
@@ -261,12 +265,15 @@ export const triggerWorkflowNotification = (
   notifications.unshift(newNotif);
   localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
   saveNotificationToSupabase(newNotif);
+  triggerRealtimeBroadcast('data_changed', { type: 'workflow', evaluationId: evaluation.id });
 };
 
 export const triggerRegistrationNotification = (newUser: User) => {
   const notifications = getStoredNotifications();
+  const notifId = generateUuid();
+
   const newNotif: Notification = {
-    id: `notif_reg_${Date.now()}`,
+    id: notifId,
     recipientRole: 'system_admin',
     recipientDepartment: newUser.departmentName,
     title: 'New Employee Registration Pending Approval',
@@ -286,18 +293,22 @@ export const triggerRegistrationNotification = (newUser: User) => {
   notifications.unshift(newNotif);
   localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
   saveNotificationToSupabase(newNotif);
+  triggerRealtimeBroadcast('data_changed', { type: 'registration', userId: newUser.id });
 };
 
 export const triggerAnnouncementNotification = (
   title: string,
   message: string,
   senderName: string,
+  recipientRole: string = 'ALL',
   expirationDate?: string
 ) => {
   const notifications = getStoredNotifications();
+  const notifId = generateUuid();
+
   const newNotif: Notification = {
-    id: `notif_announcement_${Date.now()}`,
-    recipientRole: 'ALL',
+    id: notifId,
+    recipientRole: (recipientRole || 'ALL') as any,
     isAnnouncement: true,
     title,
     message,
@@ -313,4 +324,5 @@ export const triggerAnnouncementNotification = (
   notifications.unshift(newNotif);
   localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
   saveNotificationToSupabase(newNotif);
+  triggerRealtimeBroadcast('data_changed', { type: 'announcement' });
 };

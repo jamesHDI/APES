@@ -17,6 +17,7 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
+  const [recipientRole, setRecipientRole] = useState('ALL');
   const [expirationDate, setExpirationDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,11 +28,12 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
     if (!title.trim() || !message.trim()) return;
 
     setIsSubmitting(true);
-    triggerAnnouncementNotification(title.trim(), message.trim(), senderName, expirationDate || undefined);
+    triggerAnnouncementNotification(title.trim(), message.trim(), senderName, recipientRole, expirationDate || undefined);
 
     setIsSubmitting(false);
     setTitle('');
     setMessage('');
+    setRecipientRole('ALL');
     setExpirationDate('');
     onAnnouncementCreated();
     onClose();
@@ -49,10 +51,10 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
             </div>
             <div>
               <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
-                Create Organization-Wide Announcement
+                Create Broadcast Announcement
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Broadcasted to all active company accounts
+                Broadcasted to selected target audience across devices
               </p>
             </div>
           </div>
@@ -68,7 +70,26 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-              Announcement Title
+              Target Audience *
+            </label>
+            <select
+              value={recipientRole}
+              onChange={(e) => setRecipientRole(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+            >
+              <option value="ALL">📢 Entire Organization (All Roles)</option>
+              <option value="ALL_ADMINS">🛡️ System & HR Administrators Only</option>
+              <option value="dept_head">👑 Department Heads Only</option>
+              <option value="supervisor">📋 Immediate Supervisors (IS) Only</option>
+              <option value="employee">👥 Regular Employees / Appraisees Only</option>
+              <option value="pod">🔬 POD Governance Reviewers Only</option>
+              <option value="president">🏛️ President & Executive Officer Only</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+              Announcement Title *
             </label>
             <input
               type="text"
@@ -82,14 +103,14 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
 
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-              Message / Details
+              Message / Details *
             </label>
             <textarea
               required
               rows={4}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Enter announcement details for all employees..."
+              placeholder="Enter announcement details for selected recipients..."
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 outline-none resize-none leading-relaxed"
             />
           </div>

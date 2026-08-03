@@ -222,15 +222,49 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ==============================================================================
 
--- Allow employees, notifications, departments, and evaluations open read/write access for application usage
+-- 1. EMPLOYEES TABLE RLS
+ALTER TABLE public.employees ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public registration insert" ON public.employees;
+DROP POLICY IF EXISTS "Allow public select employees" ON public.employees;
+DROP POLICY IF EXISTS "Allow public update employees" ON public.employees;
 CREATE POLICY "Allow public registration insert" ON public.employees FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public select employees" ON public.employees FOR SELECT USING (true);
 CREATE POLICY "Allow public update employees" ON public.employees FOR UPDATE USING (true);
 
+-- 2. NOTIFICATIONS TABLE RLS
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public notifications insert" ON public.notifications;
+DROP POLICY IF EXISTS "Allow public notifications select" ON public.notifications;
+DROP POLICY IF EXISTS "Allow public notifications update" ON public.notifications;
 CREATE POLICY "Allow public notifications insert" ON public.notifications FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public notifications select" ON public.notifications FOR SELECT USING (true);
 CREATE POLICY "Allow public notifications update" ON public.notifications FOR UPDATE USING (true);
+
+-- 3. EVALUATIONS TABLE RLS
+ALTER TABLE public.evaluations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public evaluations insert" ON public.evaluations;
+DROP POLICY IF EXISTS "Allow public evaluations select" ON public.evaluations;
+DROP POLICY IF EXISTS "Allow public evaluations update" ON public.evaluations;
+CREATE POLICY "Allow public evaluations insert" ON public.evaluations FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public evaluations select" ON public.evaluations FOR SELECT USING (true);
+CREATE POLICY "Allow public evaluations update" ON public.evaluations FOR UPDATE USING (true);
+
+-- 4. DEPARTMENTS TABLE RLS
+ALTER TABLE public.departments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public departments select" ON public.departments;
+DROP POLICY IF EXISTS "Allow public departments update" ON public.departments;
+CREATE POLICY "Allow public departments select" ON public.departments FOR SELECT USING (true);
+CREATE POLICY "Allow public departments update" ON public.departments FOR UPDATE USING (true);
+
+-- ==============================================================================
+-- SUPABASE REALTIME PUBLICATION SETUP
+-- Enables instant WebSocket broadcasting across all devices when tables change
+-- ==============================================================================
+ALTER PUBLICATION supabase_realtime ADD TABLE public.employees;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluations;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.departments;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.audit_logs;
 
 -- STORAGE BUCKETS SETUP
 INSERT INTO storage.buckets (id, name, public) VALUES ('apes-signatures', 'apes-signatures', true) ON CONFLICT DO NOTHING;

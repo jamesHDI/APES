@@ -176,11 +176,13 @@ export const App: React.FC = () => {
     // Initial sync
     syncDatabaseAndNotifications();
 
-    // Poll every 5 seconds for rapid cross-device sync
-    const intervalId = setInterval(syncDatabaseAndNotifications, 5000);
+    // Poll every 3 seconds for fast fallback cross-device sync
+    const intervalId = setInterval(syncDatabaseAndNotifications, 3000);
 
-    // Supabase Realtime Channel
+    // Dual Supabase Realtime Channels (PostgreSQL WAL changes + WebSocket Broadcast)
     let channel: any = null;
+    let broadcastChannel: any = null;
+
     if (isSupabaseConfigured && supabase) {
       try {
         channel = supabase
@@ -191,6 +193,22 @@ export const App: React.FC = () => {
           .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
             syncDatabaseAndNotifications();
           })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'evaluations' }, () => {
+            syncDatabaseAndNotifications();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, () => {
+            syncDatabaseAndNotifications();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => {
+            syncDatabaseAndNotifications();
+          })
+          .subscribe();
+
+        broadcastChannel = supabase
+          .channel('apes_broadcast_events')
+          .on('broadcast', { event: 'data_changed' }, () => {
+            syncDatabaseAndNotifications();
+          })
           .subscribe();
       } catch (e) {
         console.warn('Realtime channel subscription error:', e);
@@ -199,8 +217,9 @@ export const App: React.FC = () => {
 
     return () => {
       clearInterval(intervalId);
-      if (channel && supabase) {
-        supabase.removeChannel(channel);
+      if (supabase) {
+        if (channel) supabase.removeChannel(channel);
+        if (broadcastChannel) supabase.removeChannel(broadcastChannel);
       }
     };
   }, [currentUser?.id]);
