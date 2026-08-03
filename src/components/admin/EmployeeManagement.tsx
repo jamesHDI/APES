@@ -176,8 +176,8 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
   };
 
   const handleDeleteUser = (user: User) => {
-    if (user.id === 'usr_default_admin' || user.email === 'Admin.Systemad@hdiadventures.com') {
-      alert('The System Administrator account cannot be deleted.');
+    if (user.id === 'usr_john_laurence' || user.email.toLowerCase() === 'johnlaurence.fabrero@gmail.com' || user.role === 'system_admin') {
+      alert('System Administrator accounts cannot be deleted.');
       return;
     }
 
