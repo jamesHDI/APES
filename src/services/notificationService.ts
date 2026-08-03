@@ -159,12 +159,12 @@ export const getRoleBasedNotifications = (currentUser?: User | null): Notificati
     }
 
     // 3. Organization-Wide Announcements to ALL
-    if (n.recipientRole === 'ALL' || (n.isAnnouncement && (!n.recipientRole || n.recipientRole === 'ALL'))) {
+    if ((n.recipientRole as string) === 'ALL' || (n.isAnnouncement && (!n.recipientRole || (n.recipientRole as string) === 'ALL'))) {
       return true;
     }
 
     // 4. Admin Broadcast target
-    if (n.recipientRole === 'ALL_ADMINS') {
+    if ((n.recipientRole as string) === 'ALL_ADMINS') {
       return currentUser.role === 'system_admin' || currentUser.role === 'hr_admin';
     }
 
