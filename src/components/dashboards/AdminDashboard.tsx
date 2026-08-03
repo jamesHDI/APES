@@ -10,6 +10,7 @@ import {
   ArrowRight,
   RotateCcw,
   GitBranch,
+  UserCheck,
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -19,6 +20,7 @@ interface AdminDashboardProps {
   auditLogs: AuditLog[];
   onOpenAdminPanel: () => void;
   onOpenWorkflowMonitoring?: () => void;
+  onSelectTab?: (tab: string) => void;
 }
 
 const getGreeting = () => {
@@ -35,14 +37,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   auditLogs,
   onOpenAdminPanel,
   onOpenWorkflowMonitoring,
+  onSelectTab,
 }) => {
   const activeUsers = users.filter((u) => u.isActive);
+  const pendingApprovals = users.filter((u) => u.approvalStatus === 'pending' || u.isApproved === false);
 
   const quickLinks = [
+    { label: 'Pending Approvals', icon: UserCheck, action: () => onSelectTab && onSelectTab('pending_approvals'), badge: pendingApprovals.length },
     { label: 'Workflow Monitoring', icon: GitBranch, action: onOpenWorkflowMonitoring || onOpenAdminPanel },
     { label: 'Manage Users & Roles', icon: Users, action: onOpenAdminPanel },
-    { label: 'Departments', icon: Building2, action: onOpenAdminPanel },
-    { label: 'Evaluation Templates', icon: SlidersHorizontal, action: onOpenAdminPanel },
+    { label: 'Departments', icon: Building2, action: () => onSelectTab && onSelectTab('dept_mgmt') },
   ];
 
   return (
@@ -122,8 +126,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <button
                 key={link.label}
                 onClick={link.action}
-                className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 transition-colors text-center group"
+                className="relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 transition-colors text-center group"
               >
+                {link.badge !== undefined && link.badge > 0 && (
+                  <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-slate-950">
+                    {link.badge}
+                  </span>
+                )}
                 <Icon className="w-6 h-6 text-slate-500 dark:text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" />
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{link.label}</span>
               </button>

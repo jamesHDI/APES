@@ -25,7 +25,13 @@ import {
   saveEmployeeToSupabase
 } from './services/supabaseService';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
-import { getStoredNotifications, getRoleBasedNotifications, markNotificationAsRead } from './services/notificationService';
+import { 
+  getStoredNotifications, 
+  getRoleBasedNotifications, 
+  markNotificationAsRead,
+  mergeRemoteNotifications 
+} from './services/notificationService';
+
 import { AnnouncementModal } from './components/common/AnnouncementModal';
 import { logoutUser } from './services/authService';
 import { Navbar } from './components/layout/Navbar';
@@ -153,6 +159,7 @@ export const App: React.FC = () => {
 
         const sbNotifs = await fetchNotificationsFromSupabase(currentUser?.id);
         if (sbNotifs && sbNotifs.length > 0) {
+          mergeRemoteNotifications(sbNotifs);
           setNotifications(getRoleBasedNotifications(currentUser));
         } else if (currentUser?.id) {
           setNotifications(getRoleBasedNotifications(currentUser));
@@ -476,6 +483,11 @@ export const App: React.FC = () => {
           auditLogs={auditLogs}
           onSaveUsers={handleSaveUsers}
           onSaveDepartments={handleSaveDepartments}
+          onSelectTab={(tab) => {
+            setActiveTab(tab);
+            setViewMode('normal');
+            localStorage.setItem('apes_active_tab_v3', tab);
+          }}
         />
       );
     }
@@ -599,6 +611,11 @@ export const App: React.FC = () => {
             }}
             onOpenTemplateBuilder={() => setActiveTab('template_builder')}
             onOpenReports={() => setActiveTab('reports')}
+            onSelectTab={(tab) => {
+              setActiveTab(tab);
+              setViewMode('normal');
+              localStorage.setItem('apes_active_tab_v3', tab);
+            }}
           />
         );
       case 'system_admin':
@@ -610,6 +627,11 @@ export const App: React.FC = () => {
             auditLogs={auditLogs}
             onOpenAdminPanel={() => setActiveTab('admin_panel')}
             onOpenWorkflowMonitoring={() => setActiveTab('workflow_monitoring')}
+            onSelectTab={(tab) => {
+              setActiveTab(tab);
+              setViewMode('normal');
+              localStorage.setItem('apes_active_tab_v3', tab);
+            }}
           />
         );
       default:
@@ -642,6 +664,8 @@ export const App: React.FC = () => {
     );
   }
 
+  const pendingAccountCount = users.filter(u => u.approvalStatus === 'pending' || u.isApproved === false).length;
+
   return (
     <div className="h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
       
@@ -667,6 +691,11 @@ export const App: React.FC = () => {
           setActiveTab('evaluations');
           setViewMode('normal');
         }}
+        onSelectTab={(tab) => {
+          setActiveTab(tab);
+          setViewMode('normal');
+          localStorage.setItem('apes_active_tab_v3', tab);
+        }}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         isSidebarOpen={isSidebarOpen}
         onOpenAnnouncementModal={() => setShowAnnouncementModal(true)}
@@ -682,6 +711,7 @@ export const App: React.FC = () => {
             localStorage.setItem('apes_active_tab_v3', tab);
           }}
           pendingCount={notifications.filter(n => !n.read).length}
+          pendingAccountCount={pendingAccountCount}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
         />

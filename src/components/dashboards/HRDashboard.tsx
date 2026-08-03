@@ -21,6 +21,7 @@ interface HRDashboardProps {
   onOpenEvaluation: (evalId: string) => void;
   onOpenTemplateBuilder: () => void;
   onOpenReports: () => void;
+  onSelectTab?: (tab: string) => void;
 }
 
 const getGreeting = () => {
@@ -38,6 +39,7 @@ export const HRDashboard: React.FC<HRDashboardProps> = ({
   onOpenEvaluation,
   onOpenTemplateBuilder,
   onOpenReports,
+  onSelectTab,
 }) => {
   const [deptFilter, setDeptFilter] = useState('all');
   const activeCycle = cycles[0];
@@ -56,37 +58,27 @@ export const HRDashboard: React.FC<HRDashboardProps> = ({
     <div className="space-y-6 pb-12">
 
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-amber-900 via-slate-900 to-slate-800 rounded-2xl p-6 text-white shadow-xl">
+      <div className="relative overflow-hidden bg-gradient-to-br from-brand-950 via-slate-900 to-slate-800 rounded-2xl p-6 text-white shadow-xl">
         <div className="absolute -top-8 -right-8 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <p className="text-amber-300 text-sm font-medium">{getGreeting()},</p>
+            <p className="text-brand-300 text-sm font-medium">{getGreeting()},</p>
             <h2 className="text-2xl font-extrabold mt-0.5">{currentUser.name}</h2>
-            <p className="text-amber-200 text-sm mt-1">
-              HR Administrator &nbsp;·&nbsp;
-              Active Cycle: <strong>{activeCycle?.name ?? 'N/A'}</strong>
+            <p className="text-brand-200 text-sm mt-1">
+              HR Administrator &nbsp;·&nbsp; Enterprise Evaluation Operations
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={onOpenTemplateBuilder}
-              className="btn btn-sm bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              Templates
-            </button>
-            <button
-              onClick={onOpenReports}
-              className="btn btn-sm bg-white/10 hover:bg-white/20 text-white border border-white/20"
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              Reports
-            </button>
-          </div>
+          <button
+            onClick={onOpenReports}
+            className="btn btn-sm bg-brand-600 hover:bg-brand-500 text-white shrink-0"
+          >
+            <BarChart3 className="w-4 h-4" />
+            HR Reports & Analytics
+          </button>
         </div>
       </div>
 
-      {/* Quick Access Cards */}
+      {/* Quick Action Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <button
           onClick={onOpenTemplateBuilder}
@@ -103,7 +95,7 @@ export const HRDashboard: React.FC<HRDashboardProps> = ({
         </button>
 
         <button
-          onClick={() => {/* pending approvals tab */}}
+          onClick={() => onSelectTab && onSelectTab('pending_approvals')}
           className="card-hover p-5 flex items-center gap-4 text-left group"
         >
           <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-950 flex items-center justify-center shrink-0 group-hover:bg-purple-200 dark:group-hover:bg-purple-900 transition-colors">

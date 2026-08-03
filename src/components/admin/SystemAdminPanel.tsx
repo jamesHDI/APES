@@ -18,7 +18,8 @@ import {
   CheckCircle2, 
   Sparkles,
   Cloud,
-  CloudOff
+  CloudOff,
+  UserCheck,
 } from 'lucide-react';
 
 interface SystemAdminPanelProps {
@@ -28,6 +29,7 @@ interface SystemAdminPanelProps {
   auditLogs: AuditLog[];
   onSaveUsers: (users: User[]) => void;
   onSaveDepartments: (depts: Department[]) => void;
+  onSelectTab?: (tab: string) => void;
 }
 
 export const SystemAdminPanel: React.FC<SystemAdminPanelProps> = ({
@@ -35,7 +37,9 @@ export const SystemAdminPanel: React.FC<SystemAdminPanelProps> = ({
   departments,
   cycles,
   auditLogs,
+  onSelectTab,
 }) => {
+  const pendingApprovalsCount = users.filter((u) => u.approvalStatus === 'pending' || u.isApproved === false).length;
   const [syncing, setSyncing] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
@@ -111,6 +115,22 @@ export const SystemAdminPanel: React.FC<SystemAdminPanelProps> = ({
 
       {/* Live System Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <button
+          onClick={() => onSelectTab && onSelectTab('pending_approvals')}
+          className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 shadow-sm flex items-center justify-between text-left hover:scale-[1.01] transition-transform"
+        >
+          <div className="flex items-center space-x-4">
+            <div className="p-3 rounded-xl bg-amber-500 text-slate-950 font-black">
+              <UserCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase text-amber-800 dark:text-amber-300">Pending Approvals</p>
+              <p className="text-xl font-black text-amber-950 dark:text-amber-100">{pendingApprovalsCount} Requests</p>
+            </div>
+          </div>
+          <span className="text-xs font-bold text-amber-700 dark:text-amber-400 hover:underline">Review &rarr;</span>
+        </button>
+
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center space-x-4">
           <div className="p-3 rounded-xl bg-brand-100 dark:bg-brand-950 text-brand-600">
             <Users className="w-6 h-6" />
@@ -138,16 +158,6 @@ export const SystemAdminPanel: React.FC<SystemAdminPanelProps> = ({
           <div>
             <p className="text-[10px] font-bold uppercase text-slate-400">Active Cycles</p>
             <p className="text-xl font-black text-slate-900 dark:text-white">{cycles.length}</p>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center space-x-4">
-          <div className="p-3 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600">
-            <Database className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase text-slate-400">Database Engine</p>
-            <p className="text-sm font-bold text-slate-900 dark:text-white">PostgreSQL + RLS</p>
           </div>
         </div>
       </div>

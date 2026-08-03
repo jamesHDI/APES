@@ -67,6 +67,36 @@ export const getStoredNotifications = (): Notification[] => {
   }
 };
 
+/**
+ * Merges remote notifications fetched from Supabase with local notifications store
+ * so cross-device/cross-session notifications (like account registration alerts) are persisted locally.
+ */
+export const mergeRemoteNotifications = (remoteNotifs: Notification[]): Notification[] => {
+  const local = getStoredNotifications();
+  const map = new Map<string, Notification>();
+
+  // Add existing local notifications
+  local.forEach(n => map.set(n.id, n));
+
+  // Merge remote notifications from Supabase
+  remoteNotifs.forEach(rn => {
+    const existing = map.get(rn.id);
+    if (!existing) {
+      map.set(rn.id, rn);
+    } else {
+      map.set(rn.id, {
+        ...rn,
+        read: existing.read || rn.read,
+        readByUsers: Array.from(new Set([...(existing.readByUsers || []), ...(rn.readByUsers || [])]))
+      });
+    }
+  });
+
+  const merged = Array.from(map.values());
+  localStorage.setItem(NOTIF_KEY, JSON.stringify(merged));
+  return merged;
+};
+
 export const getUserReadMap = (): Record<string, Record<string, boolean>> => {
   const data = localStorage.getItem(READ_MAP_KEY);
   if (!data) return {};

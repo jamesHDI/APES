@@ -22,6 +22,7 @@ interface NavbarProps {
   notifications: Notification[];
   onMarkNotificationRead: (id: string) => void;
   onSelectEvaluation?: (evalId: string) => void;
+  onSelectTab?: (tab: string) => void;
   onToggleSidebar: () => void;
   isSidebarOpen: boolean;
   onOpenAnnouncementModal?: () => void;
@@ -36,6 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   notifications,
   onMarkNotificationRead,
   onSelectEvaluation,
+  onSelectTab,
   onToggleSidebar,
   isSidebarOpen,
   onOpenAnnouncementModal,
@@ -213,7 +215,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                           onClick={() => {
                             onMarkNotificationRead(n.id);
                             setShowNotifications(false);
-                            if (n.evaluationId && onSelectEvaluation) {
+                            if (n.category === 'account' || n.status === 'pending_approval' || n.title.includes('Registration')) {
+                              if (onSelectTab) onSelectTab('pending_approvals');
+                            } else if (n.evaluationId && onSelectEvaluation) {
                               onSelectEvaluation(n.evaluationId);
                             }
                           }}

@@ -151,7 +151,7 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
     role: 'employee',
     employmentStatus: 'Regular',
     dateHired: new Date().toISOString().substring(0, 10),
-    username: normalizedEmail.split('@')[0],
+    username: `${normalizedEmail.split('@')[0]}_${Math.floor(1000 + Math.random() * 9000)}`,
     isActive: false,
     isApproved: false,
     approvalStatus: 'pending',

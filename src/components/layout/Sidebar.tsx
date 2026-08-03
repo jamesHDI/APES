@@ -35,6 +35,7 @@ interface SidebarProps {
   activeTab: string;
   onSelectTab: (tab: string) => void;
   pendingCount?: number;
+  pendingAccountCount?: number;
   isOpen: boolean;
   onClose: () => void;
   userName?: string;
@@ -45,6 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onSelectTab,
   pendingCount = 0,
+  pendingAccountCount = 0,
   isOpen,
   onClose,
   userName,
@@ -116,6 +118,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Users,
           children: [
             { id: 'employee_mgmt', label: 'Employee Directory', icon: Users },
+            { id: 'pending_approvals', label: 'Pending Approvals', icon: UserCheck, badge: pendingAccountCount },
             { id: 'dept_mgmt', label: 'Departments', icon: Building2 },
             { id: 'org_hierarchy', label: 'Org Chart', icon: GitBranch },
           ],
@@ -143,7 +146,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Users,
           children: [
             { id: 'employee_mgmt', label: 'Employee Directory', icon: Users },
-            { id: 'pending_approvals', label: 'Pending Approvals', icon: UserCheck, badge: pendingCount },
+            { id: 'pending_approvals', label: 'Pending Approvals', icon: UserCheck, badge: pendingAccountCount },
             { id: 'dept_mgmt', label: 'Departments', icon: Building2 },
             { id: 'org_hierarchy', label: 'Org Chart', icon: GitBranch },
           ],
