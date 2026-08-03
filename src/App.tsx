@@ -150,7 +150,7 @@ export const App: React.FC = () => {
         const sbEvals = await fetchEvaluationsFromSupabase();
         if (sbEvals && sbEvals.length > 0) setEvaluations(sbEvals);
 
-        const sbNotifs = await fetchNotificationsFromSupabase(currentUser?.id);
+        const sbNotifs = await fetchNotificationsFromSupabase(currentUser?.id, currentUser?.role);
         if (sbNotifs && sbNotifs.length > 0) {
           mergeRemoteNotifications(sbNotifs);
           const computed = getRoleBasedNotifications(currentUser);
@@ -233,7 +233,7 @@ export const App: React.FC = () => {
           fetchEmployeesFromSupabase(),
           fetchDepartmentsFromSupabase(),
           fetchEvaluationsFromSupabase(),
-          fetchNotificationsFromSupabase(authenticatedUser.id)
+          fetchNotificationsFromSupabase(authenticatedUser.id, authenticatedUser.role)
         ]);
 
         if (sbUsers && sbUsers.length > 0) { setUsers(sbUsers); saveUsers(sbUsers); }

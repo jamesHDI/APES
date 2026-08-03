@@ -280,14 +280,24 @@ export const saveDepartmentToSupabase = async (dept: Department): Promise<boolea
 // 3. NOTIFICATIONS SUPABASE OPERATIONS
 // ==============================================================================
 
-export const fetchNotificationsFromSupabase = async (userId?: string): Promise<Notification[] | null> => {
+export const fetchNotificationsFromSupabase = async (userId?: string, userRole?: string): Promise<Notification[] | null> => {
   if (!isSupabaseConfigured || !supabase) return null;
 
   try {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .order('created_at', { ascending: false });
+    let query = supabase.from('notifications').select('*');
+
+    // Server-side filtering: fetch only notifications targeted to user ID, recipient role, or global announcements
+    if (userId && isValidUuid(userId)) {
+      if (userRole === 'system_admin' || userRole === 'hr_admin') {
+        query = query.or(`user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,recipient_role.eq.ALL_ADMINS,recipient_role.eq.${userRole},is_announcement.eq.true`);
+      } else if (userRole) {
+        query = query.or(`user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,recipient_role.eq.${userRole},is_announcement.eq.true`);
+      } else {
+        query = query.or(`user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,is_announcement.eq.true`);
+      }
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       console.error('Supabase fetchNotifications error:', error.message, error.details);
