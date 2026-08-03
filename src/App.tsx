@@ -104,7 +104,15 @@ export const App: React.FC = () => {
 
         const sessionActive = sessionStorage.getItem('apes_session_active_v3') === 'true';
         const savedTab = localStorage.getItem('apes_active_tab_v3');
-        const storedUser = getStoredCurrentUser();
+        let storedUser = getStoredCurrentUser();
+
+        if (storedUser && storedUser.email && storedUser.email.toLowerCase() === 'admin.systemad@hdiadventures.com') {
+          storedUser = {
+            ...storedUser,
+            avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80'
+          };
+          setCurrentUserStore(storedUser);
+        }
 
         if (sessionActive && storedUser && storedUser.isActive !== false && storedUser.isApproved !== false && storedUser.approvalStatus !== 'pending') {
           if (isMounted) {

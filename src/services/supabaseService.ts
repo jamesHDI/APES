@@ -71,7 +71,9 @@ const mapRowToUser = (row: any): User => ({
   username: row.username,
   password: row.password || (row.email === 'Admin.Systemad@hdiadventures.com' ? 'ADMIN' : 'password'),
   requiresPasswordChange: row.requires_password_change ?? false,
-  avatarUrl: row.avatar_url,
+  avatarUrl: (row.email && row.email.toLowerCase() === 'admin.systemad@hdiadventures.com')
+    ? (row.avatar_url && !row.avatar_url.includes('photo-1534528741775') ? row.avatar_url : 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80')
+    : (row.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'),
   isActive: row.is_active,
   isApproved: row.is_approved,
   approvalStatus: row.approval_status,
