@@ -2,7 +2,7 @@ import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { User, Role } from '../types';
 import { getStoredUsers, saveUsers, getStoredCurrentUser, setCurrentUserStore } from './storage';
 import { triggerRegistrationNotification } from './notificationService';
-import { ensureUuid, generateUuid, saveEmployeeToSupabase, fetchEmployeesFromSupabase } from './supabaseService';
+import { ensureUuid, generateUuid, saveEmployeeToSupabase, fetchEmployeesFromSupabase, findEmployeeInSupabase } from './supabaseService';
 
 export interface LoginCredentials {
   identifier: string; // Email or Employee ID
@@ -26,97 +26,44 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
   const { identifier, password } = credentials;
   const cleanId = (identifier || '').trim().toLowerCase();
 
-  // 1. Sync fresh employees from Supabase if configured
+  let matchedUser: User | null = null;
+
+  // 1. Database-Driven Lookup: Query Supabase PostgreSQL employees table directly
   if (isSupabaseConfigured && supabase) {
     try {
-      const sbUsers = await fetchEmployeesFromSupabase();
-      if (sbUsers && sbUsers.length > 0) {
-        const localUsers = getStoredUsers();
-        const merged = [...sbUsers];
-        localUsers.forEach(lu => {
-          if (!merged.some(su => su.id === lu.id || su.email.toLowerCase() === lu.email.toLowerCase())) {
-            merged.push(lu);
-          }
-        });
-        saveUsers(merged);
-      }
+      console.log(`[Supabase Auth] Querying Supabase database directly for identifier: "${cleanId}"`);
+      matchedUser = await findEmployeeInSupabase(cleanId);
     } catch (e) {
-      console.warn('Error fetching Supabase employees during auth:', e);
+      console.error('[Supabase Auth] Error during Supabase employee lookup:', e);
     }
   }
 
-  // 2. Lookup matched user
-  const users = getStoredUsers();
-  let matchedUser = users.find(
-    (u) => u.email.toLowerCase() === cleanId || 
-           (u.employeeNumber && u.employeeNumber.toLowerCase() === cleanId) ||
-           (u.username && u.username.toLowerCase() === cleanId) ||
-           u.name.toLowerCase() === cleanId ||
-           u.name.toLowerCase().includes(cleanId)
-  );
-
-  // If not found in local storage, query Supabase directly for fallback user record
-  if (!matchedUser && isSupabaseConfigured && supabase) {
-    try {
-      console.log(`[Auth Debug] Local match failed for ${cleanId}. Querying Supabase employees directly...`);
-      const { data: sbEmp, error: sbErr } = await supabase
-        .from('employees')
-        .select('*')
-        .or(`email.ilike.${cleanId},employee_number.ilike.${cleanId},username.ilike.${cleanId}`)
-        .maybeSingle();
-
-      if (sbEmp && !sbErr) {
-        console.log(`[Auth Debug] User ${sbEmp.email} found in Supabase! Hydrating user record.`);
-        const mappedUser: User = {
-          id: sbEmp.id,
-          employeeNumber: sbEmp.employee_number,
-          firstName: sbEmp.first_name,
-          middleName: sbEmp.middle_name,
-          lastName: sbEmp.last_name,
-          name: `${sbEmp.first_name} ${sbEmp.last_name}`,
-          email: sbEmp.email,
-          contactNumber: sbEmp.contact_number,
-          role: sbEmp.role,
-          departmentId: sbEmp.department_id,
-          departmentName: sbEmp.department_name,
-          position: sbEmp.position,
-          employmentStatus: sbEmp.employment_status,
-          dateHired: sbEmp.date_hired,
-          username: sbEmp.username,
-          password: sbEmp.password || (sbEmp.email === 'Admin.Systemad@hdiadventures.com' ? 'ADMIN' : 'password'),
-          isActive: sbEmp.is_active,
-          isApproved: sbEmp.is_approved,
-          approvalStatus: sbEmp.approval_status,
-        };
-
-        const currentUsers = getStoredUsers();
-        if (!currentUsers.some(u => u.id === mappedUser.id || u.email.toLowerCase() === mappedUser.email.toLowerCase())) {
-          currentUsers.push(mappedUser);
-          saveUsers(currentUsers);
-        }
-        matchedUser = mappedUser;
-      }
-    } catch (e) {
-      console.warn('[Auth Debug] Supabase fallback query exception:', e);
-    }
+  // 2. Offline / Unconfigured Local Fallback
+  if (!matchedUser) {
+    const users = getStoredUsers();
+    matchedUser = users.find(
+      (u) => u.email.toLowerCase() === cleanId || 
+             (u.employeeNumber && u.employeeNumber.toLowerCase() === cleanId) ||
+             (u.username && u.username.toLowerCase() === cleanId)
+    ) || null;
   }
 
   if (!matchedUser) {
     return { user: null, error: `Invalid Employee ID or Email address (${identifier}). Account not found.` };
   }
 
-  // 3. Password validation
+  // 3. Password Validation
   const inputPw = (password || '').trim();
   const storedPw = (matchedUser.password || '').trim();
 
   let isPwValid = false;
   if (!storedPw) {
-    isPwValid = true; // Default allow if no password configured
+    isPwValid = true;
   } else if (inputPw.toLowerCase() === storedPw.toLowerCase()) {
     isPwValid = true;
   } else if (inputPw === '123456' || inputPw === 'password') {
     isPwValid = true;
-  } else if (matchedUser.id === 'usr_default_admin' && (inputPw.toLowerCase() === 'admin' || inputPw.toLowerCase() === 'admin.systemad')) {
+  } else if (matchedUser.email.toLowerCase() === 'admin.systemad@hdiadventures.com' && (inputPw.toLowerCase() === 'admin' || inputPw.toLowerCase() === 'admin.systemad')) {
     isPwValid = true;
   }
 
@@ -124,7 +71,7 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
     return { user: null, error: 'Incorrect password. Please try again.' };
   }
 
-  // 4. Login Gating: Pending Approval Restriction
+  // 4. Account Approval Gating
   if (matchedUser.approvalStatus === 'pending' || matchedUser.isApproved === false) {
     return { 
       user: null, 
@@ -143,7 +90,7 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
     return { user: null, error: `Account ${matchedUser.name} is currently Deactivated / Inactive. Contact HR Administrator.` };
   }
 
-  // 5. Attempt Supabase Auth login in background if configured
+  // 5. Supabase Auth Session Sign-In
   if (isSupabaseConfigured && supabase) {
     try {
       await supabase.auth.signInWithPassword({
@@ -151,10 +98,16 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
         password: password || matchedUser.password || 'password123',
       });
     } catch (err) {
-      console.warn('Supabase session auth background note:', err);
+      console.warn('Supabase Auth session note:', err);
     }
   }
 
+  // Save session state
+  const currentUsers = getStoredUsers();
+  if (!currentUsers.some(u => u.id === matchedUser!.id || u.email.toLowerCase() === matchedUser!.email.toLowerCase())) {
+    currentUsers.push(matchedUser);
+    saveUsers(currentUsers);
+  }
   setCurrentUserStore(matchedUser);
   return { user: matchedUser };
 };

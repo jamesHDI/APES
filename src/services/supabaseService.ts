@@ -48,6 +48,84 @@ export const ensureUuid = (id?: string): string => {
 // 1. EMPLOYEES & USERS SUPABASE OPERATIONS
 // ==============================================================================
 
+const mapRowToUser = (row: any): User => ({
+  id: row.id,
+  employeeNumber: row.employee_number,
+  firstName: row.first_name,
+  middleName: row.middle_name,
+  lastName: row.last_name,
+  name: `${row.first_name} ${row.last_name}`,
+  email: row.email,
+  contactNumber: row.contact_number,
+  role: row.role,
+  departmentId: row.department_id,
+  departmentName: row.department_name,
+  position: row.position,
+  employmentStatus: row.employment_status,
+  dateHired: row.date_hired,
+  immediateSuperiorId: row.immediate_superior_id,
+  immediateSuperiorName: row.immediate_superior_name,
+  departmentHeadId: row.department_head_id,
+  departmentHeadName: row.department_head_name,
+  defaultTemplateId: row.default_template_id,
+  username: row.username,
+  password: row.password || (row.email === 'Admin.Systemad@hdiadventures.com' ? 'ADMIN' : 'password'),
+  requiresPasswordChange: row.requires_password_change ?? false,
+  avatarUrl: row.avatar_url,
+  isActive: row.is_active,
+  isApproved: row.is_approved,
+  approvalStatus: row.approval_status,
+  hrRejectionRemarks: row.hr_rejection_remarks,
+  isDepartmentHead: row.is_department_head,
+});
+
+export const findEmployeeInSupabase = async (cleanId: string): Promise<User | null> => {
+  if (!isSupabaseConfigured || !supabase || !cleanId) return null;
+
+  try {
+    // Query 1: By Email
+    const { data: byEmail, error: errEmail } = await supabase
+      .from('employees')
+      .select('*')
+      .ilike('email', cleanId)
+      .maybeSingle();
+
+    if (byEmail && !errEmail) {
+      console.log(`[Supabase Auth] Employee matched by email in Supabase: ${byEmail.email}`);
+      return mapRowToUser(byEmail);
+    }
+
+    // Query 2: By Employee Number
+    const { data: byNum, error: errNum } = await supabase
+      .from('employees')
+      .select('*')
+      .ilike('employee_number', cleanId)
+      .maybeSingle();
+
+    if (byNum && !errNum) {
+      console.log(`[Supabase Auth] Employee matched by employee_number in Supabase: ${byNum.employee_number}`);
+      return mapRowToUser(byNum);
+    }
+
+    // Query 3: By Username
+    const { data: byUser, error: errUser } = await supabase
+      .from('employees')
+      .select('*')
+      .ilike('username', cleanId)
+      .maybeSingle();
+
+    if (byUser && !errUser) {
+      console.log(`[Supabase Auth] Employee matched by username in Supabase: ${byUser.username}`);
+      return mapRowToUser(byUser);
+    }
+
+    return null;
+  } catch (err) {
+    console.error('[Supabase Auth] Exception finding employee in Supabase:', err);
+    return null;
+  }
+};
+
 export const fetchEmployeesFromSupabase = async (): Promise<User[] | null> => {
   if (!isSupabaseConfigured || !supabase) return null;
 
@@ -55,36 +133,7 @@ export const fetchEmployeesFromSupabase = async (): Promise<User[] | null> => {
     const { data, error } = await supabase.from('employees').select('*');
     if (error || !data) return null;
 
-    return data.map((row: any) => ({
-      id: row.id,
-      employeeNumber: row.employee_number,
-      firstName: row.first_name,
-      middleName: row.middle_name,
-      lastName: row.last_name,
-      name: `${row.first_name} ${row.last_name}`,
-      email: row.email,
-      contactNumber: row.contact_number,
-      role: row.role,
-      departmentId: row.department_id,
-      departmentName: row.department_name,
-      position: row.position,
-      employmentStatus: row.employment_status,
-      dateHired: row.date_hired,
-      immediateSuperiorId: row.immediate_superior_id,
-      immediateSuperiorName: row.immediate_superior_name,
-      departmentHeadId: row.department_head_id,
-      departmentHeadName: row.department_head_name,
-      defaultTemplateId: row.default_template_id,
-      username: row.username,
-      password: row.password || (row.email === 'Admin.Systemad@hdiadventures.com' ? 'ADMIN' : 'password'),
-      requiresPasswordChange: row.requires_password_change ?? false,
-      avatarUrl: row.avatar_url,
-      isActive: row.is_active,
-      isApproved: row.is_approved,
-      approvalStatus: row.approval_status,
-      hrRejectionRemarks: row.hr_rejection_remarks,
-      isDepartmentHead: row.is_department_head,
-    }));
+    return data.map(mapRowToUser);
   } catch (err) {
     console.warn('Error fetching employees from Supabase:', err);
     return null;

@@ -1,5 +1,5 @@
 import { Notification, Evaluation, User, NotificationCategory, Role } from '../types';
-import { saveNotificationToSupabase, saveNotificationsBatchToSupabase, generateUuid } from './supabaseService';
+import { saveNotificationToSupabase, saveNotificationsBatchToSupabase, generateUuid, fetchEmployeesFromSupabase } from './supabaseService';
 import { triggerRealtimeBroadcast } from './supabaseClient';
 import { getStoredUsers } from './storage';
 
@@ -306,11 +306,18 @@ export const triggerAnnouncementNotification = async (
   recipientRole: string = 'ALL',
   expirationDate?: string
 ): Promise<boolean> => {
-  console.log(`[Broadcast Debug] Broadcast button clicked. Audience: ${recipientRole}, Title: "${title}"`);
+  console.log(`[Broadcast Debug] Broadcast announcement triggered. Target Audience: ${recipientRole}, Title: "${title}"`);
 
-  const allUsers = getStoredUsers();
-  
-  // Filter eligible recipients based on target audience
+  // 1. Fetch ALL active employees directly from Supabase database
+  let allUsers: User[] = [];
+  const sbUsers = await fetchEmployeesFromSupabase();
+  if (sbUsers && sbUsers.length > 0) {
+    allUsers = sbUsers;
+  } else {
+    allUsers = getStoredUsers();
+  }
+
+  // 2. Filter target recipient users
   let targetUsers = allUsers;
   if (recipientRole === 'ALL' || !recipientRole) {
     targetUsers = allUsers;
@@ -320,8 +327,9 @@ export const triggerAnnouncementNotification = async (
     targetUsers = allUsers.filter(u => u.role === recipientRole);
   }
 
-  console.log(`[Broadcast Debug] Target recipients count: ${targetUsers.length}`);
+  console.log(`[Broadcast Debug] Resolved ${targetUsers.length} recipient users from Supabase.`);
 
+  // 3. Generate explicit per-recipient Notification records
   const notifsToCreate: Notification[] = targetUsers.map(user => ({
     id: generateUuid(),
     userId: user.id,
@@ -339,7 +347,7 @@ export const triggerAnnouncementNotification = async (
     dateTime: new Date().toLocaleString()
   }));
 
-  // Create fallback global notification record with userId = undefined
+  // Add global broadcast fallback record (userId = null) for general query compatibility
   const globalNotif: Notification = {
     id: generateUuid(),
     recipientRole: (recipientRole || 'ALL') as any,
@@ -356,12 +364,17 @@ export const triggerAnnouncementNotification = async (
   };
   notifsToCreate.push(globalNotif);
 
+  // 4. Batch insert ALL notification records into Supabase notifications table
+  const saved = await saveNotificationsBatchToSupabase(notifsToCreate);
+  console.log(`[Broadcast Debug] Batch saved ${notifsToCreate.length} notification rows to Supabase: ${saved}`);
+
+  // 5. Emit Realtime WebSocket event for online clients
+  triggerRealtimeBroadcast('data_changed', { type: 'announcement', title, count: notifsToCreate.length });
+
+  // Update local state for immediate UI feedback on sender device
   const notifications = getStoredNotifications();
   notifsToCreate.forEach(n => notifications.unshift(n));
   localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
 
-  const saved = await saveNotificationsBatchToSupabase(notifsToCreate);
-  console.log(`[Broadcast Debug] Firing Realtime broadcast event across WebSocket channels...`);
-  triggerRealtimeBroadcast('data_changed', { type: 'announcement', title, count: notifsToCreate.length });
   return saved;
 };
