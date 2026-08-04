@@ -4,25 +4,6 @@ import { triggerRealtimeBroadcast } from './supabaseClient';
 
 export const INITIAL_SEED_NOTIFICATIONS: Notification[] = [
   {
-    id: '00000000-0000-4000-8000-000000000101',
-    userId: 'usr_sup_01',
-    recipientRole: 'supervisor',
-    recipientDepartment: 'Sales',
-    title: 'Action Required: Employee Self-Evaluation Submitted',
-    message: 'Maritess Bacle has submitted her Sales Performance Scorecard for your review.',
-    category: 'evaluation',
-    date: '10 mins ago',
-    read: false,
-    type: 'action_required',
-    employeeName: 'Maritess Bacle',
-    departmentName: 'Sales',
-    appraisalPeriod: 'January-September 2025',
-    status: 'pending_supervisor',
-    senderName: 'Maritess Bacle',
-    dateTime: new Date().toLocaleString(),
-    evaluationId: 'eval_maritess_2025'
-  },
-  {
     id: '00000000-0000-4000-8000-000000000102',
     userId: 'usr_pres_01',
     recipientRole: 'president',

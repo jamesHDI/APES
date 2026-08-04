@@ -211,48 +211,7 @@ export const SEED_USERS: User[] = [
     approvalStatus: 'approved',
     avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
   },
-  {
-    id: 'usr_dh_sls',
-    employeeNumber: 'DH-SLS-01',
-    firstName: 'Grazie',
-    lastName: 'Esguerra',
-    name: 'Grazie Esguerra',
-    email: 'grazie.esguerra@hdiadventures.com',
-    username: 'grazie.esguerra',
-    password: 'password',
-    role: 'dept_head',
-    departmentId: 'dept_sls',
-    departmentName: 'Sales',
-    position: 'Department Head - Sales',
-    isDepartmentHead: true,
-    isActive: true,
-    isApproved: true,
-    approvalStatus: 'approved',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-  },
   // ── DEMO REGULAR EMPLOYEES & SUPERVISORS ──────────────────────────────────────
-  {
-    id: 'usr_emp_sales_01',
-    employeeNumber: 'EMP-SLS-01',
-    firstName: 'Maritess',
-    lastName: 'Bacle',
-    name: 'Maritess Bacle',
-    email: 'employee.sales@hdiadventures.com',
-    username: 'employee.sales',
-    password: 'password',
-    contactNumber: '',
-    role: 'employee',
-    departmentId: 'dept_sls',
-    departmentName: 'Sales',
-    position: 'Sales Representative / Executive Account Specialist',
-    employmentStatus: 'Regular',
-    dateHired: '2024-01-15',
-    avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
-    isActive: true,
-    isApproved: true,
-    approvalStatus: 'approved',
-    requiresPasswordChange: false,
-  },
   {
     id: 'usr_sup_sales_01',
     employeeNumber: 'SUP-SLS-01',
@@ -421,231 +380,19 @@ export const SEED_TEMPLATES: EvaluationTemplate[] = [
   }
 ];
 
-export const SEED_EVALUATIONS: Evaluation[] = [
-  // Regular Employee (Maritess Bacle) -> Routed to Sales Department Head (Grazie Esguerra)
-  {
-    id: 'eval_maritess_2025',
-    cycleId: 'cycle_2025_annual',
-    templateId: 'template_sales',
-    workflowType: 'WORKFLOW_REGULAR',
-    employeeId: 'usr_emp_sls',
-    employeeName: 'Maritess Bacle',
-    departmentName: 'Sales',
-    position: 'Account Executive',
-    isDepartmentHead: false,
-    appraisalPeriod: 'January - September 2025',
-    appraisalDate: '2025-09-30',
-    status: 'pending_dept_head',
-    eligibilityScore: 2.85,
-    coreValuesScore: 3.00,
-    totalEligibilityWeightedRating: 2.85,
-    totalCoreValuesWeightedRating: 0.45,
-    finalRating: 3.30,
-    ratingClassification: 'Very Satisfactory (ME)',
-    kpiRatings: [
-      {
-        kpiId: 'kpi_revenue_quota',
-        kraId: 'kra_sales_target',
-        kraName: 'FINANCIAL & SALES TARGET ACCELERATION',
-        name: 'Gross Annual Sales Revenue Quota',
-        weightPercent: 25,
-        selfRating: 3,
-        supervisorRating: 3,
-        weightedScore: 0.75,
-        comments: 'Achieved 108% of target sales quota for Q1-Q3.',
-        standards: SEED_TEMPLATES[0].kraCategories[0].kpis[0].standards,
-        evidenceRequired: true
-      },
-      {
-        kpiId: 'kpi_new_accounts',
-        kraId: 'kra_sales_target',
-        kraName: 'FINANCIAL & SALES TARGET ACCELERATION',
-        name: 'New B2B Account Acquisition',
-        weightPercent: 15,
-        selfRating: 4,
-        supervisorRating: 3,
-        weightedScore: 0.45,
-        comments: 'Acquired 14 new corporate enterprise accounts.',
-        standards: SEED_TEMPLATES[0].kraCategories[0].kpis[1].standards,
-        evidenceRequired: false
-      },
-      {
-        kpiId: 'kpi_retention_rate',
-        kraId: 'kra_cust_rel',
-        kraName: 'CUSTOMER RELATIONSHIP MANAGEMENT & RETENTION',
-        name: 'Key Account Retention & Renewal Rate',
-        weightPercent: 20,
-        selfRating: 4,
-        supervisorRating: 4,
-        weightedScore: 0.80,
-        comments: 'Maintained 96% client renewal rate.',
-        standards: SEED_TEMPLATES[0].kraCategories[1].kpis[0].standards,
-        evidenceRequired: true
-      },
-      {
-        kpiId: 'kpi_csat',
-        kraId: 'kra_cust_rel',
-        kraName: 'CUSTOMER RELATIONSHIP MANAGEMENT & RETENTION',
-        name: 'Customer Satisfaction Score (CSAT)',
-        weightPercent: 10,
-        selfRating: 3,
-        supervisorRating: 3,
-        weightedScore: 0.30,
-        comments: 'Averaged 4.6/5.0 CSAT rating.',
-        standards: SEED_TEMPLATES[0].kraCategories[1].kpis[1].standards,
-        evidenceRequired: false
-      },
-      {
-        kpiId: 'kpi_crm_updates',
-        kraId: 'kra_process_ops',
-        kraName: 'OPERATIONAL EXCELLENCE & REPORTING',
-        name: 'Daily CRM Pipeline Compliance',
-        weightPercent: 15,
-        selfRating: 3,
-        supervisorRating: 3,
-        weightedScore: 0.45,
-        comments: 'Logged daily CRM activities.',
-        standards: SEED_TEMPLATES[0].kraCategories[2].kpis[0].standards,
-        evidenceRequired: false
-      }
-    ],
-    coreValueRatings: [
-      { coreValueId: 'cv_integrity', name: 'Integrity & Ethics', description: 'Honesty and transparency', podRating: 3, peerRating: 3, isRating: 3, avgRating: 3.0, weightedScore: 0.45, comments: 'Consistently demonstrates honesty.' },
-      { coreValueId: 'cv_respect', name: 'Respect & Dignity', description: 'Treats all team members with fairness', podRating: 3, peerRating: 3, isRating: 3, avgRating: 3.0, weightedScore: 0.45, comments: 'Promotes inclusive team environment.' }
-    ],
-    developmentPlan: {
-      strengths: 'Strong client negotiation skills and high retention rate.',
-      areasForImprovement: 'Enhance enterprise contract closing turnaround time.',
-      learningNeeds: [
-        { id: 'ln_01', program: 'Advanced B2B Enterprise Selling', targetDate: '2025-11-30', responsiblePerson: 'HR POD', progressPercent: 40 }
-      ]
-    },
-    personnelAction: {
-      actionType: 'salary_adjustment',
-      remarks: 'Recommended for 7% annual merit salary increase.',
-      recommendedBy: 'Grazie Esguerra (Department Head)'
-    },
-    signatures: {
-      employee: {
-        role: 'employee',
-        signerName: 'Maritess Bacle',
-        signatureDataUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="50"><text x="10" y="30" font-family="cursive" font-size="20">Maritess Bacle</text></svg>',
-        signedAt: '2025-09-30 14:30'
-      }
-    },
-    evidenceFiles: [
-      {
-        id: 'ev_01',
-        fileName: 'Q1_Q3_Sales_Report_Summary.xlsx',
-        fileType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        fileSize: 245000,
-        uploadDate: '2025-09-30',
-        url: 'https://example.com/files/Q1_Q3_Sales_Report_Summary.xlsx'
-      }
-    ],
-    auditTrail: [
-      {
-        id: 'audit_01',
-        timestamp: '2025-09-30 14:30:00',
-        performedBy: 'Grazie Esguerra',
-        performedByRole: 'EMPLOYEE',
-        assignedTo: 'Grazie Esguerra (Sales Department Head)',
-        actionPerformed: 'Submitted Self-Evaluation',
-        previousStatus: 'draft',
-        newStatus: 'pending_dept_head',
-        remarks: 'Submitted for Department Head review.'
-      }
-    ],
-    createdAt: '2025-09-01',
-    updatedAt: '2025-09-30'
-  },
-
-  // Department Head (Grazie Esguerra) Self-Assessment
-  {
-    id: 'eval_grazie_depthead_2025',
-    cycleId: 'cycle_2025_annual',
-    templateId: 'template_sales',
-    workflowType: 'WORKFLOW_DEPT_HEAD',
-    employeeId: 'usr_dh_sls',
-    employeeName: 'Grazie Esguerra',
-    departmentName: 'Sales',
-    position: 'Department Head - Sales',
-    isDepartmentHead: true,
-    appraisalPeriod: 'January - September 2025',
-    appraisalDate: '2025-09-30',
-    status: 'pending_pod',
-    eligibilityScore: 3.20,
-    coreValuesScore: 3.67,
-    totalEligibilityWeightedRating: 3.20,
-    totalCoreValuesWeightedRating: 0.55,
-    finalRating: 3.75,
-    ratingClassification: 'Outstanding (EE)',
-    kpiRatings: [
-      {
-        kpiId: 'kpi_revenue_quota',
-        kraId: 'kra_sales_target',
-        kraName: 'FINANCIAL & SALES TARGET ACCELERATION',
-        name: 'Gross Annual Sales Revenue Quota',
-        weightPercent: 25,
-        selfRating: 4,
-        supervisorRating: 4,
-        presidentRating: 4,
-        weightedScore: 1.00,
-        comments: 'Department exceeded revenue targets by 122%.',
-        standards: SEED_TEMPLATES[0].kraCategories[0].kpis[0].standards,
-        evidenceRequired: true
-      }
-    ],
-    coreValueRatings: [
-      { coreValueId: 'cv_integrity', name: 'Integrity & Ethics', description: 'Executive role model', podRating: 4, peerRating: 4, isRating: 4, avgRating: 4.0, weightedScore: 0.60, comments: 'Exemplary leadership integrity.' }
-    ],
-    developmentPlan: {
-      strengths: 'Executive strategic leadership and multi-market expansion.',
-      areasForImprovement: 'Global APAC market penetration.',
-      learningNeeds: []
-    },
-    personnelAction: {
-      actionType: 'promotion',
-      newPosition: 'Executive Vice President of Commercial Operations',
-      remarks: 'Recommended for Executive VP Promotion.',
-      recommendedBy: 'Emman Buenaventura (Department Head)'
-    },
-    signatures: {
-      deptHead: {
-        role: 'dept_head',
-        signerName: 'Grazie Esguerra',
-        signatureDataUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="50"><text x="10" y="30" font-family="cursive" font-size="20">Grazie Esguerra</text></svg>',
-        signedAt: '2025-09-29 10:15'
-      }
-    },
-    evidenceFiles: [],
-    auditTrail: [
-      {
-        id: 'audit_depthead_01',
-        timestamp: '2025-09-29 10:15:00',
-        performedBy: 'Grazie Esguerra',
-        performedByRole: 'DEPT_HEAD',
-        assignedTo: 'POD Reviewer',
-        actionPerformed: 'Submitted Department Head Evaluation',
-        previousStatus: 'draft',
-        newStatus: 'pending_pod',
-        remarks: 'Submitted for POD Review.'
-      }
-    ],
-    createdAt: '2025-09-01',
-    updatedAt: '2025-09-29'
-  }
-];
+export const SEED_EVALUATIONS: Evaluation[] = [];
 
 export const getStoredUsers = (): User[] => {
   const data = localStorage.getItem(USERS_KEY);
   if (data) {
     try {
       const users: User[] = JSON.parse(data);
-      if (users && users.length > 0) return users;
+      if (users && users.length > 0) {
+        return users.filter(u => u.name !== 'Maritess Bacle' && u.name !== 'Grazie Esguerra' && u.id !== 'usr_emp_sales_01' && u.id !== 'usr_dh_sls');
+      }
     } catch {}
   }
-  return SEED_USERS;
+  return SEED_USERS.filter(u => u.name !== 'Maritess Bacle' && u.name !== 'Grazie Esguerra' && u.id !== 'usr_emp_sales_01' && u.id !== 'usr_dh_sls');
 };
 
 export const saveUsers = (users: User[]) => {
@@ -759,7 +506,16 @@ export const getStoredCycles = (): EvaluationCycle[] => {
 };
 
 export const getStoredEvaluations = (): Evaluation[] => {
-  return SEED_EVALUATIONS;
+  const data = localStorage.getItem(EVALUATIONS_KEY);
+  if (data) {
+    try {
+      const evaluations: Evaluation[] = JSON.parse(data);
+      if (evaluations && evaluations.length > 0) {
+        return evaluations.filter(e => e.employeeName !== 'Maritess Bacle' && e.employeeName !== 'Grazie Esguerra' && e.id !== 'eval_maritess_2025' && e.id !== 'eval_grazie_depthead_2025');
+      }
+    } catch {}
+  }
+  return SEED_EVALUATIONS.filter(e => e.employeeName !== 'Maritess Bacle' && e.employeeName !== 'Grazie Esguerra' && e.id !== 'eval_maritess_2025' && e.id !== 'eval_grazie_depthead_2025');
 };
 
 export const saveEvaluations = (evaluations: Evaluation[]) => {
