@@ -2,25 +2,11 @@ import React, { useState, useRef } from 'react';
 import { User } from '../../types';
 import { changeUserPassword } from '../../services/authService';
 import {
-  User as UserIcon,
-  Mail,
-  Phone,
-  Building2,
-  Briefcase,
-  ShieldCheck,
-  Calendar,
-  CreditCard,
-  Lock,
   Camera,
-  Save,
   Eye,
   EyeOff,
-  Key,
-  AlertCircle,
   CheckCircle2,
-  Info,
-  BadgeCheck,
-  UserCheck,
+  AlertCircle,
 } from 'lucide-react';
 
 interface MyProfileProps {
@@ -52,6 +38,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   // Feedback states
   const [profileToast, setProfileToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
@@ -138,194 +125,184 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12">
-      {/* ── PAGE HEADER ─────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3.5 pb-2 border-b border-slate-200/80 dark:border-slate-800">
-        <div className="w-11 h-11 rounded-2xl bg-brand-500/10 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 flex items-center justify-center shrink-0">
-          <UserIcon className="w-5.5 h-5.5" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Account Profile</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">View employment credentials, update personal details, and manage password security.</p>
-        </div>
+      {/* Page Header */}
+      <div className="pb-4 border-b border-slate-200 dark:border-slate-800">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">My Profile</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Manage your personal information, view official HR records, and update security credentials.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* ── LEFT COLUMN: PROFILE CARD (col-span-4) ───────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Column: Profile Card */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col items-center text-center">
-            {/* Avatar Container */}
-            <div className="relative group mb-3">
-              <div className="w-28 h-28 rounded-2xl overflow-hidden ring-4 ring-slate-100 dark:ring-slate-800 shadow-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col items-center text-center">
+            <div className="relative mb-4">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
                 {avatarPreview ? (
                   <img src={avatarPreview} alt={currentUser.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
-                    <span className="text-white font-extrabold text-3xl">
-                      {currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                    </span>
-                  </div>
+                  <span className="text-slate-700 dark:text-slate-200 font-bold text-2xl">
+                    {currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  </span>
                 )}
               </div>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute -bottom-1.5 -right-1.5 w-9 h-9 rounded-xl bg-slate-900 hover:bg-brand-600 text-white flex items-center justify-center shadow-lg transition-all duration-200 active:scale-95"
-                title="Change profile photo"
+                className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 flex items-center justify-center shadow transition-all hover:opacity-90"
+                title="Change photo"
               >
-                <Camera className="w-4.5 h-4.5" />
+                <Camera className="w-3.5 h-3.5" />
               </button>
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </div>
 
-            {/* Name & Position */}
-            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">{currentUser.name}</h2>
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">{currentUser.position || 'Employee'}</p>
-            
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200/60 dark:border-brand-800/60">
-                <BadgeCheck className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">{currentUser.name}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{currentUser.position || 'Staff'}</p>
+
+            <div className="mt-3">
+              <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                 {ROLE_LABELS[currentUser.role] || currentUser.role}
               </span>
             </div>
 
-            {/* Divider */}
             <div className="w-full border-t border-slate-100 dark:border-slate-800 my-5" />
 
-            {/* Metadata Grid */}
-            <div className="w-full space-y-3 text-left">
-              <div className="flex items-center justify-between py-1 text-xs">
-                <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
-                  <CreditCard className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  Employee ID
-                </span>
-                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{currentUser.employeeNumber || 'N/A'}</span>
+            <div className="w-full space-y-2.5 text-left text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 dark:text-slate-400">Employee ID</span>
+                <span className="font-mono font-medium text-slate-900 dark:text-slate-100">{currentUser.employeeNumber || '—'}</span>
               </div>
-              <div className="flex items-center justify-between py-1 text-xs">
-                <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
-                  <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  Department
-                </span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[150px] text-right">{currentUser.departmentName || 'N/A'}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 dark:text-slate-400">Department</span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">{currentUser.departmentName || '—'}</span>
               </div>
-              <div className="flex items-center justify-between py-1 text-xs">
-                <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  Date Hired
-                </span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {currentUser.dateHired ? new Date(currentUser.dateHired).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 dark:text-slate-400">Date Hired</span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">
+                  {currentUser.dateHired ? new Date(currentUser.dateHired).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
                 </span>
               </div>
-            </div>
-
-            <div className="w-full mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-left flex items-start gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-              <Info className="w-3.5 h-3.5 text-brand-500 shrink-0 mt-0.5" />
-              <span>Click camera button to upload a custom profile avatar (JPG, PNG, max 2MB).</span>
             </div>
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN: INFO & SECURITY (col-span-8) ────────────────────── */}
-        <div className="lg:col-span-8 space-y-6">
+        {/* Right Column: HR Records, Personal Info, Security */}
+        <div className="lg:col-span-8 space-y-8">
+          {/* HR Information (Read-Only Grid) */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-4">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Employment Information</h3>
 
-          {/* 1. HR-Managed Employment Information */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <Lock className="w-4 h-4 text-slate-400" />
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">HR Employment Records (Read-Only)</h3>
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 pt-2">
+              <div className="border-b border-slate-100 dark:border-slate-800/80 pb-3">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Company Email</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">{currentUser.email}</p>
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              {[
-                { label: 'Company Email', value: currentUser.email, icon: Mail },
-                { label: 'Employee ID', value: currentUser.employeeNumber || 'N/A', icon: CreditCard },
-                { label: 'Department', value: currentUser.departmentName, icon: Building2 },
-                { label: 'Position', value: currentUser.position, icon: Briefcase },
-                { label: 'Employment Status', value: currentUser.employmentStatus || 'Regular', icon: ShieldCheck },
-                { label: 'System Role', value: ROLE_LABELS[currentUser.role] || currentUser.role, icon: ShieldCheck },
-                { label: 'Immediate Superior', value: currentUser.immediateSuperiorName || 'N/A', icon: UserIcon },
-                { label: 'Department Head', value: currentUser.departmentHeadName || 'N/A', icon: UserIcon },
-              ].map(({ label, value, icon: Icon }) => (
-                <div key={label} className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800/60 flex items-center gap-3">
-                  <div className="w-8.5 h-8.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/50 dark:border-slate-700 flex items-center justify-center shrink-0 shadow-2xs">
-                    <Icon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{label}</p>
-                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate mt-0.5">{value}</p>
-                  </div>
-                </div>
-              ))}
+              <div className="border-b border-slate-100 dark:border-slate-800/80 pb-3">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Employee ID</p>
+                <p className="text-sm font-mono font-medium text-slate-900 dark:text-slate-100 mt-1">{currentUser.employeeNumber || '—'}</p>
+              </div>
+
+              <div className="border-b border-slate-100 dark:border-slate-800/80 pb-3">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Department</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">{currentUser.departmentName || '—'}</p>
+              </div>
+
+              <div className="border-b border-slate-100 dark:border-slate-800/80 pb-3">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Position</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">{currentUser.position || '—'}</p>
+              </div>
+
+              <div className="border-b border-slate-100 dark:border-slate-800/80 pb-3">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Employment Status</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">{currentUser.employmentStatus || 'Regular'}</p>
+              </div>
+
+              <div className="border-b border-slate-100 dark:border-slate-800/80 pb-3">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">System Role</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">{ROLE_LABELS[currentUser.role] || currentUser.role}</p>
+              </div>
+
+              <div className="border-b border-slate-100 dark:border-slate-800/80 pb-3">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Immediate Superior</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">{currentUser.immediateSuperiorName || '—'}</p>
+              </div>
+
+              <div className="border-b border-slate-100 dark:border-slate-800/80 pb-3">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Department Head</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">{currentUser.departmentHeadName || '—'}</p>
+              </div>
             </div>
           </div>
 
-          {/* 2. Personal Information (Editable Form) */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-5">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <UserIcon className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">Personal Information</h3>
-            </div>
+          {/* Personal Information Form */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-5">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Personal Information</h3>
 
             {profileToast && (
-              <div className={`flex items-center gap-2.5 p-3.5 rounded-xl text-xs font-semibold border ${
+              <div className={`flex items-center gap-2 p-3 rounded-lg text-xs font-medium ${
                 profileToast.type === 'success'
-                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
               }`}>
-                {profileToast.type === 'success' ? <CheckCircle2 className="w-4.5 h-4.5 shrink-0" /> : <AlertCircle className="w-4.5 h-4.5 shrink-0" />}
+                {profileToast.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
                 {profileToast.msg}
               </div>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">First Name <span className="text-rose-500">*</span></label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  First Name <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   value={firstName}
                   onChange={e => setFirstName(e.target.value)}
-                  className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
                   placeholder="First name"
+                  className="w-full h-9 px-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Last Name <span className="text-rose-500">*</span></label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Last Name <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   value={lastName}
                   onChange={e => setLastName(e.target.value)}
-                  className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
                   placeholder="Last name"
+                  className="w-full h-9 px-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Contact Number</label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="tel"
-                    value={contactNumber}
-                    onChange={e => setContactNumber(e.target.value)}
-                    className="w-full h-10 pl-10 pr-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
-                    placeholder="+63 9XX XXX XXXX"
-                  />
-                </div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Contact Number
+                </label>
+                <input
+                  type="tel"
+                  value={contactNumber}
+                  onChange={e => setContactNumber(e.target.value)}
+                  placeholder="+63 9XX XXX XXXX"
+                  className="w-full h-9 px-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 transition-colors"
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Personal Email</label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="email"
-                    value={personalEmail}
-                    onChange={e => setPersonalEmail(e.target.value)}
-                    className="w-full h-10 pl-10 pr-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
-                    placeholder="personal@email.com"
-                  />
-                </div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Personal Email
+                </label>
+                <input
+                  type="email"
+                  value={personalEmail}
+                  onChange={e => setPersonalEmail(e.target.value)}
+                  placeholder="personal@email.com"
+                  className="w-full h-9 px-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 transition-colors"
+                />
               </div>
             </div>
 
@@ -334,104 +311,110 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
                 type="button"
                 onClick={handleSaveProfile}
                 disabled={isSaving}
-                className="inline-flex items-center gap-2 h-10 px-5 rounded-xl font-bold text-xs uppercase tracking-wider bg-brand-600 hover:bg-brand-500 active:bg-brand-700 text-white shadow-md shadow-brand-500/10 transition-all cursor-pointer disabled:opacity-50"
+                className="h-9 px-4 rounded-lg font-medium text-sm bg-brand-600 hover:bg-brand-500 text-white transition-colors disabled:opacity-50"
               >
-                {isSaving ? (
-                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
-                {isSaving ? 'Saving...' : 'Save Profile'}
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
 
-          {/* 3. Security & Change Password */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-5">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <Key className="w-4 h-4 text-amber-500" />
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">Security & Password</h3>
-            </div>
+          {/* Change Password Section */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-5">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Change Password</h3>
 
             {passwordToast && (
-              <div className={`flex items-center gap-2.5 p-3.5 rounded-xl text-xs font-semibold border ${
+              <div className={`flex items-center gap-2 p-3 rounded-lg text-xs font-medium ${
                 passwordToast.type === 'success'
-                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
               }`}>
-                {passwordToast.type === 'success' ? <CheckCircle2 className="w-4.5 h-4.5 shrink-0" /> : <AlertCircle className="w-4.5 h-4.5 shrink-0" />}
+                {passwordToast.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
                 {passwordToast.msg}
               </div>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Current Password</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Current Password
+                </label>
                 <div className="relative">
-                  <Key className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type={showCurrentPw ? 'text' : 'password'}
                     value={currentPassword}
                     onChange={e => setCurrentPassword(e.target.value)}
                     placeholder="Current password"
-                    className="w-full h-10 pl-10 pr-10 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
+                    className="w-full h-9 pl-3 pr-9 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 transition-colors"
                   />
-                  <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPw(!showCurrentPw)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
                     {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">New Password</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  New Password
+                </label>
                 <div className="relative">
-                  <Key className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type={showNewPw ? 'text' : 'password'}
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
-                    placeholder="Min. 6 characters"
-                    className="w-full h-10 pl-10 pr-10 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
+                    placeholder="New password"
+                    className="w-full h-9 pl-3 pr-9 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 transition-colors"
                   />
-                  <button type="button" onClick={() => setShowNewPw(!showNewPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPw(!showNewPw)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
                     {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Confirm Password</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Confirm Password
+                </label>
                 <div className="relative">
-                  <Key className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
-                    type="password"
+                    type={showConfirmPw ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
-                    placeholder="Re-enter password"
-                    className="w-full h-10 pl-10 pr-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
+                    placeholder="Confirm password"
+                    className="w-full h-9 pl-3 pr-9 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 transition-colors"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPw(!showConfirmPw)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end pt-1">
+            <div className="flex justify-end pt-2">
               <button
                 type="button"
                 onClick={handleChangePassword}
                 disabled={!newPassword || !confirmPassword}
-                className="inline-flex items-center gap-2 h-10 px-5 rounded-xl font-bold text-xs uppercase tracking-wider bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white transition-all cursor-pointer disabled:opacity-40"
+                className="h-9 px-4 rounded-lg font-medium text-sm bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors disabled:opacity-40"
               >
-                <ShieldCheck className="w-4 h-4" />
                 Update Password
               </button>
             </div>
           </div>
-
         </div>
       </div>
     </div>
   );
 };
+
