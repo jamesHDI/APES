@@ -167,7 +167,7 @@ export const SystemAdminPanel: React.FC<SystemAdminPanelProps> = ({
           </button>
         </div>
 
-        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 text-xs space-y-2">
+        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 text-xs space-y-2">
           <p className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
             <Cloud className="w-4 h-4 text-brand-500" />
             Supabase Connection Credentials Check:

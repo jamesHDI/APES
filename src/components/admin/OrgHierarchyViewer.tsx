@@ -78,10 +78,10 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
               const deptStaff = users.filter(u => u.departmentName === dept.name && u.id !== headUser?.id);
 
               return (
-                <div key={dept.id} className="group relative p-5 rounded-2xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 hover:border-amber-400 dark:hover:border-amber-500 transition-all duration-300 space-y-4 shadow-sm hover:shadow-md">
+                <div key={dept.id} className="group relative p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700/80 hover:border-amber-400 dark:hover:border-amber-500 transition-all duration-300 space-y-4 shadow-sm hover:shadow-md">
                   
                   {/* Department Title Header */}
-                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-3">
                     <span className="font-bold text-xs text-slate-900 dark:text-white flex items-center space-x-2">
                       <Building2 className="w-4 h-4 text-amber-500" />
                       <span>{dept.name}</span>
@@ -95,9 +95,9 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
                   </div>
 
                   {/* Dept Head Card with Hexagon Node Styling */}
-                  <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/40 border border-amber-300/40 dark:border-amber-800 text-xs flex items-center justify-between">
+                  <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/60 border border-amber-300/40 dark:border-amber-800/80 text-xs flex items-center justify-between">
                     <div>
-                      <p className="font-extrabold text-slate-900 dark:text-white text-xs">{dept.headName}</p>
+                      <p className="font-extrabold text-slate-900 dark:text-amber-100 text-xs">{dept.headName}</p>
                       <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold mt-0.5">Department Head</p>
                     </div>
                     <div className="p-1.5 rounded-xl bg-amber-500 text-white shadow-sm">

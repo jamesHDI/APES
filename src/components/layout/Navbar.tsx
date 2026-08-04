@@ -100,11 +100,27 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Brand */}
             <div className="flex items-center gap-4">
               <div className="shrink-0 flex items-center justify-start py-1">
+                {/* Light Mode Logo */}
                 <img
                   src="/hdi-logo.png"
                   alt="HDI Hive"
-                  className="h-10 sm:h-12 md:h-14 w-auto object-contain transition-all duration-200 dark:brightness-0 dark:invert"
+                  className="h-10 sm:h-12 md:h-14 w-auto object-contain transition-all duration-200 dark:hidden"
                 />
+                {/* Dark Mode Logo: Original Red Beehive Icon + Solid White Text */}
+                <div className="hidden dark:inline-flex relative h-10 sm:h-12 md:h-14 items-center overflow-hidden">
+                  <img
+                    src="/hdi-logo.png"
+                    alt="HDI Beehive Emblem"
+                    className="h-full w-auto object-contain max-w-none"
+                    style={{ clipPath: 'inset(0 68% 0 0)' }}
+                  />
+                  <img
+                    src="/hdi-logo.png"
+                    alt="HDI Text"
+                    className="h-full w-auto object-contain max-w-none absolute top-0 left-0 brightness-0 invert"
+                    style={{ clipPath: 'inset(0 0 0 32%)' }}
+                  />
+                </div>
               </div>
               <div className="hidden sm:block">
                 <div className="flex items-center gap-2">

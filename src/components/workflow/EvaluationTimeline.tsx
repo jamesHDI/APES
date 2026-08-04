@@ -68,7 +68,7 @@ export const EvaluationTimeline: React.FC<EvaluationTimelineProps> = ({
                 </div>
 
                 {/* Event Content */}
-                <div className="flex-1 bg-slate-50/80 dark:bg-slate-750/40 p-4 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                <div className="flex-1 bg-slate-50/80 dark:bg-slate-900/90 p-4 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                     <h4
                       className={`text-sm font-bold ${

@@ -101,7 +101,7 @@ export const EvaluationProgressCard: React.FC<EvaluationProgressCardProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
         
         {/* Current Reviewer */}
-        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750/50 border border-slate-200/80 dark:border-slate-700/60 flex items-start space-x-3">
+        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 flex items-start space-x-3">
           <div className="w-9 h-9 rounded-lg bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center shrink-0 mt-0.5">
             <UserCheck className="w-5 h-5" />
           </div>

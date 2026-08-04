@@ -769,32 +769,32 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
             const kraWeightedScore = kpis.reduce((acc, k) => acc + k.weightedScore, 0).toFixed(2);
 
             return (
-              <div key={kraName} className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-xs">
-                <div className="bg-slate-100 dark:bg-slate-750 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                  <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">
+              <div key={kraName} className="border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-xs">
+                <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 border-b border-slate-200 dark:border-slate-700/80 flex items-center justify-between">
+                  <h4 className="font-extrabold text-slate-800 dark:text-slate-100 text-xs uppercase tracking-wider">
                     {kraName}
                   </h4>
                   <div className="flex items-center space-x-4 text-xs font-bold">
-                    <span className="text-slate-500">Weight: {kraWeightTotal}%</span>
+                    <span className="text-slate-600 dark:text-slate-300">Weight: {kraWeightTotal}%</span>
                     <span className="text-brand-700 dark:text-brand-300">Category Score: {kraWeightedScore}</span>
                   </div>
                 </div>
 
-                <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                <div className="divide-y divide-slate-200 dark:divide-slate-700/80">
                   {kpis.map((kpi) => (
-                    <div key={kpi.kpiId} className="p-4 hover:bg-slate-50/50 dark:hover:bg-slate-750/30 transition-colors">
+                    <div key={kpi.kpiId} className="p-4 bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-800/60 transition-colors">
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
                         
                         <div className="lg:col-span-5 space-y-1.5">
                           <p className="font-bold text-sm text-slate-900 dark:text-white">{kpi.name}</p>
-                          <div className="bg-slate-50 dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs space-y-1">
+                          <div className="bg-slate-50 dark:bg-slate-950/80 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs space-y-1">
                             {kpi.standards.map((st) => (
                               <div
                                 key={st.rating}
                                 className={`p-1 rounded text-[11px] ${
                                   (kpi.presidentRating || kpi.supervisorRating || kpi.selfRating) === st.rating
-                                    ? 'bg-brand-100 dark:bg-brand-950 font-bold text-brand-800 dark:text-brand-300 border border-brand-300'
-                                    : 'text-slate-600 dark:text-slate-400'
+                                    ? 'bg-brand-100 dark:bg-brand-950 font-bold text-brand-800 dark:text-brand-300 border border-brand-300 dark:border-brand-800'
+                                    : 'text-slate-600 dark:text-slate-300'
                                 }`}
                               >
                                 <strong>{st.rating}</strong>: {st.description}
@@ -805,8 +805,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
                         <div className="lg:col-span-4 space-y-3">
                           <div className="flex items-center justify-between text-xs font-semibold">
-                            <span className="text-slate-500">Weight: <strong>{kpi.weightPercent}%</strong></span>
-                            <span className="text-slate-500">Score: <strong className="text-brand-600 text-sm font-bold">{kpi.weightedScore.toFixed(2)}</strong></span>
+                            <span className="text-slate-600 dark:text-slate-300">Weight: <strong className="text-slate-900 dark:text-white">{kpi.weightPercent}%</strong></span>
+                            <span className="text-slate-600 dark:text-slate-300">Score: <strong className="text-brand-600 dark:text-brand-400 text-sm font-bold">{kpi.weightedScore.toFixed(2)}</strong></span>
                           </div>
 
                           <div className="grid grid-cols-3 gap-2 bg-slate-100 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
@@ -918,13 +918,13 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
           <div className="space-y-4">
             {evalData.coreValueRatings.map((cv) => (
-              <div key={cv.coreValueId} className="p-5 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 space-y-4">
+              <div key={cv.coreValueId} className="p-5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <h4 className="font-bold text-slate-900 dark:text-white text-sm">{cv.name}</h4>
-                    <p className="text-xs text-slate-500">{cv.description}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-300">{cv.description}</p>
                   </div>
-                  <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border text-xs font-bold text-brand-600">
+                  <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-brand-600 dark:text-brand-400">
                     Weighted Score: {cv.weightedScore.toFixed(2)} (15%)
                   </div>
                 </div>
