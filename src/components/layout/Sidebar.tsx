@@ -169,8 +169,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items = common;
     }
 
-    // Append My Profile for every role
-    return [...items, profileItem];
+    return items;
   };
 
   const navItems = getNavItems();
