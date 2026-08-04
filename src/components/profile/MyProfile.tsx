@@ -183,7 +183,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
             <p className="text-xs font-semibold text-slate-400 mt-0.5">{currentUser.position || 'Staff'}</p>
 
             <div className="mt-3">
-              <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-brand-50 dark:bg-brand-950/60 text-[#E96B1A] dark:text-brand-300 border border-brand-200/70 dark:border-brand-800/70 shadow-2xs">
+              <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-brand-50 dark:bg-brand-950/60 text-[#E96B1A] dark:text-brand-300 border border-brand-200/70 dark:border-brand-800/70 shadow-sm">
                 {ROLE_LABELS[currentUser.role] || currentUser.role}
               </span>
             </div>
@@ -223,7 +223,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
           {/* HR Information (Read-Only 2-Column Grid) */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-[18px] p-6 shadow-xl shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:-translate-y-0.5 space-y-5">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#F28C28]/10 text-[#E96B1A] dark:text-brand-400 flex items-center justify-center shrink-0 shadow-2xs">
+              <div className="w-9 h-9 rounded-xl bg-[#F28C28]/10 text-[#E96B1A] dark:text-brand-400 flex items-center justify-center shrink-0 shadow-sm">
                 <Briefcase className="w-4.5 h-4.5" />
               </div>
               <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">Employment Information</h3>
@@ -258,7 +258,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
           {/* Personal Information Form */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-[18px] p-6 shadow-xl shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:-translate-y-0.5 space-y-5">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#F28C28]/10 text-[#E96B1A] dark:text-brand-400 flex items-center justify-center shrink-0 shadow-2xs">
+              <div className="w-9 h-9 rounded-xl bg-[#F28C28]/10 text-[#E96B1A] dark:text-brand-400 flex items-center justify-center shrink-0 shadow-sm">
                 <UserIcon className="w-4.5 h-4.5" />
               </div>
               <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">Personal Information</h3>
@@ -345,7 +345,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
           {/* Change Password Section */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-[18px] p-6 shadow-xl shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:-translate-y-0.5 space-y-5">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#F28C28]/10 text-[#E96B1A] dark:text-brand-400 flex items-center justify-center shrink-0 shadow-2xs">
+              <div className="w-9 h-9 rounded-xl bg-[#F28C28]/10 text-[#E96B1A] dark:text-brand-400 flex items-center justify-center shrink-0 shadow-sm">
                 <Lock className="w-4.5 h-4.5" />
               </div>
               <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">Change Password</h3>

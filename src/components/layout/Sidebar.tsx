@@ -191,14 +191,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div key={item.id}>
           <button
             onClick={() => toggleGroup(item.id)}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
               hasActiveChild
-                ? 'bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-brand-50/80 dark:bg-brand-950/40 text-[#E96B1A] dark:text-brand-300'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 hover:text-[#E96B1A] dark:hover:text-brand-300'
             }`}
           >
             <div className="flex items-center gap-3">
-              <Icon className={`w-4 h-4 ${hasActiveChild ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400 dark:text-slate-500'}`} />
+              <Icon className={`w-4 h-4 ${hasActiveChild ? 'text-[#F28C28]' : 'text-slate-400 dark:text-slate-500'}`} />
               <span>{item.label}</span>
             </div>
             {isExpanded
@@ -207,7 +207,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }
           </button>
           {isExpanded && (
-            <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-slate-100 dark:border-slate-700 pl-3">
+            <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-brand-100 dark:border-slate-800 pl-3">
               {item.children!.map((child) => renderItem(child))}
             </div>
           )}
@@ -219,20 +219,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <button
         key={item.id}
         onClick={() => handleSelectTab(item.id)}
-        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all ${
           isActive
-            ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20'
-            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+            ? 'bg-gradient-to-r from-brand-100/80 via-brand-50 to-transparent dark:from-brand-950/60 dark:to-transparent text-[#E96B1A] dark:text-brand-300 font-black border-l-4 border-[#F28C28] shadow-xs'
+            : 'font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 hover:text-[#E96B1A] dark:hover:text-brand-300'
         }`}
       >
         <div className="flex items-center gap-3">
-          <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
+          <Icon className={`w-4 h-4 ${isActive ? 'text-[#F28C28]' : 'text-slate-400 dark:text-slate-500'}`} />
           <span className="truncate">{item.label}</span>
         </div>
         {item.badge !== undefined && item.badge > 0 && (
           <span
-            className={`shrink-0 min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center ${
-              isActive ? 'bg-white text-brand-700' : 'bg-hdi-red text-white'
+            className={`shrink-0 min-w-[20px] h-5 px-1.5 text-[10px] font-extrabold rounded-full flex items-center justify-center ${
+              isActive ? 'bg-[#F28C28] text-white shadow-sm' : 'bg-hdi-red text-white'
             }`}
           >
             {item.badge}

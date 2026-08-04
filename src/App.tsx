@@ -740,7 +740,11 @@ export const App: React.FC = () => {
   const pendingAccountCount = users.filter(isPendingUser).length;
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
+    <div className="relative h-screen overflow-hidden bg-gradient-to-br from-[#FFF8F2] via-[#FFF4EA] via-60% to-[#F8FAFC] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
+      {/* Soft Translucent Top-Right Ambient Glow */}
+      <div className="fixed top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#F28C28]/12 via-amber-200/5 to-transparent rounded-full blur-3xl pointer-events-none -mr-32 -mt-32 z-0" />
+      {/* Subtle Dotted Pattern Overlay */}
+      <div className="fixed top-12 right-16 w-80 h-80 bg-[radial-gradient(#F28C28_1px,transparent_1px)] [background-size:18px_18px] opacity-10 pointer-events-none hidden lg:block z-0" />
       
       {/* Login & Create Account Modal Gating */}
       <LoginModal

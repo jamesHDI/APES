@@ -97,7 +97,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Brand */}
             <div className="flex items-center gap-3">
-              <div className="shrink-0 bg-white dark:bg-slate-800 rounded-xl p-1 flex items-center justify-center border border-slate-200/60 dark:border-slate-700/60 shadow-2xs">
+              <div className="shrink-0 bg-white dark:bg-slate-800 rounded-xl p-1 flex items-center justify-center border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
                 <img
                   src="/hdi-logo.png"
                   alt="HDI Hive"
@@ -109,11 +109,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">
                     PERFORMANCE EVALUATION SYSTEM
                   </span>
-                  <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full font-extrabold bg-brand-100/80 dark:bg-brand-950 text-[#E96B1A] dark:text-brand-300 border border-brand-200/80 dark:border-brand-800">
                     APES v3.0
                   </span>
                 </div>
-                <p className="text-xs text-brand-600 dark:text-brand-400 font-extrabold tracking-wider uppercase mt-0.5 hidden md:block">
+                <p className="text-xs text-[#E96B1A] dark:text-brand-400 font-black tracking-wider uppercase mt-0.5 hidden md:block">
                   HDI Hive
                 </p>
               </div>

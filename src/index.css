@@ -18,36 +18,36 @@
 @layer components {
   /* === Button Hierarchy === */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all duration-150 text-sm px-4 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all duration-200 text-sm px-4 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer;
   }
   .btn-primary {
-    @apply btn bg-brand-600 hover:bg-brand-700 text-white shadow-md shadow-brand-600/20 focus-visible:ring-brand-500;
+    @apply btn bg-gradient-to-r from-[#F28C28] to-[#E96B1A] hover:from-[#E96B1A] hover:to-[#D85A09] text-white shadow-md shadow-brand-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all font-bold text-xs uppercase tracking-wider;
   }
   .btn-secondary {
-    @apply btn border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus-visible:ring-slate-400;
+    @apply btn border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-sm hover:-translate-y-0.5 active:translate-y-0 transition-all font-semibold;
   }
   .btn-danger {
-    @apply btn bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/20 focus-visible:ring-rose-500;
+    @apply btn bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/20 focus-visible:ring-rose-500 hover:-translate-y-0.5 active:translate-y-0 transition-all;
   }
   .btn-ghost {
-    @apply btn text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white;
+    @apply btn text-slate-600 dark:text-slate-300 hover:bg-brand-50/80 dark:hover:bg-slate-800 hover:text-[#E96B1A] dark:hover:text-brand-300 transition-colors;
   }
   .btn-success {
-    @apply btn bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 focus-visible:ring-emerald-500;
+    @apply btn bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 focus-visible:ring-emerald-500 hover:-translate-y-0.5 active:translate-y-0 transition-all;
   }
   .btn-sm {
-    @apply text-xs px-3 py-1.5;
+    @apply text-xs px-3 py-1.5 rounded-lg;
   }
   .btn-lg {
-    @apply text-base px-6 py-3;
+    @apply text-base px-6 py-3 rounded-2xl;
   }
 
   /* === Form Elements === */
   .form-input {
-    @apply w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors;
+    @apply w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 transition-all shadow-sm;
   }
   .form-label {
-    @apply block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5;
+    @apply block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5;
   }
   .form-label-required::after {
     content: ' *';
@@ -56,28 +56,28 @@
 
   /* === Status Badges === */
   .badge {
-    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold;
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
   }
-  .badge-draft    { @apply badge bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300; }
-  .badge-pending  { @apply badge bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300; }
-  .badge-active   { @apply badge bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300; }
-  .badge-done     { @apply badge bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300; }
-  .badge-danger   { @apply badge bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300; }
+  .badge-draft    { @apply badge bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300; }
+  .badge-pending  { @apply badge bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60; }
+  .badge-active   { @apply badge bg-brand-50 text-[#E96B1A] dark:bg-brand-950/50 dark:text-brand-300 border border-brand-200/60 dark:border-brand-800/60; }
+  .badge-done     { @apply badge bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60; }
+  .badge-danger   { @apply badge bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60; }
 
   /* === Cards === */
   .card {
-    @apply bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm;
+    @apply bg-white dark:bg-slate-900 rounded-[18px] border border-slate-200/70 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none transition-all duration-300;
   }
   .card-hover {
-    @apply card transition-shadow hover:shadow-md;
+    @apply card hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:shadow-none;
   }
 
   /* === Stat Widget === */
   .stat-card {
-    @apply card p-5 flex items-center gap-4;
+    @apply card p-6 flex items-center gap-4 hover:-translate-y-0.5;
   }
   .stat-icon {
-    @apply w-12 h-12 rounded-xl flex items-center justify-center shrink-0;
+    @apply w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm;
   }
 }
 

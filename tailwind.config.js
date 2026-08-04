@@ -9,19 +9,22 @@ export default {
     extend: {
       colors: {
         brand: {
-          50: '#f0f7ff',
-          100: '#e0effe',
-          200: '#bae0fd',
-          300: '#7cc8fc',
-          400: '#36aef8',
-          500: '#0c92e7',
-          600: '#0274c7',
-          700: '#035ca3',
-          800: '#074f85',
-          900: '#0c426e',
-          950: '#082a49',
+          50: '#FFF8F2',
+          100: '#FFF4EA',
+          200: '#FDE3CD',
+          300: '#FBC497',
+          400: '#F89E58',
+          500: '#F28C28', // Primary HDI Orange
+          600: '#E96B1A', // Darker Orange
+          700: '#C64E09',
+          800: '#9E3B07',
+          900: '#7F300B',
+          950: '#461704',
         },
         hdi: {
+          orange: '#F28C28',
+          darkOrange: '#E96B1A',
+          peach: '#FFF4EA',
           red: '#c8102e',
           darkRed: '#9b0b21',
           gold: '#eaaa00',
