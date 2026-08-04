@@ -194,7 +194,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
         const { data: existing } = await supabase
           .from('employees')
           .select('id')
-          .eq('email', cleanEmail)
+          .ilike('email', cleanEmail)
           .maybeSingle();
 
         if (existing && existing.id) {

@@ -147,7 +147,9 @@ export const changeUserPassword = async (userIdOrEmail: string, newPassword: str
   if (idx >= 0) {
     targetUser = { ...users[idx], password: newPassword, requiresPasswordChange: false };
     users[idx] = targetUser as User;
-  } else {
+  }
+  
+  if (!targetUser) {
     const sbUser = await findEmployeeInSupabase(cleanId);
     if (sbUser) {
       targetUser = { ...sbUser, password: newPassword, requiresPasswordChange: false };
@@ -161,7 +163,23 @@ export const changeUserPassword = async (userIdOrEmail: string, newPassword: str
 
   if (isSupabaseConfigured && supabase) {
     try {
-      await saveEmployeeToSupabase(targetUser);
+      const result = await saveEmployeeToSupabaseDetailed(targetUser);
+      if (!result.success) {
+        console.warn('[Password Change] Primary save returned error, executing direct table update fallback:', result.error);
+        const { error: directErr } = await supabase
+          .from('employees')
+          .update({
+            password: newPassword,
+            requires_password_change: false,
+            updated_at: new Date().toISOString()
+          })
+          .ilike('email', targetUser.email);
+        
+        if (directErr) {
+          console.error('[Password Change] Direct Supabase update error:', directErr);
+          return false;
+        }
+      }
     } catch (err) {
       console.warn('[Password Change] Supabase save warning:', err);
     }
