@@ -637,9 +637,12 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
           {/* Secondary Actions */}
           <div className="flex flex-wrap items-center gap-2">
-            <button onClick={onViewPrintable} className="btn btn-secondary btn-sm">
-              <Printer className="w-3.5 h-3.5" />
-              Download PDF
+            <button 
+              onClick={onViewPrintable} 
+              className="px-3.5 py-1.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white font-extrabold text-xs shadow-md shadow-orange-500/20 flex items-center space-x-2 transition-all"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Print Official Scorecard PDF</span>
             </button>
             <button onClick={() => setShowEvidenceModal(true)} className="btn btn-secondary btn-sm">
               <Paperclip className="w-3.5 h-3.5 text-brand-500" />

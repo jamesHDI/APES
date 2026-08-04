@@ -608,6 +608,12 @@ export const App: React.FC = () => {
           onOpenEvaluation={(id) => {
             setSelectedEvalId(id);
             setActiveTab('evaluations');
+            setViewMode('normal');
+          }}
+          onViewPrintable={(id) => {
+            setSelectedEvalId(id);
+            setActiveTab('evaluations');
+            setViewMode('printable');
           }}
         />
       );
