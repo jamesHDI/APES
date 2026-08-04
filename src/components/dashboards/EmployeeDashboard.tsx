@@ -55,7 +55,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
       {/* Welcome Hero */}
       <div className="hero-card">
         {/* Decorative ambient glow */}
-        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] dark:from-transparent to-transparent pointer-events-none rounded-r-2xl" />
         <div className="absolute -top-6 -right-6 w-32 h-32 bg-[#F28C28]/8 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">

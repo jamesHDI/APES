@@ -183,7 +183,7 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
 
       {/* Top Banner */}
       <div className="hero-card">
-        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] dark:from-transparent to-transparent pointer-events-none rounded-r-2xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Enterprise Evaluation Deployment & Cycle Management</h2>

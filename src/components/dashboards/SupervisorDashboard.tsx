@@ -50,7 +50,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
       {/* Welcome Hero */}
       <div className="hero-card">
-        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] dark:from-transparent to-transparent pointer-events-none rounded-r-2xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{getGreeting()}</p>
