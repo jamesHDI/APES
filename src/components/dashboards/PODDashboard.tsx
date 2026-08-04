@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Evaluation, Department } from '../../types';
-import { ShieldCheck, CheckCircle2, Clock, Archive, BarChart3, ArrowRight, Search, GitBranch } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, Clock, Archive, BarChart3, ArrowRight, Search, GitBranch, Rocket, SlidersHorizontal } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
 
 interface PODDashboardProps {
@@ -10,6 +10,8 @@ interface PODDashboardProps {
   onOpenEvaluation: (evalId: string) => void;
   onOpenReports: () => void;
   onOpenWorkflowMonitoring?: () => void;
+  onOpenDeployment?: () => void;
+  onOpenTemplateBuilder?: () => void;
 }
 
 const getGreeting = () => {
@@ -26,6 +28,8 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
   onOpenEvaluation,
   onOpenReports,
   onOpenWorkflowMonitoring,
+  onOpenDeployment,
+  onOpenTemplateBuilder,
 }) => {
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('all');
@@ -60,22 +64,40 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
               People & Organization Development &nbsp;·&nbsp; Evaluation Audit & Quality Validation
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {onOpenDeployment && (
+              <button
+                onClick={onOpenDeployment}
+                className="btn btn-primary btn-sm"
+              >
+                <Rocket className="w-3.5 h-3.5" />
+                Deploy Campaign
+              </button>
+            )}
+            {onOpenTemplateBuilder && (
+              <button
+                onClick={onOpenTemplateBuilder}
+                className="btn btn-secondary btn-sm"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                Templates
+              </button>
+            )}
             {onOpenWorkflowMonitoring && (
               <button
                 onClick={onOpenWorkflowMonitoring}
                 className="btn btn-secondary btn-sm"
               >
                 <GitBranch className="w-3.5 h-3.5" />
-                Workflow Monitoring
+                Monitoring
               </button>
             )}
             <button
               onClick={onOpenReports}
-              className="btn btn-primary btn-sm"
+              className="btn btn-secondary btn-sm"
             >
               <BarChart3 className="w-3.5 h-3.5" />
-              Core Values Analytics
+              Analytics
             </button>
           </div>
         </div>

@@ -671,6 +671,8 @@ export const App: React.FC = () => {
             }}
             onOpenReports={() => setActiveTab('reports')}
             onOpenWorkflowMonitoring={() => setActiveTab('workflow_monitoring')}
+            onOpenDeployment={() => setActiveTab('evaluation_deployment')}
+            onOpenTemplateBuilder={() => setActiveTab('template_builder')}
           />
         );
       case 'hr_admin':

@@ -107,6 +107,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'pod_validation', label: 'POD Governance', icon: ShieldCheck },
         { id: 'workflow_monitoring', label: 'Workflow Monitoring', icon: GitBranch },
         { id: 'evaluation_deployment', label: 'Evaluation Deployment', icon: Rocket },
+        { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal },
         { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'reports', label: 'Analytics', icon: BarChart3 },
         { id: 'my_profile', label: 'My Profile', icon: UserCircle },
