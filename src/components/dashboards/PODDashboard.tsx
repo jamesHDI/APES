@@ -261,7 +261,7 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
                 : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100'
             }`}
           >
-            📝 Self Evaluation ({evaluations.filter(e => e.status === 'draft' || e.status === 'reopened').length})
+            Self Evaluation ({evaluations.filter(e => e.status === 'draft' || e.status === 'reopened').length})
           </button>
           <button
             onClick={() => setStageFilter('dept_head')}
@@ -271,7 +271,7 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
                 : 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 hover:bg-orange-100'
             }`}
           >
-            👔 Dept Head Review ({evaluations.filter(e => e.status === 'pending_dept_head' || e.status === 'employee_submitted' || e.status === 'pending_supervisor').length})
+            Dept Head Review ({evaluations.filter(e => e.status === 'pending_dept_head' || e.status === 'employee_submitted' || e.status === 'pending_supervisor').length})
           </button>
           <button
             onClick={() => setStageFilter('president')}
@@ -281,7 +281,7 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
                 : 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100'
             }`}
           >
-            👑 Executive Review ({evaluations.filter(e => e.status === 'pending_president' || e.status === 'department_head_submitted').length})
+            Executive Review ({evaluations.filter(e => e.status === 'pending_president' || e.status === 'department_head_submitted').length})
           </button>
           <button
             onClick={() => setStageFilter('pod')}
@@ -291,7 +291,7 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
                 : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100'
             }`}
           >
-            🛡️ Ready for POD ({pendingPODReviews.length})
+            Ready for POD ({pendingPODReviews.length})
           </button>
           <button
             onClick={() => setStageFilter('completed')}
@@ -301,7 +301,7 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
                 : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
             }`}
           >
-            ✅ Completed ({archivedEvaluations.length})
+            Completed ({archivedEvaluations.length})
           </button>
         </div>
 
