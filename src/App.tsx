@@ -101,9 +101,6 @@ export const App: React.FC = () => {
 
     const initSession = async () => {
       try {
-        // Purge legacy browser-specific local storage cache for pure Supabase cloud single source of truth
-        localStorage.removeItem('apes_users_v3');
-
         const sessionActive = sessionStorage.getItem('apes_session_active_v3') === 'true';
         const savedTab = localStorage.getItem('apes_active_tab_v3');
         let storedUser = getStoredCurrentUser();
@@ -114,8 +111,12 @@ export const App: React.FC = () => {
             try {
               const freshUser = await findEmployeeInSupabase(storedUser.email || storedUser.id);
               if (freshUser) {
-                storedUser = freshUser;
-                setCurrentUserStore(freshUser);
+                const mergedUser: User = {
+                  ...freshUser,
+                  requiresPasswordChange: storedUser.requiresPasswordChange === false ? false : freshUser.requiresPasswordChange
+                };
+                storedUser = mergedUser;
+                setCurrentUserStore(mergedUser);
               }
             } catch (e) {
               console.warn('[App Init] Could not fetch fresh profile from Supabase, using stored fallback:', e);
@@ -171,8 +172,12 @@ export const App: React.FC = () => {
               (u) => u.email.toLowerCase() === prevUser.email.toLowerCase() || u.id === prevUser.id
             );
             if (updatedSelf) {
-              setCurrentUserStore(updatedSelf);
-              return updatedSelf;
+              const mergedSelf: User = {
+                ...updatedSelf,
+                requiresPasswordChange: prevUser.requiresPasswordChange === false ? false : updatedSelf.requiresPasswordChange
+              };
+              setCurrentUserStore(mergedSelf);
+              return mergedSelf;
             }
             return prevUser;
           });

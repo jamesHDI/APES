@@ -638,7 +638,13 @@ export const SEED_EVALUATIONS: Evaluation[] = [
 ];
 
 export const getStoredUsers = (): User[] => {
-  // Deterministic enterprise seed users — dynamic accounts are loaded live from Supabase PostgreSQL
+  const data = localStorage.getItem(USERS_KEY);
+  if (data) {
+    try {
+      const users: User[] = JSON.parse(data);
+      if (users && users.length > 0) return users;
+    } catch {}
+  }
   return SEED_USERS;
 };
 
@@ -648,18 +654,22 @@ export const saveUsers = (users: User[]) => {
 };
 
 export const getStoredCurrentUser = (): User | null => {
-  const data = localStorage.getItem(CURRENT_USER_KEY);
-  if (data) {
+  // 1. Try sessionStorage for tab-isolated active user
+  const sessionData = sessionStorage.getItem(CURRENT_USER_KEY);
+  if (sessionData) {
     try {
-      const user: User = JSON.parse(data);
+      const user: User = JSON.parse(sessionData);
+      if (user && user.id) return user;
+    } catch {}
+  }
+
+  // 2. Fall back to localStorage for single-tab or initial session restoration
+  const localData = localStorage.getItem(CURRENT_USER_KEY);
+  if (localData) {
+    try {
+      const user: User = JSON.parse(localData);
       if (user && user.id) {
-        if (user.id === 'usr_depthead_01') {
-          const grazie = SEED_USERS.find(u => u.id === 'usr_dh_sls');
-          if (grazie) {
-            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(grazie));
-            return grazie;
-          }
-        }
+        sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
         return user;
       }
     } catch {}
@@ -668,7 +678,13 @@ export const getStoredCurrentUser = (): User | null => {
 };
 
 export const setCurrentUserStore = (user: User) => {
+  sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
   localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+};
+
+export const clearCurrentUserStore = () => {
+  sessionStorage.removeItem(CURRENT_USER_KEY);
+  localStorage.removeItem(CURRENT_USER_KEY);
 };
 
 export const getStoredDepartments = (): Department[] => {

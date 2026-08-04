@@ -245,6 +245,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
 
     if (isExistingRecord) {
       // User already exists in database: Update row by ID directly
+      delete payload.id;
       const { error: updateErr } = await supabase.from('employees').update(payload).eq('id', targetId);
       if (updateErr) {
         console.error('Supabase Employee Update Error:', updateErr);
