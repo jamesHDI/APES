@@ -1,4 +1,5 @@
 import { User, Department, EvaluationTemplate, EvaluationCycle, EvaluationDeployment, Evaluation, AuditLog, Role } from '../types';
+import { MASTER_SALES_EVALUATION_TEMPLATE } from '../constants/masterSalesTemplate';
 import { 
   saveEmployeeToSupabase, 
   saveDepartmentToSupabase, 
@@ -263,121 +264,7 @@ export const SEED_CYCLES: EvaluationCycle[] = [
 ];
 
 export const SEED_TEMPLATES: EvaluationTemplate[] = [
-  {
-    id: 'template_sales',
-    title: 'Sales Performance Scorecard Standard',
-    departmentId: 'dept_sls',
-    departmentName: 'Sales',
-    evaluationPeriod: 'FY 2025',
-    formulaConfig: { eligibilityWeight: 85, coreValuesWeight: 15 },
-    classificationRanges: [
-      { min: 3.51, max: 4.00, label: 'Outstanding (EE)', code: 'EE', color: 'emerald' },
-      { min: 3.00, max: 3.50, label: 'Very Satisfactory (ME)', code: 'ME', color: 'blue' },
-      { min: 2.50, max: 2.99, label: 'Satisfactory (BME)', code: 'BME', color: 'amber' },
-      { min: 2.00, max: 2.49, label: 'Needs Improvement (NI)', code: 'NI', color: 'orange' },
-      { min: 1.00, max: 1.99, label: 'Unsatisfactory (DME)', code: 'DME', color: 'rose' }
-    ],
-    isActive: true,
-    createdAt: '2025-01-01',
-    kraCategories: [
-      {
-        id: 'kra_sales_target',
-        name: 'FINANCIAL & SALES TARGET ACCELERATION',
-        categoryWeightPercent: 40,
-        kpis: [
-          {
-            id: 'kpi_revenue_quota',
-            kraId: 'kra_sales_target',
-            kraName: 'FINANCIAL & SALES TARGET ACCELERATION',
-            name: 'Gross Annual Sales Revenue Quota',
-            description: 'Achieve 100% of target quarterly sales quota',
-            weightPercent: 25,
-            evidenceRequired: true,
-            standards: [
-              { rating: 4, label: 'Exceeds Expectations', description: 'Achieves > 115% of quota' },
-              { rating: 3, label: 'Meets Expectations', description: 'Achieves 100% - 114% of quota' },
-              { rating: 2, label: 'Barely Meets Expectations', description: 'Achieves 85% - 99% of quota' },
-              { rating: 1, label: 'Did Not Meet Expectations', description: 'Achieves < 85% of quota' }
-            ]
-          },
-          {
-            id: 'kpi_new_accounts',
-            kraId: 'kra_sales_target',
-            kraName: 'FINANCIAL & SALES TARGET ACCELERATION',
-            name: 'New B2B Account Acquisition',
-            description: 'Acquire minimum 12 new corporate clients per annum',
-            weightPercent: 15,
-            evidenceRequired: false,
-            standards: [
-              { rating: 4, label: 'Exceeds Expectations', description: '>= 16 new accounts' },
-              { rating: 3, label: 'Meets Expectations', description: '12 - 15 new accounts' },
-              { rating: 2, label: 'Barely Meets Expectations', description: '8 - 11 new accounts' },
-              { rating: 1, label: 'Did Not Meet Expectations', description: '< 8 new accounts' }
-            ]
-          }
-        ]
-      },
-      {
-        id: 'kra_cust_rel',
-        name: 'CUSTOMER RELATIONSHIP MANAGEMENT & RETENTION',
-        categoryWeightPercent: 30,
-        kpis: [
-          {
-            id: 'kpi_retention_rate',
-            kraId: 'kra_cust_rel',
-            kraName: 'CUSTOMER RELATIONSHIP MANAGEMENT & RETENTION',
-            name: 'Key Account Retention & Renewal Rate',
-            description: 'Maintain high client retention rate',
-            weightPercent: 20,
-            evidenceRequired: true,
-            standards: [
-              { rating: 4, label: 'Exceeds Expectations', description: '>= 95% retention' },
-              { rating: 3, label: 'Meets Expectations', description: '88% - 94% retention' },
-              { rating: 2, label: 'Barely Meets Expectations', description: '80% - 87% retention' },
-              { rating: 1, label: 'Did Not Meet Expectations', description: '< 80% retention' }
-            ]
-          },
-          {
-            id: 'kpi_csat',
-            kraId: 'kra_cust_rel',
-            kraName: 'CUSTOMER RELATIONSHIP MANAGEMENT & RETENTION',
-            name: 'Customer Satisfaction Score (CSAT)',
-            description: 'Achieve minimum CSAT rating of 4.5/5',
-            weightPercent: 10,
-            evidenceRequired: false,
-            standards: [
-              { rating: 4, label: 'Exceeds Expectations', description: 'CSAT 4.8 - 5.0' },
-              { rating: 3, label: 'Meets Expectations', description: 'CSAT 4.5 - 4.7' },
-              { rating: 2, label: 'Barely Meets Expectations', description: 'CSAT 4.0 - 4.4' },
-              { rating: 1, label: 'Did Not Meet Expectations', description: 'CSAT < 4.0' }
-            ]
-          }
-        ]
-      },
-      {
-        id: 'kra_process_ops',
-        name: 'OPERATIONAL EXCELLENCE & REPORTING',
-        categoryWeightPercent: 15,
-        kpis: [
-          {
-            id: 'kpi_crm_updates',
-            kraId: 'kra_process_ops',
-            kraName: 'OPERATIONAL EXCELLENCE & REPORTING',
-            name: 'Daily CRM Pipeline Compliance',
-            description: '100% compliant logging of leads and opportunities',
-            weightPercent: 15,
-            evidenceRequired: false,
-            standards: [
-              { rating: 4, label: 'Exceeds Expectations', description: 'Zero errors' },
-              { rating: 3, label: 'Meets Expectations', description: 'Minor delays' },
-              { rating: 2, label: 'Barely Meets Expectations', description: 'Frequent gaps' },
-              { rating: 1, label: 'Did Not Meet Expectations', description: 'Non-compliant' }
-            ]
-          }
-        ]
-      }
-    ]
-  }
+  MASTER_SALES_EVALUATION_TEMPLATE
 ];
 
 export const SEED_EVALUATIONS: Evaluation[] = [];
@@ -457,7 +344,12 @@ export const saveDepartments = (departments: Department[]) => {
 
 export const getStoredTemplates = (): EvaluationTemplate[] => {
   const data = localStorage.getItem(TEMPLATES_KEY);
-  if (data) return JSON.parse(data);
+  if (data) {
+    try {
+      const parsed: EvaluationTemplate[] = JSON.parse(data);
+      if (parsed && parsed.length > 0) return parsed;
+    } catch {}
+  }
   localStorage.setItem(TEMPLATES_KEY, JSON.stringify(SEED_TEMPLATES));
   return SEED_TEMPLATES;
 };
@@ -545,7 +437,11 @@ export const assignNewEvaluationToEmployee = (
   const isDeptHeadTrack = employee.isDepartmentHead || employee.role === 'dept_head';
   const workflowType = isDeptHeadTrack ? ('WORKFLOW_DEPT_HEAD' as const) : ('WORKFLOW_REGULAR' as const);
 
-  const kpiRatings = template.kraCategories.flatMap((kra) =>
+  const activeTemplate = (template && template.kraCategories && template.kraCategories.length > 0)
+    ? template
+    : MASTER_SALES_EVALUATION_TEMPLATE;
+
+  const kpiRatings = activeTemplate.kraCategories.flatMap((kra) =>
     kra.kpis.map((kpi) => ({
       kpiId: kpi.id,
       kraId: kra.id,

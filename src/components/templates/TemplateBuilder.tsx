@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import { EvaluationTemplate, KRACategory, KPITemplateItem, Department, User, Evaluation } from '../../types';
+import { createMasterBasedTemplate, MASTER_SALES_EVALUATION_TEMPLATE } from '../../constants/masterSalesTemplate';
+import { validateEvaluationTemplate } from '../../services/templateValidation';
+import { assignNewEvaluationToEmployee } from '../../services/storage';
+import { PrintableScorecard } from '../evaluation/PrintableScorecard';
 import { 
   SlidersHorizontal, 
   Plus, 
@@ -10,7 +14,11 @@ import {
   Layers, 
   Award,
   Sparkles,
-  HelpCircle
+  HelpCircle,
+  AlertTriangle,
+  Lock,
+  Eye,
+  X
 } from 'lucide-react';
 
 interface TemplateBuilderProps {
@@ -30,11 +38,15 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   onSaveTemplate,
   onDeleteTemplate,
 }) => {
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(templates[0]?.id || '');
+  // Always fallback to master template if templates array is empty
+  const initialList = templates && templates.length > 0 ? templates : [MASTER_SALES_EVALUATION_TEMPLATE];
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialList[0]?.id || MASTER_SALES_EVALUATION_TEMPLATE.id);
   const [activeTemplate, setActiveTemplate] = useState<EvaluationTemplate>(
-    templates.find(t => t.id === selectedTemplateId) || templates[0]
+    initialList.find(t => t.id === selectedTemplateId) || initialList[0]
   );
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const canDelete = currentUser?.role === 'system_admin' || currentUser?.role === 'hr_admin' || currentUser?.role === 'pod';
 
@@ -55,7 +67,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     );
 
     if (isInUse) {
-      alert('This template cannot be deleted because it is currently in use.');
+      alert('This template cannot be deleted because it is currently in use by an active evaluation.');
       return;
     }
 
@@ -74,56 +86,25 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
   const handleSelectTemplate = (id: string) => {
     setSelectedTemplateId(id);
+    setValidationErrors([]);
     const tmpl = templates.find((t) => t.id === id);
     if (tmpl) setActiveTemplate(tmpl);
   };
 
   const handleCreateNewTemplate = () => {
-    const newId = `tmpl_${Date.now()}`;
-    const newTemplate: EvaluationTemplate = {
-      id: newId,
-      title: 'New Department Scorecard Template',
-      departmentId: departments[1]?.id || 'dept_it',
-      departmentName: departments[1]?.name || 'IT & SYSTEMS',
-      evaluationPeriod: 'January-September 2025',
-      formulaConfig: { eligibilityWeight: 85, coreValuesWeight: 15 },
-      classificationRanges: [
-        { min: 3.51, max: 4.00, label: 'Exceeds Expectations (EE)', code: 'EE', color: 'emerald' },
-        { min: 3.00, max: 3.50, label: 'Meets Expectations (ME)', code: 'ME', color: 'blue' },
-        { min: 2.00, max: 2.99, label: 'Barely Meets Expectations (BME)', code: 'BME', color: 'amber' },
-        { min: 1.00, max: 1.99, label: 'Did Not Meet Expectations (DME)', code: 'DME', color: 'rose' }
-      ],
-      kraCategories: [
-        {
-          id: `kra_${Date.now()}`,
-          name: '1. TECHNICAL EXCELLENCE',
-          categoryWeightPercent: 50,
-          kpis: [
-            {
-              id: `kpi_${Date.now()}_1`,
-              kraId: `kra_${Date.now()}`,
-              kraName: '1. TECHNICAL EXCELLENCE',
-              name: 'A. System Uptime & Reliability',
-              description: 'Maintain server uptime standards.',
-              weightPercent: 30,
-              evidenceRequired: true,
-              standards: [
-                { rating: 4, label: '4 - Exceeds', description: '99.9% Uptime achieved' },
-                { rating: 3, label: '3 - Meets', description: '99.5% Uptime achieved' },
-                { rating: 2, label: '2 - Barely Meets', description: '98.0% Uptime achieved' },
-                { rating: 1, label: '1 - Did Not Meet', description: 'Below 98.0% Uptime' }
-              ]
-            }
-          ]
-        }
-      ],
-      isActive: true,
-      createdAt: new Date().toISOString().substring(0, 10)
-    };
+    const defaultDept = departments[0] || { id: 'dept_acc', name: 'Accounting' };
+    const newTemplate = createMasterBasedTemplate(
+      defaultDept.id,
+      defaultDept.name,
+      `${defaultDept.name} Performance Evaluation Scorecard Template`,
+      'January-September 2025'
+    );
 
+    onSaveTemplate(newTemplate);
     setActiveTemplate(newTemplate);
-    setSelectedTemplateId(newId);
-    showToast('New template initialized!');
+    setSelectedTemplateId(newTemplate.id);
+    setValidationErrors([]);
+    showToast(`New Master-Layout Template initialized for ${defaultDept.name}!`);
   };
 
   const handleAddKRA = () => {
@@ -187,8 +168,15 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   };
 
   const handleSave = () => {
+    const valResult = validateEvaluationTemplate(activeTemplate);
+    if (!valResult.isValid) {
+      setValidationErrors(valResult.errors);
+      showToast('Template validation failed. Fix errors before saving.');
+      return;
+    }
+    setValidationErrors([]);
     onSaveTemplate(activeTemplate);
-    showToast('Dynamic Evaluation Template saved successfully!');
+    showToast(`Template "${activeTemplate.title}" saved successfully!`);
   };
 
   const showToast = (msg: string) => {
@@ -198,7 +186,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
   // Calculate total weights
   const totalKPIWeight = activeTemplate.kraCategories.reduce((acc, kra) => {
-    return acc + kra.kpis.reduce((kAcc, kpi) => kAcc + kpi.weightPercent, 0);
+    return acc + (kra.kpis ? kra.kpis.reduce((kAcc, kpi) => kAcc + (kpi.weightPercent || 0), 0) : 0);
   }, 0);
 
   return (
@@ -209,6 +197,21 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-brand-500 flex items-center space-x-3 animate-in fade-in">
           <Sparkles className="w-5 h-5 text-brand-400" />
           <span className="text-sm font-semibold">{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Validation Errors Box */}
+      {validationErrors.length > 0 && (
+        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 space-y-2 shadow-sm">
+          <div className="flex items-center space-x-2 font-extrabold text-xs uppercase text-rose-700 dark:text-rose-300">
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+            <span>Template Save Blocked — Validation Requirements Unfulfilled</span>
+          </div>
+          <ul className="list-disc pl-5 text-xs space-y-1 text-rose-800 dark:text-rose-200">
+            {validationErrors.map((err, idx) => (
+              <li key={idx}>{err}</li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -293,6 +296,16 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               </div>
 
               <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPreviewModal(true)}
+                  className="px-3.5 py-2 rounded-xl bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800 text-xs font-bold flex items-center space-x-1.5 transition-colors"
+                  title="Preview Master Scorecard Layout PDF"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span>Preview Master PDF</span>
+                </button>
+
                 {canDelete && (
                   <button
                     type="button"
@@ -533,6 +546,39 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         </div>
 
       </div>
+
+      {/* Live Master Scorecard PDF Preview Modal */}
+      {showPreviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-5xl w-full max-h-[95vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/80">
+              <div className="flex items-center space-x-2">
+                <Lock className="w-4 h-4 text-brand-500" />
+                <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                  Live Master Scorecard Layout Preview — {activeTemplate.title}
+                </h4>
+              </div>
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 bg-slate-100 dark:bg-slate-950">
+              <PrintableScorecard
+                evaluation={assignNewEvaluationToEmployee(
+                  currentUser || { id: 'usr_preview', name: 'Sample Employee', role: 'employee', departmentName: activeTemplate.departmentName, position: 'Position Title' } as User,
+                  activeTemplate,
+                  activeTemplate.evaluationPeriod
+                )}
+                onBack={() => setShowPreviewModal(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

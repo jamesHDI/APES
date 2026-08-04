@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Role, Evaluation, EvaluationTemplate, Department, EvaluationCycle, Notification, isPendingUser } from './types';
+import { MASTER_SALES_EVALUATION_TEMPLATE } from './constants/masterSalesTemplate';
 import { 
   getStoredUsers, 
   saveUsers,
@@ -13,6 +14,7 @@ import {
   getStoredEvaluations, 
   saveEvaluations, 
   saveSingleEvaluation, 
+  assignNewEvaluationToEmployee,
   getStoredAuditLogs,
   resetToDefaultSeedData,
   SEED_USERS
@@ -422,35 +424,9 @@ export const App: React.FC = () => {
     const latestEval = getUserLatestEvaluation(currentUser, evaluations);
     if (latestEval) return latestEval;
 
-    return {
-      id: `eval_${currentUser.id}_${Date.now()}`,
-      cycleId: 'cycle_2026_annual',
-      templateId: 'template_sales',
-      workflowType: determineWorkflowType(currentUser),
-      employeeId: currentUser.id,
-      employeeName: currentUser.name,
-      departmentName: currentUser.departmentName || 'General',
-      position: currentUser.position || 'Staff Specialist',
-      isDepartmentHead: isUserDepartmentHead(currentUser),
-      appraisalPeriod: 'January - December 2026',
-      appraisalDate: new Date().toISOString().substring(0, 10),
-      status: 'draft',
-      eligibilityScore: 0,
-      coreValuesScore: 0,
-      totalEligibilityWeightedRating: 0,
-      totalCoreValuesWeightedRating: 0,
-      finalRating: 0,
-      ratingClassification: 'Pending Evaluation',
-      kpiRatings: [],
-      coreValueRatings: [],
-      developmentPlan: { strengths: '', areasForImprovement: '', learningNeeds: [] },
-      personnelAction: { actionType: 'no_action' },
-      signatures: {},
-      evidenceFiles: [],
-      auditTrail: [],
-      createdAt: new Date().toISOString().substring(0, 10),
-      updatedAt: new Date().toISOString().substring(0, 10)
-    };
+    // Guaranteed Master Sales Layout evaluation initialization
+    const fallbackTemplate = templates.find(t => t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
+    return assignNewEvaluationToEmployee(currentUser, fallbackTemplate, 'January-September 2025', 'System Default');
   };
 
   const currentEvaluation = getCurrentEvaluation();
