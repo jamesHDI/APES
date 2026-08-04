@@ -22,9 +22,11 @@ import {
   fetchDepartmentsFromSupabase, 
   fetchEvaluationsFromSupabase,
   fetchNotificationsFromSupabase,
-  saveEmployeeToSupabase
+  saveEmployeeToSupabase,
+  saveEmployeeToSupabaseDetailed,
+  findEmployeeInSupabase
 } from './services/supabaseService';
-import { supabase, isSupabaseConfigured } from './services/supabaseClient';
+import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './services/supabaseClient';
 import { 
   getStoredNotifications, 
   getRoleBasedNotifications, 
@@ -106,20 +108,29 @@ export const App: React.FC = () => {
         const savedTab = localStorage.getItem('apes_active_tab_v3');
         let storedUser = getStoredCurrentUser();
 
-        if (storedUser && storedUser.email && storedUser.email.toLowerCase() === 'admin.systemad@hdiadventures.com') {
-          storedUser = {
-            ...storedUser,
-            avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80'
-          };
-          setCurrentUserStore(storedUser);
-        }
+        if (sessionActive && storedUser) {
+          // Fetch fresh user profile from Supabase PostgreSQL cloud database on mount
+          if (isSupabaseConfigured) {
+            try {
+              const freshUser = await findEmployeeInSupabase(storedUser.email || storedUser.id);
+              if (freshUser) {
+                storedUser = freshUser;
+                setCurrentUserStore(freshUser);
+              }
+            } catch (e) {
+              console.warn('[App Init] Could not fetch fresh profile from Supabase, using stored fallback:', e);
+            }
+          }
 
-        if (sessionActive && storedUser && storedUser.isActive !== false && storedUser.isApproved !== false && storedUser.approvalStatus !== 'pending') {
-          if (isMounted) {
-            setCurrentUser(storedUser);
-            setIsAuthenticated(true);
-            setNotifications(getRoleBasedNotifications(storedUser));
-            if (savedTab) setActiveTab(savedTab);
+          if (storedUser && storedUser.isActive !== false && storedUser.isApproved !== false && storedUser.approvalStatus !== 'pending') {
+            if (isMounted) {
+              setCurrentUser(storedUser);
+              setIsAuthenticated(true);
+              setNotifications(getRoleBasedNotifications(storedUser));
+              if (savedTab) setActiveTab(savedTab);
+            }
+          } else {
+            if (isMounted) setIsAuthenticated(false);
           }
         } else {
           if (isMounted) {
@@ -145,20 +156,26 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // 2. Real-time Database & Notification Polling (Every 15s)
+  // 2. Real-time Database & Notification Polling (Every 3s)
   useEffect(() => {
     const syncDatabaseAndNotifications = async () => {
       if (isSupabaseConfigured) {
         const sbUsers = await fetchEmployeesFromSupabase();
         if (sbUsers && sbUsers.length > 0) {
           setUsers(sbUsers);
-          if (currentUser) {
-            const updatedSelf = sbUsers.find(u => u.email.toLowerCase() === currentUser.email.toLowerCase());
+          
+          // Live profile sync across devices for logged-in user
+          setCurrentUser((prevUser: User) => {
+            if (!prevUser) return prevUser;
+            const updatedSelf = sbUsers.find(
+              (u) => u.email.toLowerCase() === prevUser.email.toLowerCase() || u.id === prevUser.id
+            );
             if (updatedSelf) {
-              setCurrentUser(updatedSelf);
               setCurrentUserStore(updatedSelf);
+              return updatedSelf;
             }
-          }
+            return prevUser;
+          });
         }
 
         const sbDepts = await fetchDepartmentsFromSupabase();
@@ -323,12 +340,15 @@ export const App: React.FC = () => {
     saveUsers(updatedUsers);
   };
 
-  const handleUpdateCurrentUser = (updatedUser: User) => {
+  const handleUpdateCurrentUser = async (updatedUser: User) => {
     setCurrentUser(updatedUser);
     setCurrentUserStore(updatedUser);
-    const updatedUsers = users.map(u => u.id === updatedUser.id ? updatedUser : u);
+    const updatedUsers = users.map(u => (u.id === updatedUser.id || u.email.toLowerCase() === updatedUser.email.toLowerCase()) ? updatedUser : u);
     setUsers(updatedUsers);
-    saveUsers(updatedUsers);
+    if (isSupabaseConfigured) {
+      await saveEmployeeToSupabaseDetailed(updatedUser);
+      triggerRealtimeBroadcast('data_changed', { type: 'employee', email: updatedUser.email });
+    }
   };
 
   const handleSaveDepartments = (updatedDepts: Department[]) => {
