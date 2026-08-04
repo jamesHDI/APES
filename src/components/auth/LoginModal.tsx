@@ -135,7 +135,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   Employee Sign In
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Use your Employee ID or Company Email
+                  Sign in to access your performance evaluations.
                 </p>
               </div>
               <button

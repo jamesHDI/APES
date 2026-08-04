@@ -214,7 +214,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       last_name: user.lastName || user.name.split(' ')[1] || 'User',
       email: cleanEmail,
       contact_number: user.contactNumber || '',
-      department_id: user.departmentId || null,
+      department_id: user.departmentId ? ensureUuid(user.departmentId) : null,
       department_name: user.departmentName || 'General',
       position: user.position || 'Staff',
       role: user.role || 'employee',

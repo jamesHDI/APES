@@ -68,7 +68,11 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
   const currentRole = currentUser.role;
   const isReadOnly = isEvaluationCompleted(evalData);
-  const isSelfEval = currentUser.id === evalData.employeeId;
+  const isSelfEval = Boolean(
+    (evalData.employeeId && (currentUser.id === evalData.employeeId || currentUser.employeeNumber === evalData.employeeId)) ||
+    (evalData.employeeEmail && currentUser.email && evalData.employeeEmail.toLowerCase().trim() === currentUser.email.toLowerCase().trim()) ||
+    (evalData.employeeName && currentUser.name && evalData.employeeName.toLowerCase().trim() === currentUser.name.toLowerCase().trim())
+  );
 
   // Strict Role-Based Section Locking Permissions
   const canEditEmployeeSection = !isReadOnly && isSelfEval && (evalData.status === 'draft' || evalData.status === 'reopened');
@@ -714,7 +718,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               </button>
             )}
 
-            {(currentRole === 'employee' || currentRole === 'dept_head') && (evalData.status === 'draft' || evalData.status === 'reopened') && (
+            {isSelfEval && (evalData.status === 'draft' || evalData.status === 'reopened') && (
               <button onClick={handleSubmitEmployee} className="btn btn-primary btn-sm">
                 <Send className="w-3.5 h-3.5" />
                 Submit Evaluation
