@@ -441,7 +441,7 @@ export const App: React.FC = () => {
       );
     }
 
-    if (activeTab === 'evaluations' || activeTab === 'team_reviews' || activeTab === 'dept_head_reviews' || activeTab === 'pod_validation') {
+    if (activeTab === 'evaluations' || activeTab === 'team_reviews' || activeTab === 'dept_head_reviews') {
       return (
         <EvaluationForm
           evaluation={currentEvaluation}
@@ -449,6 +449,24 @@ export const App: React.FC = () => {
           allUsers={users}
           onSave={handleSaveEvaluation}
           onViewPrintable={() => setViewMode('printable')}
+        />
+      );
+    }
+
+    if (activeTab === 'pod_validation') {
+      return (
+        <PODDashboard
+          currentUser={currentUser}
+          evaluations={evaluations}
+          departments={departments}
+          onOpenEvaluation={(id) => {
+            setSelectedEvalId(id);
+            setActiveTab('evaluations');
+          }}
+          onOpenReports={() => setActiveTab('reports')}
+          onOpenWorkflowMonitoring={() => setActiveTab('workflow_monitoring')}
+          onOpenDeployment={() => setActiveTab('evaluation_deployment')}
+          onOpenTemplateBuilder={() => setActiveTab('template_builder')}
         />
       );
     }
