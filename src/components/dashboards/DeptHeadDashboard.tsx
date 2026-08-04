@@ -8,6 +8,7 @@ import { getUserActiveEvaluation } from '../../utils/workflowUtils';
 interface DeptHeadDashboardProps {
   currentUser: User;
   evaluations: Evaluation[];
+  allUsers?: User[];
   onOpenEvaluation: (evalId: string) => void;
 }
 
@@ -18,9 +19,29 @@ const getGreeting = () => {
   return 'Good evening';
 };
 
+export const isSameDepartment = (deptA?: string, deptB?: string): boolean => {
+  if (!deptA || !deptB) return false;
+  const norm = (str: string) => {
+    const s = str.trim().toLowerCase();
+    if (s === 'dept_adm' || s === 'adm' || s === 'admin' || s === 'administration') return 'admin';
+    if (s === 'dept_acc' || s === 'acc' || s === 'accounting') return 'accounting';
+    if (s === 'dept_sls' || s === 'sls' || s === 'sales') return 'sales';
+    if (s === 'dept_ops' || s === 'ops' || s === 'operations') return 'operations';
+    if (s === 'dept_hr' || s === 'pohr' || s === 'hr' || s === 'human resources' || s === 'people & organization development') return 'hr';
+    if (s === 'dept_bmc' || s === 'bmc') return 'bmc';
+    if (s === 'dept_fop' || s === 'fop') return 'fop';
+    if (s === 'dept_gaw' || s === 'gaw') return 'gaw';
+    if (s === 'dept_lgl' || s === 'lgl' || s === 'legal') return 'legal';
+    if (s === 'dept_mkt' || s === 'mkt' || s === 'marketing') return 'marketing';
+    return s;
+  };
+  return norm(deptA) === norm(deptB);
+};
+
 export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
   currentUser,
   evaluations,
+  allUsers = [],
   onOpenEvaluation,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,23 +50,13 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
   // Find active personal Department Head evaluation strictly for current user
   const mySelfEvaluation = getUserActiveEvaluation(currentUser, evaluations);
 
-  // Helper to match department names case-insensitively with alias support
-  const isMatchingDept = (evalDept?: string, headDept?: string) => {
-    if (!evalDept || !headDept) return false;
-    const e = evalDept.trim().toLowerCase();
-    const h = headDept.trim().toLowerCase();
-    if (e === h) return true;
-    if (e.includes(h) || h.includes(e)) return true;
-    if ((e.includes('admin') || e.includes('adm')) && (h.includes('admin') || h.includes('adm'))) return true;
-    if ((e.includes('sales') || e.includes('sls')) && (h.includes('sales') || h.includes('sls'))) return true;
-    if ((e.includes('accounting') || e.includes('acc')) && (h.includes('accounting') || h.includes('acc'))) return true;
-    return false;
-  };
-
-  // Filter evaluations belonging to the department head's department
+  // Filter evaluations belonging strictly to the department head's department
   const deptEvaluations = evaluations.filter(
-    (e) => e.employeeId !== currentUser.id && isMatchingDept(e.departmentName, currentUser.departmentName)
+    (e) => e.employeeId !== currentUser.id && isSameDepartment(e.departmentName || e.departmentId, currentUser.departmentName || currentUser.departmentId)
   );
+
+  const deptRosterUsers = allUsers.filter(u => isSameDepartment(u.departmentName || u.departmentId, currentUser.departmentName || currentUser.departmentId));
+  const deptRosterCount = deptRosterUsers.length > 0 ? deptRosterUsers.length : deptEvaluations.length;
 
   const pendingDeptHeadReviews = deptEvaluations.filter(
     (e) => e.status === 'pending_dept_head' || e.status === 'employee_submitted' || e.status === 'pending_supervisor'
@@ -114,7 +125,7 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
           </div>
           <div>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Department Roster</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{deptEvaluations.length}</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{deptRosterCount}</p>
           </div>
         </div>
 

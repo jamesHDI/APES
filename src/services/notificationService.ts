@@ -234,40 +234,7 @@ export const triggerAnnouncementNotification = async (
 ): Promise<boolean> => {
   console.log(`[Broadcast Debug] Broadcast announcement triggered. Target Audience: ${recipientRole}, Title: "${title}"`);
 
-  // 1. Fetch ALL active employees directly from Supabase database
-  let targetUsers: User[] = [];
-  const sbUsers = await fetchEmployeesFromSupabase();
-  if (sbUsers && sbUsers.length > 0) {
-    if (recipientRole === 'ALL' || !recipientRole) {
-      targetUsers = sbUsers;
-    } else if (recipientRole === 'ALL_ADMINS') {
-      targetUsers = sbUsers.filter(u => u.role === 'system_admin' || u.role === 'hr_admin');
-    } else {
-      targetUsers = sbUsers.filter(u => u.role === recipientRole);
-    }
-  }
-
-  console.log(`[Broadcast Debug] Resolved ${targetUsers.length} recipient users from Supabase.`);
-
-  // 2. Generate explicit per-recipient Notification records for Supabase database
-  const notifsToCreate: Notification[] = targetUsers.map(user => ({
-    id: generateUuid(),
-    userId: user.id,
-    recipientRole: user.role,
-    recipientDepartment: user.departmentName,
-    isAnnouncement: true,
-    title,
-    message,
-    category: 'announcement',
-    date: 'Just now',
-    read: false,
-    type: 'info',
-    senderName,
-    expirationDate,
-    dateTime: new Date().toLocaleString()
-  }));
-
-  // Add global broadcast fallback record (userId = null) for general query compatibility
+  // Generate a single clean broadcast announcement record for Supabase
   const globalNotif: Notification = {
     id: generateUuid(),
     recipientRole: (recipientRole || 'ALL') as any,
@@ -282,14 +249,8 @@ export const triggerAnnouncementNotification = async (
     expirationDate,
     dateTime: new Date().toLocaleString()
   };
-  notifsToCreate.push(globalNotif);
 
-  // 3. Batch insert ALL notification records into Supabase notifications table
-  const saved = await saveNotificationsBatchToSupabase(notifsToCreate);
-  console.log(`[Broadcast Debug] Batch saved ${notifsToCreate.length} notification rows to Supabase: ${saved}`);
-
-  // 4. Emit Realtime WebSocket event for online clients
-  triggerRealtimeBroadcast('data_changed', { type: 'announcement', title, count: notifsToCreate.length });
-
+  const saved = await saveNotificationToSupabase(globalNotif);
+  triggerRealtimeBroadcast('data_changed', { type: 'announcement', title });
   return saved;
 };

@@ -676,6 +676,7 @@ export const App: React.FC = () => {
           <DeptHeadDashboard
             currentUser={currentUser}
             evaluations={evaluations}
+            allUsers={users}
             onOpenEvaluation={(id) => {
               setSelectedEvalId(id);
               setActiveTab('evaluations');

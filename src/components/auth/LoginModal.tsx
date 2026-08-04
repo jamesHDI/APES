@@ -134,9 +134,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
                   Employee Sign In
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Sign in to access your performance evaluations.
-                </p>
               </div>
               <button
                 onClick={() => setShowSelfRegister(true)}

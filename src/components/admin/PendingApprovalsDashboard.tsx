@@ -57,7 +57,14 @@ export const PendingApprovalsDashboard: React.FC<PendingApprovalsDashboardProps>
 
   const handleOpenReview = (u: User) => {
     setSelectedUser(u);
-    setEditDeptId(u.departmentId || departments[0]?.id || '');
+    const matchedDept = departments.find(d => 
+      d.id === u.departmentId || 
+      d.name.toLowerCase() === (u.departmentName || '').toLowerCase() ||
+      (d.code && d.code.toLowerCase() === (u.departmentName || '').toLowerCase()) ||
+      d.name.toLowerCase().includes((u.departmentName || '').toLowerCase()) ||
+      (u.departmentName || '').toLowerCase().includes(d.name.toLowerCase())
+    );
+    setEditDeptId(matchedDept?.id || u.departmentId || departments[0]?.id || '');
     setEditPosition(u.position || '');
     setEditRole(u.role || 'employee');
     setEditIsId(u.immediateSuperiorId || '');
