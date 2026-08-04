@@ -79,33 +79,57 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
         </div>
       </div>
 
-      {/* Evaluation Progress Card or Friendly No Active Evaluation State */}
+      {/* My Evaluation Panel or Clean No Active Evaluation Assigned State */}
       {activeEvaluation ? (
         <EvaluationProgressCard 
           evaluation={activeEvaluation} 
           onOpenEvaluation={onOpenEvaluation}
         />
       ) : (
-        <div className="card p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 shadow-lg rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-start space-x-4">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-6 h-6" />
+        <div className="card p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
+          <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-base">No Active Evaluation</h3>
-              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 max-w-xl leading-relaxed">
-                Your current evaluation has been completed. Please wait for People Operations Development (POD) or the System Administrator to assign your next evaluation.
-              </p>
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-base">My Evaluation</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Personal Evaluation Status & Scorecard Tracking</p>
+            </div>
+          </div>
+
+          <div className="p-5 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Current Status</span>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                Waiting
+              </span>
+            </div>
+            <p className="text-sm font-bold text-slate-900 dark:text-white">No active evaluation assigned.</p>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Waiting for POD or System Administrator to deploy an evaluation form for your account.
+            </p>
+
+            <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+              <span className="font-bold text-slate-700 dark:text-slate-300">Workflow Routing:</span>
+              <span className="font-semibold text-brand-600 dark:text-brand-400">Employee</span>
+              <span>→</span>
+              <span>Department Head</span>
+              <span>→</span>
+              <span>POD</span>
+              <span>→</span>
+              <span>Completed</span>
             </div>
           </div>
           {latestEvaluation && (
-            <button
-              onClick={() => onOpenEvaluation(latestEvaluation.id)}
-              className="btn btn-secondary btn-sm shrink-0 font-semibold"
-            >
-              <span>View Completed Scorecard</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => onOpenEvaluation(latestEvaluation.id)}
+                className="btn btn-secondary btn-sm shrink-0 font-semibold flex items-center gap-1.5"
+              >
+                <span>View My Past Completed Scorecard</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           )}
         </div>
       )}

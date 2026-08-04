@@ -79,7 +79,7 @@ export const App: React.FC = () => {
   const [showAnnouncementModal, setShowAnnouncementModal] = useState<boolean>(false);
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
-  const [selectedEvalId, setSelectedEvalId] = useState<string>(evaluations[0]?.id || 'eval_maritess_2025');
+  const [selectedEvalId, setSelectedEvalId] = useState<string>('');
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'normal' | 'printable'>('normal');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
@@ -398,7 +398,15 @@ export const App: React.FC = () => {
   const getCurrentEvaluation = (): Evaluation => {
     if (selectedEvalId) {
       const found = evaluations.find((e) => e.id === selectedEvalId);
-      if (found) return found;
+      if (found) {
+        const isOwner = (found.employeeId && (found.employeeId === currentUser.id || found.employeeId === currentUser.employeeNumber)) || 
+                        (found.employeeEmail && found.employeeEmail.toLowerCase() === currentUser.email.toLowerCase());
+        const isPrivileged = currentUser.role === 'system_admin' || currentUser.role === 'hr_admin' || currentUser.role === 'pod' || currentUser.role === 'dept_head' || currentUser.role === 'supervisor' || currentUser.role === 'president';
+
+        if (isOwner || isPrivileged) {
+          return found;
+        }
+      }
     }
 
     const activeEval = getUserActiveEvaluation(currentUser, evaluations);

@@ -298,7 +298,9 @@ export interface Evaluation {
   workflowType: EvaluationWorkflowType;
   employeeId: string;
   employeeName: string;
+  employeeEmail?: string;
   departmentName: string;
+  departmentId?: string;
   position: string;
   isDepartmentHead?: boolean;
   appraisalPeriod: string;

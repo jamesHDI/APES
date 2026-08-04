@@ -93,7 +93,7 @@ export const EvaluationProgressCard: React.FC<EvaluationProgressCardProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <h3 className="font-extrabold text-slate-900 dark:text-white text-base tracking-tight">
-              Evaluation Progress
+              My Evaluation
             </h3>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
               isDeptHeadTrack
@@ -104,7 +104,7 @@ export const EvaluationProgressCard: React.FC<EvaluationProgressCardProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Real-time status tracking & approval pipeline assignment
+            Personal Evaluation Status & Scorecard Tracking
           </p>
         </div>
 
