@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { User } from '../../types';
+import { User, EmploymentStatus } from '../../types';
 import { changeUserPassword } from '../../services/authService';
 import {
   Camera,
@@ -39,6 +39,12 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
   // Editable fields
   const [firstName, setFirstName] = useState(currentUser.firstName || '');
   const [lastName, setLastName] = useState(currentUser.lastName || '');
+  const [position, setPosition] = useState(currentUser.position || '');
+  const [departmentName, setDepartmentName] = useState(currentUser.departmentName || '');
+  const [employeeNumber, setEmployeeNumber] = useState(currentUser.employeeNumber || '');
+  const [employmentStatus, setEmploymentStatus] = useState<EmploymentStatus>(currentUser.employmentStatus || 'Regular');
+  const [immediateSuperiorName, setImmediateSuperiorName] = useState(currentUser.immediateSuperiorName || '');
+  const [departmentHeadName, setDepartmentHeadName] = useState(currentUser.departmentHeadName || '');
   const [contactNumber, setContactNumber] = useState(currentUser.contactNumber || '');
   const [personalEmail, setPersonalEmail] = useState(currentUser.personalEmail || '');
   const [avatarPreview, setAvatarPreview] = useState(currentUser.avatarUrl || '');
@@ -95,6 +101,12 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       name: `${firstName.trim()} ${lastName.trim()}`,
+      position: position.trim(),
+      departmentName: departmentName.trim(),
+      employeeNumber: employeeNumber.trim(),
+      employmentStatus: employmentStatus as EmploymentStatus,
+      immediateSuperiorName: immediateSuperiorName.trim(),
+      departmentHeadName: departmentHeadName.trim(),
       contactNumber: contactNumber.trim(),
       personalEmail: personalEmail.trim(),
       avatarUrl: avatarPreview || currentUser.avatarUrl,
@@ -103,7 +115,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
     setTimeout(() => {
       onUpdateUser(updatedUser);
       setIsSaving(false);
-      showProfileFeedback('success', 'Profile information updated successfully!');
+      showProfileFeedback('success', 'Profile and Employment Information updated successfully!');
     }, 400);
   };
 
@@ -150,7 +162,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
           </h1>
         </div>
         <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 pl-4.5">
-          Manage your personal information, view official HR records, and update security credentials.
+          Manage your personal information, update employment details, and manage security credentials.
         </p>
       </div>
 
@@ -179,8 +191,8 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </div>
 
-            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{currentUser.name}</h2>
-            <p className="text-xs font-semibold text-slate-400 mt-0.5">{currentUser.position || 'Staff'}</p>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{firstName} {lastName}</h2>
+            <p className="text-xs font-semibold text-slate-400 mt-0.5">{position || 'Staff'}</p>
 
             <div className="mt-3">
               <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-brand-50 dark:bg-brand-950/60 text-[#E96B1A] dark:text-brand-300 border border-brand-200/70 dark:border-brand-800/70 shadow-sm">
@@ -196,14 +208,14 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
                   <CreditCard className="w-4 h-4 text-[#F28C28] shrink-0" />
                   Employee ID
                 </span>
-                <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{currentUser.employeeNumber || '—'}</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{employeeNumber || '—'}</span>
               </div>
               <div className="flex items-center justify-between py-1">
                 <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-[#F28C28] shrink-0" />
                   Department
                 </span>
-                <span className="font-semibold text-slate-900 dark:text-slate-100 truncate max-w-[150px] text-right">{currentUser.departmentName || '—'}</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100 truncate max-w-[150px] text-right">{departmentName || '—'}</span>
               </div>
               <div className="flex items-center justify-between py-1">
                 <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
@@ -220,38 +232,122 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
 
         {/* Right Column: HR Records, Personal Info, Security */}
         <div className="lg:col-span-8 space-y-6">
-          {/* HR Information (Read-Only 2-Column Grid) */}
+          {/* HR & Employment Information Form */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-[18px] p-6 shadow-xl shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:-translate-y-0.5 space-y-5">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#F28C28]/10 text-[#E96B1A] dark:text-brand-400 flex items-center justify-center shrink-0 shadow-sm">
-                <Briefcase className="w-4.5 h-4.5" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#F28C28]/10 text-[#E96B1A] dark:text-brand-400 flex items-center justify-center shrink-0 shadow-sm">
+                  <Briefcase className="w-4.5 h-4.5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">Employment Information</h3>
+                  <p className="text-xs text-slate-400">Update position, department, and employment details</p>
+                </div>
               </div>
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">Employment Information</h3>
+
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                disabled={isSaving}
+                className="h-9 px-4 rounded-xl font-bold text-xs bg-[#F28C28] hover:bg-[#E96B1A] text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{isSaving ? 'Saving...' : 'Save Profile'}</span>
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 pt-1">
-              {[
-                { label: 'Company Email', value: currentUser.email, icon: Mail, mono: false },
-                { label: 'Employee ID', value: currentUser.employeeNumber || '—', icon: CreditCard, mono: true },
-                { label: 'Department', value: currentUser.departmentName || '—', icon: Building2, mono: false },
-                { label: 'Position', value: currentUser.position || '—', icon: Briefcase, mono: false },
-                { label: 'Employment Status', value: currentUser.employmentStatus || 'Regular', icon: ShieldCheck, mono: false },
-                { label: 'System Role', value: ROLE_LABELS[currentUser.role] || currentUser.role, icon: UserCheck, mono: false },
-                { label: 'Immediate Superior', value: currentUser.immediateSuperiorName || '—', icon: UserIcon, mono: false },
-                { label: 'Department Head', value: currentUser.departmentHeadName || '—', icon: Users, mono: false },
-              ].map(({ label, value, icon: Icon, mono }) => (
-                <div key={label} className="border-b border-slate-100 dark:border-slate-800/80 pb-3 flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-slate-50 dark:bg-slate-800 text-[#F28C28] flex items-center justify-center shrink-0 mt-0.5">
-                    <Icon className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-400">{label}</p>
-                    <p className={`text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate mt-0.5 ${mono ? 'font-mono' : ''}`}>
-                      {value}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            {profileToast && (
+              <div className={`flex items-center gap-2 p-3 rounded-xl text-xs font-semibold ${
+                profileToast.type === 'success'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+              }`}>
+                {profileToast.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                {profileToast.msg}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Position / Job Title
+                </label>
+                <input
+                  type="text"
+                  value={position}
+                  onChange={e => setPosition(e.target.value)}
+                  placeholder="e.g. Accounting Department Head"
+                  className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-[#F28C28] focus:ring-4 focus:ring-[#F28C28]/12 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Department
+                </label>
+                <input
+                  type="text"
+                  value={departmentName}
+                  onChange={e => setDepartmentName(e.target.value)}
+                  placeholder="e.g. Accounting"
+                  className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-[#F28C28] focus:ring-4 focus:ring-[#F28C28]/12 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Employee ID Number
+                </label>
+                <input
+                  type="text"
+                  value={employeeNumber}
+                  onChange={e => setEmployeeNumber(e.target.value)}
+                  placeholder="e.g. EMP-2025-010"
+                  className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-[#F28C28] focus:ring-4 focus:ring-[#F28C28]/12 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Employment Status
+                </label>
+                <select
+                  value={employmentStatus}
+                  onChange={e => setEmploymentStatus(e.target.value as EmploymentStatus)}
+                  className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-[#F28C28] focus:ring-4 focus:ring-[#F28C28]/12 transition-all"
+                >
+                  <option value="Regular">Regular</option>
+                  <option value="Probationary">Probationary</option>
+                  <option value="Contractual">Contractual</option>
+                  <option value="Project-based">Project-based</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Immediate Superior
+                </label>
+                <input
+                  type="text"
+                  value={immediateSuperiorName}
+                  onChange={e => setImmediateSuperiorName(e.target.value)}
+                  placeholder="e.g. President & CEO"
+                  className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-[#F28C28] focus:ring-4 focus:ring-[#F28C28]/12 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Department Head
+                </label>
+                <input
+                  type="text"
+                  value={departmentHeadName}
+                  onChange={e => setDepartmentHeadName(e.target.value)}
+                  placeholder="e.g. Self / Department Head"
+                  className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-[#F28C28] focus:ring-4 focus:ring-[#F28C28]/12 transition-all"
+                />
+              </div>
             </div>
           </div>
 
