@@ -136,24 +136,26 @@ export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
       )}
 
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-purple-950 via-slate-900 to-slate-800 rounded-2xl p-6 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Building2 className="w-6 h-6 text-purple-300" />
-            <h2 className="text-xl font-black tracking-tight">Department & Unit Management</h2>
+      <div className="hero-card">
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0">
+              <Building2 className="w-5 h-5 text-[#F28C28]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Department & Unit Management</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Configure company departments, assign Department Heads, and review staff rosters.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-purple-200 mt-1">
-            Configure company departments, assign Department Heads, default KPI evaluation templates, and review staff rosters.
-          </p>
-        </div>
 
-        <button
-          onClick={handleOpenAdd}
-          className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg flex items-center space-x-1.5 shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Department</span>
-        </button>
+          <button onClick={handleOpenAdd} className="btn btn-primary btn-sm shrink-0">
+            <Plus className="w-4 h-4" />
+            Add New Department
+          </button>
+        </div>
       </div>
 
       {/* Departments Grid */}
@@ -161,32 +163,31 @@ export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
         {deptList.map((d) => {
           const deptStaff = users.filter(u => u.departmentName === d.name);
           return (
-            <div key={d.id} className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
+            <div key={d.id} className="card p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-base text-slate-900 dark:text-white">{d.name}</span>
-                <span className="px-2.5 py-0.5 rounded font-black text-xs bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                <span className="px-2.5 py-0.5 rounded-full font-bold text-xs bg-[#FFF4EA] text-[#E96B1A] dark:bg-brand-950 dark:text-brand-300 border border-[#F28C28]/20">
                   {d.code}
                 </span>
               </div>
 
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-xs text-slate-600 dark:text-slate-400">
                 <p><strong>Department Head:</strong> {d.headName}</p>
                 <p><strong>Assigned Staff:</strong> {deptStaff.length} Employees</p>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <button
                   onClick={() => setSelectedDept(d)}
-                  className="text-xs font-bold text-brand-600 hover:underline flex items-center space-x-1"
+                  className="text-xs font-bold text-[#E96B1A] hover:underline"
                 >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>View Roster ({deptStaff.length})</span>
+                  View Roster ({deptStaff.length})
                 </button>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-1">
                   <button
                     onClick={() => handleOpenEdit(d)}
-                    className="p-1.5 text-slate-500 hover:text-purple-600 rounded"
+                    className="p-1.5 text-slate-400 hover:text-[#E96B1A] rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     title="Edit Department"
                   >
                     <Edit3 className="w-4 h-4" />
@@ -194,7 +195,7 @@ export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
 
                   <button
                     onClick={() => handleToggleActive(d.id)}
-                    className="p-1.5 text-slate-400 hover:text-rose-600 rounded"
+                    className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                     title="Toggle Active Status"
                   >
                     <Trash2 className="w-4 h-4" />

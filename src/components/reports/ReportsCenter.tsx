@@ -109,25 +109,23 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ evaluations, depar
       {/* Report Type Selector Pills */}
       <div className="flex flex-wrap gap-2">
         {[
-          { id: 'employee', label: 'Employee Performance Report', icon: UserCheck },
-          { id: 'department', label: 'Departmental Breakdown', icon: Award },
-          { id: 'core_values', label: 'Core Values Summary', icon: TrendingUp },
-          { id: 'training', label: 'Training & Development Needs', icon: BookOpen },
-          { id: 'personnel_action', label: 'Personnel Action Recommendations', icon: FileText },
+          { id: 'employee', label: 'Employee Performance Report' },
+          { id: 'department', label: 'Departmental Breakdown' },
+          { id: 'core_values', label: 'Core Values Summary' },
+          { id: 'training', label: 'Training & Development Needs' },
+          { id: 'personnel_action', label: 'Personnel Action Recommendations' },
         ].map((item) => {
-          const Icon = item.icon;
           const isActive = selectedReportType === item.id;
           return (
             <button
               key={item.id}
               onClick={() => setSelectedReportType(item.id as any)}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 border ${
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all border ${
                 isActive
                   ? 'bg-[#F28C28] text-white border-[#F28C28] shadow-sm shadow-orange-500/20'
                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#F28C28]/40 hover:text-[#E96B1A]'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
               <span>{item.label}</span>
             </button>
           );

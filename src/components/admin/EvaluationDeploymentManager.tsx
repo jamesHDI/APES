@@ -149,67 +149,55 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
       )}
 
       {/* Top Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-brand-950 via-slate-900 to-slate-900 rounded-2xl p-6 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Rocket className="w-6 h-6 text-brand-400" />
-            <h2 className="text-xl font-black tracking-tight">Enterprise Evaluation Deployment & Cycle Management</h2>
+      <div className="hero-card">
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0">
+              <Rocket className="w-5 h-5 text-[#F28C28]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Enterprise Evaluation Deployment & Cycle Management</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
+                Deploy performance evaluation campaigns to employees, departments, or entire organization.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-brand-200 mt-1 max-w-2xl">
-            Deploy performance evaluation campaigns to employees, departments, or entire organization. Manage schedule deadlines, templates, and active deployment cycles.
-          </p>
-        </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-white font-bold text-xs shadow-lg flex items-center space-x-2 shrink-0 transition-all hover:scale-105"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>Deploy New Cycle</span>
-        </button>
+          <button onClick={() => setIsModalOpen(true)} className="btn btn-primary btn-sm shrink-0">
+            <PlusCircle className="w-4 h-4" />
+            Deploy New Cycle
+          </button>
+        </div>
       </div>
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card">
-          <div className="stat-icon bg-brand-100 dark:bg-brand-950">
-            <Rocket className="w-5 h-5 text-brand-600 dark:text-brand-400" />
-          </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Total Campaigns</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{deployments.length}</p>
+            <p className="stat-label">Total Campaigns</p>
+            <p className="stat-number">{deployments.length}</p>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon bg-emerald-100 dark:bg-emerald-950">
-            <Clock className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-          </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Active Deployments</p>
-            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{activeDeployments.length}</p>
+            <p className="stat-label">Active Cycles</p>
+            <p className="stat-number text-orange-600 dark:text-orange-400">{activeDeployments.length}</p>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon bg-purple-100 dark:bg-purple-950">
-            <Users className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-          </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Staff Assigned</p>
-            <p className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-0.5">
-              {deployments.reduce((acc, d) => acc + d.totalAssigned, 0)}
-            </p>
+            <p className="stat-label">Total Assigned</p>
+            <p className="stat-number">{deployments.reduce((acc, d) => acc + d.totalAssigned, 0)}</p>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon bg-indigo-100 dark:bg-indigo-950">
-            <CheckCircle2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-          </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Completed Scorecards</p>
-            <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5">
+            <p className="stat-label">Completed Reviews</p>
+            <p className="stat-number text-emerald-600 dark:text-emerald-400">
               {deployments.reduce((acc, d) => acc + d.completedCount, 0)}
             </p>
           </div>

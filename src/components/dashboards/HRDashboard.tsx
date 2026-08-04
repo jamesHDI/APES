@@ -87,39 +87,30 @@ export const HRDashboard: React.FC<HRDashboardProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <button
           onClick={onOpenTemplateBuilder}
-          className="card-hover p-5 flex items-center gap-4 text-left group"
+          className="card p-5 flex items-center justify-between text-left hover:border-[#F28C28]/40 hover:shadow-md transition-all group"
         >
-          <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-950 flex items-center justify-center shrink-0 group-hover:bg-amber-200 dark:group-hover:bg-amber-900 transition-colors">
-            <SlidersHorizontal className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          <div>
+            <p className="font-bold text-slate-900 dark:text-white text-sm">Manage Evaluation Templates</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Create and edit KPI templates for each department</p>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-slate-900 dark:text-white">Manage Evaluation Templates</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Create and edit KPI templates for each department</p>
-          </div>
-          <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-colors" />
+          <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#E96B1A] transition-colors shrink-0" />
         </button>
 
         <button
           onClick={() => onSelectTab && onSelectTab('pending_approvals')}
-          className="card-hover p-5 flex items-center gap-4 text-left group"
+          className="card p-5 flex items-center justify-between text-left hover:border-[#F28C28]/40 hover:shadow-md transition-all group"
         >
-          <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-950 flex items-center justify-center shrink-0 group-hover:bg-purple-200 dark:group-hover:bg-purple-900 transition-colors">
-            <UserCheck className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+          <div>
+            <p className="font-bold text-slate-900 dark:text-white text-sm">Pending Account Approvals</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Review and approve new employee registrations</p>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-slate-900 dark:text-white">Pending Account Approvals</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Review and approve new employee registrations</p>
-          </div>
-          <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-colors" />
+          <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#E96B1A] transition-colors shrink-0" />
         </button>
       </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card">
-          <div className="stat-icon bg-[#FFF4EA]">
-            <Users className="w-5 h-5 text-[#F28C28]" />
-          </div>
           <div>
             <p className="stat-label">Total Assigned</p>
             <p className="stat-number">{totalAssigned}</p>
@@ -127,32 +118,23 @@ export const HRDashboard: React.FC<HRDashboardProps> = ({
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon bg-emerald-100 dark:bg-emerald-950">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-          </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Completed</p>
-            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{completed}</p>
+            <p className="stat-label">Completed</p>
+            <p className="stat-number text-emerald-600 dark:text-emerald-400">{completed}</p>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon bg-amber-100 dark:bg-amber-950">
-            <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-          </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Pending</p>
-            <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-0.5">{totalAssigned - completed}</p>
+            <p className="stat-label">Pending</p>
+            <p className="stat-number text-slate-600 dark:text-slate-400">{totalAssigned - completed}</p>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon bg-purple-100 dark:bg-purple-950">
-            <Building2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-          </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Departments</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{departments.length}</p>
+            <p className="stat-label">Departments</p>
+            <p className="stat-number">{departments.length}</p>
           </div>
         </div>
       </div>

@@ -16,29 +16,24 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
   return (
     <div className="space-y-6 pb-12">
       
-      {/* Banner with Hexagon Background Pattern */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-amber-950 via-slate-900 to-amber-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex items-center justify-between border border-amber-500/20">
-        
-        {/* Subtle Honeycomb SVG Overlay */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:16px_16px]" />
-        
-        <div className="relative z-10">
-          <div className="flex items-center space-x-3">
-            <div className="p-2.5 bg-amber-500/20 rounded-2xl border border-amber-400/30 text-amber-400">
-              <Hexagon className="w-6 h-6 fill-amber-400/20 text-amber-400" />
+      {/* Banner */}
+      <div className="hero-card">
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
+        <div className="relative flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0">
+              <Building2 className="w-5 h-5 text-[#F28C28]" />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <h2 className="text-xl font-black tracking-tight">HDI Hive Organizational Matrix</h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                  Hexagon Hive Workflow
-                </span>
-              </div>
-              <p className="text-xs text-amber-200/90 mt-1 max-w-2xl">
-                Structured reporting hierarchy and automated multi-tier evaluation routing for all HDI Department Heads and staff.
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">HDI Hive Organizational Matrix</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
+                Structured reporting hierarchy and automated evaluation routing for HDI Department Heads and staff.
               </p>
             </div>
           </div>
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#FFF4EA] text-[#E96B1A] border border-[#F28C28]/20 shrink-0">
+            Reporting Structure
+          </span>
         </div>
       </div>
 

@@ -400,38 +400,33 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
       {/* Summary Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="stat-card">
-          <div className="stat-icon bg-[#FFF4EA]"><Users className="w-5 h-5 text-[#F28C28]" /></div>
           <div>
             <p className="stat-label">Total Users</p>
             <p className="stat-number">{totalEmployees}</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon bg-purple-50"><UserCircle className="w-5 h-5 text-purple-600" /></div>
           <div>
             <p className="stat-label">Dept Heads</p>
-            <p className="stat-number text-purple-700 dark:text-purple-300">{totalDeptHeads}</p>
+            <p className="stat-number">{totalDeptHeads}</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon bg-emerald-50"><UserCheck className="w-5 h-5 text-emerald-600" /></div>
           <div>
             <p className="stat-label">Active</p>
-            <p className="stat-number text-emerald-700 dark:text-emerald-400">{activeCount}</p>
+            <p className="stat-number text-emerald-600 dark:text-emerald-400">{activeCount}</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon bg-amber-50"><Check className="w-5 h-5 text-amber-600" /></div>
           <div>
             <p className="stat-label">Pending</p>
-            <p className="stat-number text-amber-700 dark:text-amber-400">{pendingCount}</p>
+            <p className="stat-number text-slate-600 dark:text-slate-400">{pendingCount}</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon bg-slate-100"><UserX className="w-5 h-5 text-slate-400" /></div>
           <div>
             <p className="stat-label">Inactive</p>
-            <p className="stat-number">{inactiveCount}</p>
+            <p className="stat-number text-slate-500">{inactiveCount}</p>
           </div>
         </div>
       </div>

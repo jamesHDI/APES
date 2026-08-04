@@ -148,67 +148,63 @@ export const WorkflowMonitoring: React.FC<WorkflowMonitoringProps> = ({
       )}
 
       {/* Header Hero Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <GitBranch className="w-6 h-6 text-indigo-400" />
-            <h2 className="text-xl font-black tracking-tight">Organization Workflow & Evaluation Monitoring</h2>
+      <div className="hero-card">
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0">
+              <GitBranch className="w-5 h-5 text-[#F28C28]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Organization Workflow & Evaluation Monitoring</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
+                Real-time evaluation cycle tracking, reviewer assignment audit, and new evaluation form assignment.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-indigo-200 mt-1 max-w-2xl">
-            Real-time evaluation cycle tracking, reviewer assignment audit, and new evaluation form assignment for employees and departments.
-          </p>
-        </div>
 
-        {(currentUser.role === 'system_admin' || currentUser.role === 'hr_admin' || currentUser.role === 'pod') && (
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-white font-bold text-xs shadow-lg flex items-center space-x-2 shrink-0 transition-all hover:scale-105"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Assign New Evaluation</span>
-          </button>
-        )}
+          {(currentUser.role === 'system_admin' || currentUser.role === 'hr_admin' || currentUser.role === 'pod') && (
+            <button onClick={() => setIsModalOpen(true)} className="btn btn-primary btn-sm shrink-0">
+              <PlusCircle className="w-4 h-4" />
+              Assign New Evaluation
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card">
-          <div className="stat-icon bg-brand-100 dark:bg-brand-950">
-            <Users className="w-5 h-5 text-brand-600 dark:text-brand-400" />
-          </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Total Evaluations</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{evaluations.length}</p>
+            <p className="stat-label">Total Evaluations</p>
+            <p className="stat-number">{evaluations.length}</p>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon bg-amber-100 dark:bg-amber-950">
-            <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-          </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Under Dept Review</p>
-            <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-0.5">{pendingDeptHead.length}</p>
+            <p className="stat-label">In Progress</p>
+            <p className="stat-number text-orange-600 dark:text-orange-400">
+              {evaluations.filter(e => !isEvaluationCompleted(e)).length}
+            </p>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon bg-indigo-100 dark:bg-indigo-950">
-            <ShieldCheck className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-          </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Under POD Review</p>
-            <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5">{pendingPOD.length}</p>
+            <p className="stat-label">Completed & Archived</p>
+            <p className="stat-number text-emerald-600 dark:text-emerald-400">
+              {evaluations.filter(e => isEvaluationCompleted(e)).length}
+            </p>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon bg-emerald-100 dark:bg-emerald-950">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-          </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Completed & Archived</p>
-            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{completed.length}</p>
+            <p className="stat-label">Dept Head Workflows</p>
+            <p className="stat-number">
+              {evaluations.filter(e => (e as any).workflowType === 'WORKFLOW_DEPT_HEAD' || (e as any).isDepartmentHead).length}
+            </p>
           </div>
         </div>
       </div>

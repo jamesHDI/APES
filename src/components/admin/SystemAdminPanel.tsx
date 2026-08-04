@@ -89,27 +89,30 @@ export const SystemAdminPanel: React.FC<SystemAdminPanelProps> = ({
       )}
 
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-brand-950 to-slate-900 rounded-2xl p-6 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <ShieldCheck className="w-6 h-6 text-brand-400" />
-            <h2 className="text-xl font-black tracking-tight">System Admin & Supabase Control Panel</h2>
+      <div className="hero-card">
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5 text-[#F28C28]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">System Admin & Supabase Control Panel</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                System health metrics, database connection status, and synchronization controls.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-brand-200 mt-1">
-            System health metrics, database connection status, RLS policies, and PostgreSQL synchronization controls.
-          </p>
-        </div>
 
-        {/* Supabase Status Indicator */}
-        <div className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 border shadow-lg ${
-          isSupabaseConfigured 
-            ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500' 
-            : 'bg-amber-950/80 text-amber-300 border-amber-500'
-        }`}>
-          {isSupabaseConfigured ? <Cloud className="w-4 h-4 text-emerald-400" /> : <CloudOff className="w-4 h-4 text-amber-400" />}
-          <span>
-            {isSupabaseConfigured ? 'Supabase PostgreSQL Connected' : 'Local Persistence (Demo Mode)'}
-          </span>
+          <div className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 border shrink-0 ${
+            isSupabaseConfigured 
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' 
+              : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+          }`}>
+            <span>
+              {isSupabaseConfigured ? 'Supabase Connected' : 'Local Persistence (Demo Mode)'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -117,47 +120,32 @@ export const SystemAdminPanel: React.FC<SystemAdminPanelProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <button
           onClick={() => onSelectTab && onSelectTab('pending_approvals')}
-          className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 shadow-sm flex items-center justify-between text-left hover:scale-[1.01] transition-transform"
+          className="stat-card hover:border-[#F28C28]/40 text-left transition-all"
         >
-          <div className="flex items-center space-x-4">
-            <div className="p-3 rounded-xl bg-amber-500 text-slate-950 font-black">
-              <UserCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase text-amber-800 dark:text-amber-300">Pending Approvals</p>
-              <p className="text-xl font-black text-amber-950 dark:text-amber-100">{pendingApprovalsCount} Requests</p>
-            </div>
+          <div>
+            <p className="stat-label">Pending Approvals</p>
+            <p className="stat-number text-orange-600 dark:text-orange-400">{pendingApprovalsCount}</p>
           </div>
-          <span className="text-xs font-bold text-amber-700 dark:text-amber-400 hover:underline">Review &rarr;</span>
         </button>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center space-x-4">
-          <div className="p-3 rounded-xl bg-brand-100 dark:bg-brand-950 text-brand-600">
-            <Users className="w-6 h-6" />
-          </div>
+        <div className="stat-card">
           <div>
-            <p className="text-[10px] font-bold uppercase text-slate-400">Total User Accounts</p>
-            <p className="text-xl font-black text-slate-900 dark:text-white">{users.length}</p>
+            <p className="stat-label">Total User Accounts</p>
+            <p className="stat-number">{users.length}</p>
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center space-x-4">
-          <div className="p-3 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-600">
-            <Building2 className="w-6 h-6" />
-          </div>
+        <div className="stat-card">
           <div>
-            <p className="text-[10px] font-bold uppercase text-slate-400">Departments</p>
-            <p className="text-xl font-black text-slate-900 dark:text-white">{departments.length}</p>
+            <p className="stat-label">Departments</p>
+            <p className="stat-number">{departments.length}</p>
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center space-x-4">
-          <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600">
-            <Calendar className="w-6 h-6" />
-          </div>
+        <div className="stat-card">
           <div>
-            <p className="text-[10px] font-bold uppercase text-slate-400">Active Cycles</p>
-            <p className="text-xl font-black text-slate-900 dark:text-white">{cycles.length}</p>
+            <p className="stat-label">Active Cycles</p>
+            <p className="stat-number text-emerald-600 dark:text-emerald-400">{cycles.length}</p>
           </div>
         </div>
       </div>
