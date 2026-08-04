@@ -284,7 +284,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Mobile Close Button */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#EFE4D6] dark:border-slate-800 lg:hidden">
           <div className="flex items-center gap-2">
-            <img src="/hdi-logo.png" alt="HDI Hive" className="h-6 w-auto object-contain" />
+            <img src="/hdi-logo.png" alt="HDI Hive" className="h-6 w-auto object-contain dark:brightness-0 dark:invert" />
             <span className="text-xs font-bold text-slate-700 dark:text-slate-200">APES v3.0</span>
           </div>
           <button
