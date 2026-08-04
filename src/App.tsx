@@ -199,6 +199,7 @@ export const App: React.FC = () => {
       } else {
         const storedUsers = getStoredUsers();
         setUsers(storedUsers);
+        setEvaluations(getStoredEvaluations());
       }
     };
 
@@ -405,7 +406,8 @@ export const App: React.FC = () => {
       const found = evaluations.find((e) => e.id === selectedEvalId);
       if (found) {
         const isOwner = (found.employeeId && (found.employeeId === currentUser.id || found.employeeId === currentUser.employeeNumber)) || 
-                        (found.employeeEmail && found.employeeEmail.toLowerCase() === currentUser.email.toLowerCase());
+                        (found.employeeEmail && found.employeeEmail.toLowerCase() === currentUser.email.toLowerCase()) ||
+                        (found.employeeName && found.employeeName.toLowerCase() === currentUser.name.toLowerCase());
         const isPrivileged = currentUser.role === 'system_admin' || currentUser.role === 'hr_admin' || currentUser.role === 'pod' || currentUser.role === 'dept_head' || currentUser.role === 'supervisor' || currentUser.role === 'president';
 
         if (isOwner || isPrivileged) {

@@ -52,9 +52,11 @@ export const isEvaluationCompleted = (evaluation?: Evaluation | null): boolean =
 export const getUserActiveEvaluation = (user: User, evaluations: Evaluation[] = []): Evaluation | null => {
   if (!user) return null;
   const cleanEmail = (user.email || '').trim().toLowerCase();
+  const cleanName = (user.name || '').trim().toLowerCase();
   const userEvals = evaluations.filter((e) => 
     (e.employeeId && (e.employeeId === user.id || e.employeeId === user.employeeNumber)) || 
-    (cleanEmail && e.employeeEmail && e.employeeEmail.trim().toLowerCase() === cleanEmail)
+    (cleanEmail && e.employeeEmail && e.employeeEmail.trim().toLowerCase() === cleanEmail) ||
+    (cleanName && e.employeeName && e.employeeName.trim().toLowerCase() === cleanName)
   );
   const activeEval = userEvals.find((e) => !isEvaluationCompleted(e));
   return activeEval || null;
@@ -63,9 +65,11 @@ export const getUserActiveEvaluation = (user: User, evaluations: Evaluation[] = 
 export const getUserLatestEvaluation = (user: User, evaluations: Evaluation[] = []): Evaluation | null => {
   if (!user) return null;
   const cleanEmail = (user.email || '').trim().toLowerCase();
+  const cleanName = (user.name || '').trim().toLowerCase();
   const userEvals = evaluations.filter((e) => 
     (e.employeeId && (e.employeeId === user.id || e.employeeId === user.employeeNumber)) || 
-    (cleanEmail && e.employeeEmail && e.employeeEmail.trim().toLowerCase() === cleanEmail)
+    (cleanEmail && e.employeeEmail && e.employeeEmail.trim().toLowerCase() === cleanEmail) ||
+    (cleanName && e.employeeName && e.employeeName.trim().toLowerCase() === cleanName)
   );
   if (userEvals.length === 0) return null;
   return [...userEvals].sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())[0];

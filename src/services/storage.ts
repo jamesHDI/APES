@@ -579,6 +579,7 @@ export const assignNewEvaluationToEmployee = (
     workflowType,
     employeeId: employee.id,
     employeeName: employee.name,
+    employeeEmail: employee.email,
     departmentName: employee.departmentName || template.departmentName || 'General',
     position: employee.position || 'Staff Specialist',
     isDepartmentHead: isDeptHeadTrack,

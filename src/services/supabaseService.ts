@@ -507,14 +507,18 @@ export const fetchEvaluationsFromSupabase = async (): Promise<Evaluation[] | nul
   try {
     let { data: evals, error: evalErr } = await supabase.from('evaluations').select('*');
     
-    if (evalErr || !evals || evals.length < 3) {
+    if (evalErr || !evals) {
       const { SEED_EVALUATIONS } = await import('./storage');
-      console.log('[Supabase Sync] Auto-seeding SEED_EVALUATIONS into Supabase evaluations table...');
-      for (const ev of SEED_EVALUATIONS) {
-        await saveEvaluationToSupabase(ev);
+      if (SEED_EVALUATIONS && SEED_EVALUATIONS.length > 0) {
+        console.log('[Supabase Sync] Auto-seeding SEED_EVALUATIONS into Supabase evaluations table...');
+        for (const ev of SEED_EVALUATIONS) {
+          await saveEvaluationToSupabase(ev);
+        }
+        const { data: retryEvals } = await supabase.from('evaluations').select('*');
+        evals = retryEvals || [];
+      } else {
+        evals = evals || [];
       }
-      const { data: retryEvals } = await supabase.from('evaluations').select('*');
-      evals = retryEvals || [];
     }
 
     return evals.map((e: any) => ({
@@ -524,6 +528,7 @@ export const fetchEvaluationsFromSupabase = async (): Promise<Evaluation[] | nul
       workflowType: e.workflow_type,
       employeeId: e.employee_id,
       employeeName: e.employee_name,
+      employeeEmail: e.employee_email,
       departmentName: e.department_name,
       position: e.position,
       appraisalPeriod: e.appraisal_period,

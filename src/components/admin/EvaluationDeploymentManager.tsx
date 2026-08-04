@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Department, EvaluationTemplate, EvaluationDeployment, DeploymentStatus, AssignmentType } from '../../types';
-import { getStoredDeployments, saveDeployments, assignNewEvaluationToEmployee } from '../../services/storage';
+import { getStoredDeployments, saveDeployments, assignNewEvaluationToEmployee, saveSingleEvaluation } from '../../services/storage';
 import { triggerWorkflowNotification } from '../../services/notificationService';
 import { 
   Rocket, 
@@ -110,6 +110,8 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
         const newEval = assignNewEvaluationToEmployee(u, template, period, currentUser.name);
         newEval.deploymentId = deploymentId;
         newEval.deadline = endDate;
+        // Re-save so deploymentId & deadline are persisted to storage & Supabase
+        saveSingleEvaluation(newEval);
         
         triggerWorkflowNotification(
           u.id,
