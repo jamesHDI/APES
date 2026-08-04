@@ -124,11 +124,14 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+    <div className="max-w-6xl mx-auto space-y-6 pb-12 p-4 sm:p-6 rounded-2xl bg-gradient-to-b from-[#FFF9F3] via-slate-50 to-slate-100/60 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 transition-colors">
       {/* Page Header */}
-      <div className="pb-4 border-b border-slate-200 dark:border-slate-800">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">My Profile</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+      <div className="pb-4 border-b border-slate-200/80 dark:border-slate-800">
+        <div className="flex items-center gap-2.5">
+          <span className="w-1.5 h-6 rounded-full bg-brand-500 shrink-0" />
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">My Profile</h1>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 pl-4">
           Manage your personal information, view official HR records, and update security credentials.
         </p>
       </div>
@@ -136,13 +139,16 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Profile Card */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col items-center text-center">
-            <div className="relative mb-4">
-              <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-6 flex flex-col items-center text-center shadow-sm relative overflow-hidden">
+            {/* Top Orange Accent Line */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-400 via-brand-500 to-amber-500" />
+
+            <div className="relative mb-4 mt-1">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center">
                 {avatarPreview ? (
                   <img src={avatarPreview} alt={currentUser.name} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-slate-700 dark:text-slate-200 font-bold text-2xl">
+                  <span className="text-brand-600 dark:text-brand-400 font-bold text-2xl">
                     {currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </span>
                 )}
@@ -150,7 +156,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 flex items-center justify-center shadow transition-all hover:opacity-90"
+                className="absolute bottom-0 right-0 w-7.5 h-7.5 rounded-full bg-brand-500 hover:bg-brand-600 text-white flex items-center justify-center shadow-md transition-all active:scale-95"
                 title="Change photo"
               >
                 <Camera className="w-3.5 h-3.5" />
@@ -162,7 +168,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{currentUser.position || 'Staff'}</p>
 
             <div className="mt-3">
-              <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+              <span className="px-3 py-1 rounded-md text-xs font-semibold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200/60 dark:border-brand-800/60">
                 {ROLE_LABELS[currentUser.role] || currentUser.role}
               </span>
             </div>
@@ -191,8 +197,11 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
         {/* Right Column: HR Records, Personal Info, Security */}
         <div className="lg:col-span-8 space-y-8">
           {/* HR Information (Read-Only Grid) */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-4">
-            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Employment Information</h3>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-6 space-y-4 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <span className="w-1 h-4 rounded-full bg-brand-500 shrink-0" />
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">Employment Information</h3>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 pt-2">
               <div className="border-b border-slate-100 dark:border-slate-800/80 pb-3">
@@ -238,8 +247,11 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
           </div>
 
           {/* Personal Information Form */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-5">
-            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Personal Information</h3>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-6 space-y-5 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <span className="w-1 h-4 rounded-full bg-brand-500 shrink-0" />
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">Personal Information</h3>
+            </div>
 
             {profileToast && (
               <div className={`flex items-center gap-2 p-3 rounded-lg text-xs font-medium ${
@@ -262,7 +274,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
                   value={firstName}
                   onChange={e => setFirstName(e.target.value)}
                   placeholder="First name"
-                  className="w-full h-9 px-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 transition-colors"
+                  className="w-full h-9 px-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
                 />
               </div>
 
@@ -275,7 +287,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
                   value={lastName}
                   onChange={e => setLastName(e.target.value)}
                   placeholder="Last name"
-                  className="w-full h-9 px-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 transition-colors"
+                  className="w-full h-9 px-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
                 />
               </div>
 
@@ -288,7 +300,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
                   value={contactNumber}
                   onChange={e => setContactNumber(e.target.value)}
                   placeholder="+63 9XX XXX XXXX"
-                  className="w-full h-9 px-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 transition-colors"
+                  className="w-full h-9 px-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
                 />
               </div>
 
@@ -301,7 +313,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
                   value={personalEmail}
                   onChange={e => setPersonalEmail(e.target.value)}
                   placeholder="personal@email.com"
-                  className="w-full h-9 px-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 transition-colors"
+                  className="w-full h-9 px-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
                 />
               </div>
             </div>
@@ -311,7 +323,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
                 type="button"
                 onClick={handleSaveProfile}
                 disabled={isSaving}
-                className="h-9 px-4 rounded-lg font-medium text-sm bg-brand-600 hover:bg-brand-500 text-white transition-colors disabled:opacity-50"
+                className="h-9 px-4 rounded-lg font-medium text-sm bg-brand-600 hover:bg-brand-500 active:bg-brand-700 text-white shadow-sm shadow-brand-500/10 transition-colors cursor-pointer disabled:opacity-50"
               >
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
@@ -319,8 +331,11 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
           </div>
 
           {/* Change Password Section */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-5">
-            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Change Password</h3>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-6 space-y-5 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <span className="w-1 h-4 rounded-full bg-brand-500 shrink-0" />
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">Change Password</h3>
+            </div>
 
             {passwordToast && (
               <div className={`flex items-center gap-2 p-3 rounded-lg text-xs font-medium ${
@@ -344,7 +359,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
                     value={currentPassword}
                     onChange={e => setCurrentPassword(e.target.value)}
                     placeholder="Current password"
-                    className="w-full h-9 pl-3 pr-9 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 transition-colors"
+                    className="w-full h-9 pl-3 pr-9 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
                   />
                   <button
                     type="button"
@@ -366,7 +381,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
                     placeholder="New password"
-                    className="w-full h-9 pl-3 pr-9 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 transition-colors"
+                    className="w-full h-9 pl-3 pr-9 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
                   />
                   <button
                     type="button"
@@ -388,7 +403,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="Confirm password"
-                    className="w-full h-9 pl-3 pr-9 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 transition-colors"
+                    className="w-full h-9 pl-3 pr-9 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
                   />
                   <button
                     type="button"
@@ -406,7 +421,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
                 type="button"
                 onClick={handleChangePassword}
                 disabled={!newPassword || !confirmPassword}
-                className="h-9 px-4 rounded-lg font-medium text-sm bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors disabled:opacity-40"
+                className="h-9 px-4 rounded-lg font-medium text-sm bg-brand-600 hover:bg-brand-500 active:bg-brand-700 text-white shadow-sm shadow-brand-500/10 transition-colors cursor-pointer disabled:opacity-40"
               >
                 Update Password
               </button>
