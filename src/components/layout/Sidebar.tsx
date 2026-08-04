@@ -53,9 +53,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['management', 'config']));
 
-  // My Profile item — shown for all roles at bottom of nav
-  const profileItem: NavItem = { id: 'my_profile', label: 'My Profile', icon: UserCircle };
-
   const toggleGroup = (id: string) => {
     setExpandedGroups((prev) => {
       const next = new Set(prev);
@@ -81,24 +78,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items = [
         ...common,
         { id: 'my_history', label: 'Evaluation History', icon: History },
+        { id: 'my_profile', label: 'My Profile', icon: UserCircle },
       ];
     } else if (currentRole === 'supervisor') {
       items = [
         ...common,
         { id: 'team_reviews', label: 'Team Reviews', icon: CheckSquare, badge: pendingCount > 0 ? pendingCount : undefined },
         { id: 'reports', label: 'Reports', icon: BarChart3 },
+        { id: 'my_profile', label: 'My Profile', icon: UserCircle },
       ];
     } else if (currentRole === 'dept_head') {
       items = [
         ...common,
         { id: 'dept_actions', label: 'Personnel Actions', icon: FileCheck },
         { id: 'reports', label: 'Reports', icon: BarChart3 },
+        { id: 'my_profile', label: 'My Profile', icon: UserCircle },
       ];
     } else if (currentRole === 'president') {
       items = [
         ...common,
         { id: 'dept_head_reviews', label: 'Dept Head Reviews', icon: Crown },
         { id: 'reports', label: 'Executive Reports', icon: BarChart3 },
+        { id: 'my_profile', label: 'My Profile', icon: UserCircle },
       ];
     } else if (currentRole === 'pod') {
       items = [
@@ -108,6 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'evaluation_deployment', label: 'Evaluation Deployment', icon: Rocket },
         { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'reports', label: 'Analytics', icon: BarChart3 },
+        { id: 'my_profile', label: 'My Profile', icon: UserCircle },
       ];
     } else if (currentRole === 'hr_admin') {
       items = [
@@ -136,6 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'reports', label: 'HR Reports', icon: BarChart3 },
+        { id: 'my_profile', label: 'My Profile', icon: UserCircle },
       ];
     } else if (currentRole === 'system_admin') {
       items = [
@@ -164,6 +167,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'reports', label: 'Audit & Reports', icon: BarChart3 },
+        { id: 'my_profile', label: 'My Profile', icon: UserCircle },
       ];
     } else {
       items = common;
@@ -176,7 +180,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const handleSelectTab = (tab: string) => {
     onSelectTab(tab);
-    onClose(); // close on mobile after selection
+    onClose();
   };
 
   const renderItem = (item: NavItem) => {
@@ -191,23 +195,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div key={item.id}>
           <button
             onClick={() => toggleGroup(item.id)}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 ${
               hasActiveChild
-                ? 'bg-brand-50/80 dark:bg-brand-950/40 text-[#E96B1A] dark:text-brand-300'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 hover:text-[#E96B1A] dark:hover:text-brand-300'
+                ? 'bg-[#FFF4EA] text-[#E96B1A]'
+                : 'text-slate-500 dark:text-slate-400 hover:bg-[#FFF8F3] dark:hover:bg-slate-800/80 hover:text-[#E96B1A]'
             }`}
           >
-            <div className="flex items-center gap-3">
-              <Icon className={`w-4 h-4 ${hasActiveChild ? 'text-[#F28C28]' : 'text-slate-400 dark:text-slate-500'}`} />
-              <span>{item.label}</span>
+            <div className="flex items-center gap-2.5">
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                hasActiveChild ? 'bg-[#F28C28]/15' : 'bg-slate-100 dark:bg-slate-800 group-hover:bg-[#FFF4EA]'
+              }`}>
+                <Icon className={`w-3.5 h-3.5 ${hasActiveChild ? 'text-[#F28C28]' : 'text-slate-400'}`} />
+              </div>
+              <span className="font-semibold">{item.label}</span>
             </div>
-            {isExpanded
-              ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-            }
+            <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${
+              isExpanded ? 'bg-slate-100 dark:bg-slate-800' : ''
+            }`}>
+              {isExpanded
+                ? <ChevronDown className="w-3 h-3 text-slate-400" />
+                : <ChevronRight className="w-3 h-3 text-slate-400" />
+              }
+            </div>
           </button>
           {isExpanded && (
-            <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-brand-100 dark:border-slate-800 pl-3">
+            <div className="ml-3 mt-0.5 space-y-0.5 border-l-2 border-[#F28C28]/20 pl-3">
               {item.children!.map((child) => renderItem(child))}
             </div>
           )}
@@ -219,20 +231,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <button
         key={item.id}
         onClick={() => handleSelectTab(item.id)}
-        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all ${
+        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all duration-150 ${
           isActive
-            ? 'bg-gradient-to-r from-brand-100/80 via-brand-50 to-transparent dark:from-brand-950/60 dark:to-transparent text-[#E96B1A] dark:text-brand-300 font-black border-l-4 border-[#F28C28] shadow-xs'
-            : 'font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 hover:text-[#E96B1A] dark:hover:text-brand-300'
+            ? 'bg-gradient-to-r from-[#FFF4EA] via-[#FFF8F3] to-transparent text-[#E96B1A] font-bold border-l-[3px] border-[#F28C28] pl-[10px]'
+            : 'font-semibold text-slate-500 dark:text-slate-400 hover:bg-[#FFF8F3] dark:hover:bg-slate-800/80 hover:text-[#E96B1A] dark:hover:text-brand-300'
         }`}
       >
-        <div className="flex items-center gap-3">
-          <Icon className={`w-4 h-4 ${isActive ? 'text-[#F28C28]' : 'text-slate-400 dark:text-slate-500'}`} />
+        <div className="flex items-center gap-2.5">
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+            isActive ? 'bg-[#F28C28]/15' : 'bg-slate-100/70 dark:bg-slate-800'
+          }`}>
+            <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-[#F28C28]' : 'text-slate-400 dark:text-slate-500'}`} />
+          </div>
           <span className="truncate">{item.label}</span>
         </div>
         {item.badge !== undefined && item.badge > 0 && (
           <span
-            className={`shrink-0 min-w-[20px] h-5 px-1.5 text-[10px] font-extrabold rounded-full flex items-center justify-center ${
-              isActive ? 'bg-[#F28C28] text-white shadow-sm' : 'bg-hdi-red text-white'
+            className={`shrink-0 min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full flex items-center justify-center ${
+              isActive ? 'bg-[#F28C28] text-white' : 'bg-[#F28C28]/15 text-[#E96B1A]'
             }`}
           >
             {item.badge}
@@ -247,7 +263,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Mobile Overlay Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -256,37 +272,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Sidebar Panel */}
       <aside
         className={`
-          fixed top-16 left-0 bottom-0 z-40 w-64 bg-white dark:bg-slate-900
-          border-r border-slate-200 dark:border-slate-800
+          fixed top-16 left-0 bottom-0 z-40 w-64
+          bg-gradient-to-b from-[#FFFAF6] via-[#FFF8F3] to-[#FFF6EF]
+          dark:from-slate-900 dark:via-slate-900 dark:to-slate-900
+          border-r border-[#EFE4D6] dark:border-slate-800
           flex flex-col transition-transform duration-250 ease-out
           lg:sticky lg:top-0 lg:translate-x-0 lg:shrink-0 lg:h-[calc(100vh-4rem)]
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
-
         {/* Mobile Close Button */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 lg:hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#EFE4D6] dark:border-slate-800 lg:hidden">
           <div className="flex items-center gap-2">
             <img src="/hdi-logo.png" alt="HDI Hive" className="h-6 w-auto object-contain" />
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">APES v3.0</span>
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">APES v3.0</span>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-[#FFF4EA] dark:hover:bg-slate-800 text-slate-400 hover:text-[#E96B1A] transition-colors"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Nav Items */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1 pt-4">
-          <p className="px-3 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+          <p className="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
             Navigation
           </p>
           {navItems.map(renderItem)}
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 text-center">
-          <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">HDI Hive</p>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Strictly Confidential</p>
+        <div className="px-4 py-3 border-t border-[#EFE4D6] dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-[#F28C28]/15 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#F28C28]" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">HDI Hive · APES v3.0</p>
+              <p className="text-[9px] text-slate-400 dark:text-slate-500">Strictly Confidential</p>
+            </div>
+          </div>
         </div>
       </aside>
     </>

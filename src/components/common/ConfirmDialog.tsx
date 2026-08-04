@@ -45,8 +45,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   const styles = variantStyles[variant];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div className="modal-overlay">
+      <div className="modal-panel max-w-sm animate-slide-up">
         {/* Header */}
         <div className="flex items-start justify-between p-6 pb-4">
           <div className="flex items-center gap-3">
@@ -73,17 +73,11 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-2 px-6 py-4 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-100 dark:border-slate-700">
-          <button
-            onClick={onCancel}
-            className="btn btn-secondary btn-sm"
-          >
+        <div className="modal-footer">
+          <button onClick={onCancel} className="btn btn-secondary btn-sm">
             {cancelLabel}
           </button>
-          <button
-            onClick={onConfirm}
-            className={`${styles.confirmBtn} btn-sm`}
-          >
+          <button onClick={onConfirm} className={`${styles.confirmBtn} btn-sm`}>
             {confirmLabel}
           </button>
         </div>

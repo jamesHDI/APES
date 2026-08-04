@@ -43,26 +43,30 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
     <div className="space-y-6 pb-12">
 
       {/* Header Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-brand-950 to-slate-900 rounded-2xl p-6 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <History className="w-6 h-6 text-brand-400" />
-            <h2 className="text-xl font-black tracking-tight">Evaluation History & Past Scorecards</h2>
+      <div className="hero-card">
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0">
+              <History className="w-5 h-5 text-[#F28C28]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Evaluation History & Past Scorecards</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
+                Archive of all completed appraisal cycles, final ratings, and development plans.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-brand-200 mt-1 max-w-2xl">
-            Archive repository of all completed performance appraisal cycles, final ratings, digital signatures, and development plans.
-          </p>
-        </div>
-
-        <div className="relative shrink-0">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search period or name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 pr-3 py-1.5 rounded-xl border text-xs bg-white/10 text-white placeholder-slate-400 border-white/20 w-52"
-          />
+          <div className="relative shrink-0">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search period or name..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 pr-3 py-2 rounded-xl border text-xs bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 placeholder-slate-400 border-slate-200 dark:border-slate-700 w-52 focus:ring-2 focus:ring-[#F28C28]/30 outline-none"
+            />
+          </div>
         </div>
       </div>
 

@@ -362,101 +362,108 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
       
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-brand-500 flex items-center space-x-3 animate-in fade-in">
-          <Sparkles className="w-5 h-5 text-brand-400" />
+        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-[#F28C28]/50 flex items-center space-x-3 animate-fade-in">
+          <Sparkles className="w-5 h-5 text-[#F28C28]" />
           <span className="text-sm font-semibold">{toastMsg}</span>
         </div>
       )}
 
-      {/* Simple Header Banner */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Users className="w-6 h-6 text-brand-600 dark:text-brand-400" />
-            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Employee Directory & User Management</h2>
+      {/* Header Banner */}
+      <div className="hero-card">
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-[#F28C28]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Employee Directory & User Management</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Manage personnel profiles, position assignments, role permissions, and access credentials.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Manage personnel profiles, position assignments, role permissions, and access credentials.
-          </p>
-        </div>
 
-        <div className="flex items-center space-x-2 shrink-0">
-          <button
-            onClick={handleExportCSV}
-            className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold shadow-xs flex items-center space-x-1.5 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            <span>Export Excel</span>
-          </button>
-
-          <button
-            onClick={handleOpenAdd}
-            className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold shadow-md flex items-center space-x-1.5 transition-colors"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Register Employee</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={handleExportCSV} className="btn btn-secondary btn-sm">
+              <Download className="w-4 h-4" />
+              Export Excel
+            </button>
+            <button onClick={handleOpenAdd} className="btn btn-primary btn-sm">
+              <UserPlus className="w-4 h-4" />
+              Register Employee
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Summary Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <p className="text-[11px] font-bold uppercase text-slate-400">Total Users</p>
-          <p className="text-2xl font-black text-slate-900 dark:text-white">{totalEmployees}</p>
+        <div className="stat-card">
+          <div className="stat-icon bg-[#FFF4EA]"><Users className="w-5 h-5 text-[#F28C28]" /></div>
+          <div>
+            <p className="stat-label">Total Users</p>
+            <p className="stat-number">{totalEmployees}</p>
+          </div>
         </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <p className="text-[11px] font-bold uppercase text-purple-600 dark:text-purple-400">Department Heads</p>
-          <p className="text-2xl font-black text-purple-900 dark:text-purple-100">{totalDeptHeads}</p>
+        <div className="stat-card">
+          <div className="stat-icon bg-purple-50"><UserCircle className="w-5 h-5 text-purple-600" /></div>
+          <div>
+            <p className="stat-label">Dept Heads</p>
+            <p className="stat-number text-purple-700 dark:text-purple-300">{totalDeptHeads}</p>
+          </div>
         </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <p className="text-[11px] font-bold uppercase text-emerald-600 dark:text-emerald-400">Active</p>
-          <p className="text-2xl font-black text-emerald-900 dark:text-emerald-100">{activeCount}</p>
+        <div className="stat-card">
+          <div className="stat-icon bg-emerald-50"><UserCheck className="w-5 h-5 text-emerald-600" /></div>
+          <div>
+            <p className="stat-label">Active</p>
+            <p className="stat-number text-emerald-700 dark:text-emerald-400">{activeCount}</p>
+          </div>
         </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <p className="text-[11px] font-bold uppercase text-amber-600 dark:text-amber-400">Pending</p>
-          <p className="text-2xl font-black text-amber-900 dark:text-amber-100">{pendingCount}</p>
+        <div className="stat-card">
+          <div className="stat-icon bg-amber-50"><Check className="w-5 h-5 text-amber-600" /></div>
+          <div>
+            <p className="stat-label">Pending</p>
+            <p className="stat-number text-amber-700 dark:text-amber-400">{pendingCount}</p>
+          </div>
         </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <p className="text-[11px] font-bold uppercase text-slate-400">Inactive</p>
-          <p className="text-2xl font-black text-slate-700 dark:text-slate-300">{inactiveCount}</p>
+        <div className="stat-card">
+          <div className="stat-icon bg-slate-100"><UserX className="w-5 h-5 text-slate-400" /></div>
+          <div>
+            <p className="stat-label">Inactive</p>
+            <p className="stat-number">{inactiveCount}</p>
+          </div>
         </div>
       </div>
 
       {/* Directory Section Navigation Tabs */}
-      <div className="flex items-center space-x-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+      <div className="flex items-center gap-2">
         <button
           onClick={() => setActiveTab('all')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'all'
-              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
+              ? 'bg-[#F28C28] text-white shadow-sm shadow-orange-500/20'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-[#F28C28]/40 hover:text-[#E96B1A]'
           }`}
         >
           All Users ({userList.length})
         </button>
-
         <button
           onClick={() => setActiveTab('dept_heads')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'dept_heads'
-              ? 'bg-purple-600 text-white shadow-sm'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
+              ? 'bg-[#F28C28] text-white shadow-sm shadow-orange-500/20'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-[#F28C28]/40 hover:text-[#E96B1A]'
           }`}
         >
           Department Heads ({totalDeptHeads})
         </button>
-
         <button
           onClick={() => setActiveTab('employees')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'employees'
-              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
+              ? 'bg-[#F28C28] text-white shadow-sm shadow-orange-500/20'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-[#F28C28]/40 hover:text-[#E96B1A]'
           }`}
         >
           Regular Employees ({totalEmployees - totalDeptHeads})
@@ -464,7 +471,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
       </div>
 
       {/* Filter Toolbar */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="card p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* Search */}
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -473,39 +480,25 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by name, email, employee ID, position..."
-            className="w-full pl-9 pr-4 py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-brand-500"
+            className="search-bar-input"
           />
         </div>
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <select
-            value={filterDept}
-            onChange={(e) => setFilterDept(e.target.value)}
-            className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 outline-none"
-          >
+          <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)} className="form-input py-2 text-xs w-auto">
             <option value="ALL">All Departments</option>
             {departments.map((d) => (
               <option key={d.id} value={d.name}>{d.name}</option>
             ))}
           </select>
-
-          <select
-            value={filterPosition}
-            onChange={(e) => setFilterPosition(e.target.value)}
-            className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 outline-none max-w-[160px] truncate"
-          >
+          <select value={filterPosition} onChange={(e) => setFilterPosition(e.target.value)} className="form-input py-2 text-xs w-auto max-w-[160px]">
             <option value="ALL">All Positions</option>
             {availablePositions.map((pos) => (
               <option key={pos} value={pos}>{pos}</option>
             ))}
           </select>
-
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as any)}
-            className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 outline-none"
-          >
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="form-input py-2 text-xs w-auto">
             <option value="ALL">All Status</option>
             <option value="ACTIVE">Active Users</option>
             <option value="PENDING">Pending Approval</option>

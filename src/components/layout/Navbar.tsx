@@ -13,6 +13,8 @@ import {
   CheckCheck,
   FileText,
   User as UserIcon,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -80,7 +82,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 shadow-sm transition-colors shrink-0">
+    <header className="sticky top-0 z-40 bg-white/98 dark:bg-slate-900/98 backdrop-blur-md border-b border-[#EFE4D6] dark:border-slate-800 shadow-[0_1px_12px_rgba(15,23,42,0.06)] transition-colors shrink-0">
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16 gap-4">
 
@@ -89,7 +91,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Mobile hamburger */}
             <button
               onClick={onToggleSidebar}
-              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors lg:hidden"
+              className="p-2 rounded-xl text-slate-500 dark:text-slate-300 hover:bg-[#FFF4EA] hover:text-[#E96B1A] dark:hover:bg-slate-800 transition-all duration-150 lg:hidden"
               aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
             >
               {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -109,36 +111,37 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">
                     PERFORMANCE EVALUATION SYSTEM
                   </span>
-                  <span className="text-[10px] px-2.5 py-0.5 rounded-full font-extrabold bg-brand-100/80 dark:bg-brand-950 text-[#E96B1A] dark:text-brand-300 border border-brand-200/80 dark:border-brand-800">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#FFF4EA] dark:bg-brand-950 text-[#E96B1A] dark:text-brand-300 border border-[#F28C28]/30 dark:border-brand-800">
                     APES v3.0
                   </span>
                 </div>
-                <p className="text-xs text-[#E96B1A] dark:text-brand-400 font-black tracking-wider uppercase mt-0.5 hidden md:block">
+                <p className="text-[11px] text-[#F28C28] dark:text-brand-400 font-bold tracking-widest uppercase mt-0.5 hidden md:block">
                   HDI Hive
                 </p>
               </div>
             </div>
-
           </div>
 
-          {/* Right: Notifications + Dark Mode + User */}
-          <div className="flex items-center gap-1.5">
+          {/* Right: Sync + Dark Mode + Notifications + User */}
+          <div className="flex items-center gap-1">
 
-            {/* Supabase Cloud Sync Status Badge */}
-            <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold">
-              <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-              <span className="text-slate-600 dark:text-slate-300">
-                {isSupabaseConfigured ? 'Cloud Sync Active' : 'Offline Local Mode'}
-              </span>
+            {/* Cloud Sync Status Badge */}
+            <div className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors ${
+              isSupabaseConfigured
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200/60 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400'
+                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${isSupabaseConfigured ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
+              <span>{isSupabaseConfigured ? 'Cloud Sync' : 'Offline'}</span>
             </div>
 
             {/* Dark / Light Mode Toggle */}
             <button
               onClick={onToggleDarkMode}
-              className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              className="p-2 text-slate-500 dark:text-slate-400 hover:bg-[#FFF4EA] hover:text-[#E96B1A] dark:hover:bg-slate-800 rounded-xl transition-all duration-150"
               title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
-              {darkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
+              {darkMode ? <Sun className="w-4.5 h-4.5 text-amber-400" /> : <Moon className="w-[18px] h-[18px]" />}
             </button>
 
             {/* Notification Bell */}
@@ -148,12 +151,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setShowNotifications(!showNotifications);
                   setShowUserDropdown(false);
                 }}
-                className="relative p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                className="relative p-2 text-slate-500 dark:text-slate-400 hover:bg-[#FFF4EA] hover:text-[#E96B1A] dark:hover:bg-slate-800 rounded-xl transition-all duration-150"
                 aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
               >
-                <Bell className="w-5 h-5" />
+                <Bell className="w-[18px] h-[18px]" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-hdi-red text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                  <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-[#F28C28] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm shadow-orange-500/30">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -161,28 +164,31 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {/* Notification Panel */}
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200/80 dark:border-slate-700 z-50 overflow-hidden animate-slide-up">
                   {/* Panel Header */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-                    <div className="flex items-center space-x-2">
-                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                        Notifications
-                      </h4>
-                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300">
-                        Role: {roleLabel[currentUser.role] || currentUser.role}
-                      </span>
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700 bg-[#FFFAF6] dark:bg-slate-800/80">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-[#FFF4EA] flex items-center justify-center">
+                        <Bell className="w-3.5 h-3.5 text-[#F28C28]" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-none">
+                          Notifications
+                        </h4>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{roleLabel[currentUser.role] || currentUser.role}</p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {unreadCount > 0 && (
                         <button
                           onClick={handleMarkAllRead}
-                          className="text-xs text-brand-600 dark:text-brand-400 font-semibold hover:underline flex items-center gap-1"
+                          className="text-xs text-[#F28C28] dark:text-brand-400 font-semibold hover:underline flex items-center gap-1"
                         >
                           <CheckCheck className="w-3.5 h-3.5" />
                           Mark all read
                         </button>
                       )}
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#FFF4EA] text-[#E96B1A] border border-[#F28C28]/20">
                         {unreadCount} new
                       </span>
                     </div>
@@ -190,7 +196,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                   {/* Announcement Trigger for Admins & POD */}
                   {(currentUser.role === 'system_admin' || currentUser.role === 'hr_admin' || currentUser.role === 'pod') && onOpenAnnouncementModal && (
-                    <div className="px-3 py-2 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/50 flex items-center justify-between">
+                    <div className="px-4 py-2.5 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200/60 dark:border-amber-900/50 flex items-center justify-between">
                       <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
                         Broadcast Company Announcement
                       </span>
@@ -199,7 +205,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           setShowNotifications(false);
                           onOpenAnnouncementModal();
                         }}
-                        className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition-colors flex items-center gap-1"
+                        className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold shadow-sm transition-colors flex items-center gap-1"
                       >
                         + Create
                       </button>
@@ -207,15 +213,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                   )}
 
                   {/* Notification List */}
-                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700">
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/80">
                     {notifications.length === 0 ? (
                       <div className="py-10 text-center">
-                        <Bell className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3">
+                          <Bell className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                        </div>
                         <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">
-                          No notifications for your account
+                          No notifications yet
                         </p>
                         <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                          Evaluations & role-specific alerts will appear here
+                          Evaluations & role alerts will appear here
                         </p>
                       </div>
                     ) : (
@@ -231,28 +239,28 @@ export const Navbar: React.FC<NavbarProps> = ({
                               onSelectEvaluation(n.evaluationId);
                             }
                           }}
-                          className={`w-full text-left px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-750 ${
-                            !n.read ? 'bg-brand-50/60 dark:bg-brand-950/30' : ''
-                          } ${n.isAnnouncement ? 'border-l-4 border-amber-500 bg-amber-50/30 dark:bg-amber-950/20' : ''}`}
+                          className={`w-full text-left px-4 py-3 transition-colors hover:bg-[#FFFAF6] dark:hover:bg-slate-750 ${
+                            !n.read ? 'bg-[#FFF8F3]/60 dark:bg-brand-950/20' : ''
+                          } ${n.isAnnouncement ? 'border-l-2 border-amber-400' : ''}`}
                         >
                           <div className="flex items-start gap-3">
-                            <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!n.read ? (n.isAnnouncement ? 'bg-amber-500' : 'bg-brand-500') : 'bg-transparent'}`} />
+                            <div className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${!n.read ? (n.isAnnouncement ? 'bg-amber-500' : 'bg-[#F28C28]') : 'bg-transparent'}`} />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-1 mb-0.5">
-                                <span className={`text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
-                                  n.isAnnouncement ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300' :
-                                  n.category === 'account' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300' :
-                                  n.category === 'approval' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300' :
-                                  'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                                <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-md ${
+                                  n.isAnnouncement ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' :
+                                  n.category === 'account' ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' :
+                                  n.category === 'approval' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' :
+                                  'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
                                 }`}>
                                   {n.isAnnouncement ? 'Announcement' : (n.category || 'Notification')}
                                 </span>
-                                <span className="text-[10px] text-slate-400 font-mono font-medium shrink-0 ml-2">{n.dateTime || n.date}</span>
+                                <span className="text-[10px] text-slate-400 font-medium shrink-0">{n.dateTime || n.date}</span>
                               </div>
-                              <p className={`text-xs leading-snug ${!n.read ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
+                              <p className={`text-xs leading-snug ${!n.read ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>
                                 {n.title}
                               </p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 leading-snug">
                                 {n.message}
                               </p>
                               {n.senderName && (
@@ -277,19 +285,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setShowUserDropdown(!showUserDropdown);
                   setShowNotifications(false);
                 }}
-                className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all"
+                className="flex items-center gap-2 pl-1.5 pr-2.5 py-1.5 rounded-xl bg-[#FFFAF6] dark:bg-slate-800 hover:bg-[#FFF4EA] dark:hover:bg-slate-700 border border-[#EFE4D6] dark:border-slate-700 transition-all duration-150 shadow-sm"
                 aria-label="User account menu"
               >
                 <img
                   src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'}
                   alt={currentUser.name}
-                  className="w-7 h-7 rounded-full object-cover ring-2 ring-brand-500/30 shrink-0"
+                  className="w-7 h-7 rounded-full object-cover ring-2 ring-[#F28C28]/25 shrink-0"
                 />
                 <div className="text-left hidden sm:block">
                   <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight max-w-[120px] truncate">
                     {currentUser.name}
                   </p>
-                  <p className="text-[10px] text-brand-600 dark:text-brand-400 font-semibold leading-tight">
+                  <p className="text-[10px] text-[#F28C28] dark:text-brand-400 font-semibold leading-tight">
                     {roleLabel[currentUser.role] ?? currentUser.role}
                   </p>
                 </div>
@@ -298,46 +306,48 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {/* User Dropdown Panel */}
               {showUserDropdown && (
-                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
-                  {/* Compact User Identity Header */}
-                  <div className="p-4 flex items-center gap-3">
+                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200/80 dark:border-slate-700 z-50 overflow-hidden animate-slide-up">
+                  {/* Warm User Identity Header */}
+                  <div className="p-4 bg-gradient-to-br from-[#FFFAF6] to-[#FFF4EA] dark:from-slate-800 dark:to-slate-800 border-b border-[#EFE4D6] dark:border-slate-700 flex items-center gap-3">
                     <img
                       src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'}
                       alt={currentUser.name}
-                      className="w-11 h-11 rounded-full object-cover ring-2 ring-brand-500/20 shrink-0"
+                      className="w-11 h-11 rounded-full object-cover ring-2 ring-[#F28C28]/25 shrink-0"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-sm text-slate-900 dark:text-white truncate leading-snug">
                         {currentUser.name}
                       </p>
-                      <p className="text-xs text-brand-600 dark:text-brand-400 font-semibold mt-0.5">
+                      <p className="text-[11px] text-[#F28C28] dark:text-brand-400 font-semibold mt-0.5">
                         {roleLabel[currentUser.role] ?? currentUser.role}
                       </p>
-                      <p className="text-[11px] font-mono text-slate-400 dark:text-slate-400 mt-0.5">
+                      <p className="text-[10px] font-mono text-slate-400 dark:text-slate-400 mt-0.5">
                         {currentUser.employeeNumber || 'EMP-001'}
                       </p>
                     </div>
                   </div>
 
                   {/* Navigation & Logout Actions */}
-                  <div className="border-t border-slate-100 dark:border-slate-700/80 p-2 space-y-1">
+                  <div className="p-2 space-y-0.5">
                     <button
                       onClick={() => {
                         setShowUserDropdown(false);
                         if (onSelectTab) onSelectTab('my_profile');
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60 font-medium text-sm transition-colors text-left"
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-[#FFF4EA] hover:text-[#E96B1A] dark:hover:bg-slate-700/60 font-medium text-sm transition-colors text-left"
                     >
-                      <UserIcon className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                      <UserIcon className="w-4 h-4 shrink-0" />
                       <span>My Profile</span>
                     </button>
+
+                    <div className="border-t border-slate-100 dark:border-slate-700 my-1" />
 
                     <button
                       onClick={() => {
                         setShowUserDropdown(false);
                         onLogout();
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-medium text-sm transition-colors text-left"
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-medium text-sm transition-colors text-left"
                     >
                       <LogOut className="w-4 h-4 shrink-0" />
                       <span>Sign Out</span>

@@ -50,30 +50,35 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
     <div className="space-y-6 pb-12">
 
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-950 via-slate-900 to-emerald-900 rounded-2xl p-6 text-white shadow-xl">
-        <div className="absolute -top-8 -right-8 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
+      <div className="hero-card">
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <p className="text-emerald-300 text-sm font-medium">{getGreeting()},</p>
-            <h2 className="text-2xl font-extrabold mt-0.5">{currentUser.name}</h2>
-            <p className="text-emerald-200 text-sm mt-1 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              POD Officer &nbsp;·&nbsp; Quality Governance & Validation
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0 shadow-sm">
+              <ShieldCheck className="w-6 h-6 text-[#F28C28]" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{getGreeting()}</p>
+              <h2 className="text-xl font-bold mt-0.5 text-slate-900 dark:text-white">{currentUser.name}</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#F28C28]" />
+                POD Officer &nbsp;·&nbsp; Quality Governance & Validation
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {onOpenWorkflowMonitoring && (
               <button
                 onClick={onOpenWorkflowMonitoring}
-                className="btn btn-sm bg-white/10 hover:bg-white/20 text-white font-bold"
+                className="btn btn-secondary btn-sm"
               >
                 <GitBranch className="w-3.5 h-3.5" />
-                Workflow Monitoring & Assignments
+                Workflow Monitoring
               </button>
             )}
             <button
               onClick={onOpenReports}
-              className="btn btn-sm bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold"
+              className="btn btn-primary btn-sm"
             >
               <BarChart3 className="w-3.5 h-3.5" />
               Core Values Analytics

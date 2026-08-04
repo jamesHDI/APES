@@ -67,20 +67,25 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
     <div className="space-y-6 pb-12">
 
       {/* Hero Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-purple-950 via-purple-900 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
-        <div className="absolute -top-8 -right-8 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
+      <div className="hero-card">
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <p className="text-purple-300 text-sm font-medium">{getGreeting()},</p>
-            <h2 className="text-2xl font-extrabold mt-0.5">{currentUser.name}</h2>
-            <p className="text-purple-200 text-sm mt-1">
-              Department Head &nbsp;·&nbsp; <strong className="text-amber-300">{currentUser.departmentName}</strong>
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0 shadow-sm">
+              <Building2 className="w-6 h-6 text-[#F28C28]" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{getGreeting()}</p>
+              <h2 className="text-xl font-bold mt-0.5 text-slate-900 dark:text-white">{currentUser.name}</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                Department Head &nbsp;·&nbsp; <span className="text-[#F28C28] font-semibold">{currentUser.departmentName}</span>
+              </p>
+            </div>
           </div>
-          <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/10 text-center shrink-0">
-            <p className="text-[11px] text-purple-300 uppercase font-semibold tracking-wide">Dept Average Score</p>
-            <p className="text-3xl font-black text-amber-400 mt-1">{avgDeptScore}</p>
-            <p className="text-[11px] text-purple-200 font-medium mt-0.5">out of 4.00</p>
+          <div className="bg-[#FFF4EA] dark:bg-brand-950/40 px-5 py-4 rounded-2xl border border-[#F28C28]/20 text-center shrink-0">
+            <p className="text-[10px] text-[#F28C28] uppercase font-bold tracking-widest">Dept Average Score</p>
+            <p className="text-3xl font-black text-[#E96B1A] mt-1 leading-none">{avgDeptScore}</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">out of 4.00</p>
           </div>
         </div>
       </div>

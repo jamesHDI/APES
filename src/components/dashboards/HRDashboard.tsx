@@ -58,19 +58,24 @@ export const HRDashboard: React.FC<HRDashboardProps> = ({
     <div className="space-y-6 pb-12">
 
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-brand-950 via-slate-900 to-slate-800 rounded-2xl p-6 text-white shadow-xl">
-        <div className="absolute -top-8 -right-8 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
+      <div className="hero-card">
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <p className="text-brand-300 text-sm font-medium">{getGreeting()},</p>
-            <h2 className="text-2xl font-extrabold mt-0.5">{currentUser.name}</h2>
-            <p className="text-brand-200 text-sm mt-1">
-              HR Administrator &nbsp;·&nbsp; Enterprise Evaluation Operations
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0 shadow-sm">
+              <Users className="w-6 h-6 text-[#F28C28]" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{getGreeting()}</p>
+              <h2 className="text-xl font-bold mt-0.5 text-slate-900 dark:text-white">{currentUser.name}</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                HR Administrator &nbsp;·&nbsp; Enterprise Evaluation Operations
+              </p>
+            </div>
           </div>
           <button
             onClick={onOpenReports}
-            className="btn btn-sm bg-brand-600 hover:bg-brand-500 text-white shrink-0"
+            className="btn btn-primary btn-sm shrink-0"
           >
             <BarChart3 className="w-4 h-4" />
             HR Reports & Analytics
@@ -112,12 +117,12 @@ export const HRDashboard: React.FC<HRDashboardProps> = ({
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card">
-          <div className="stat-icon bg-brand-100 dark:bg-brand-950">
-            <Users className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+          <div className="stat-icon bg-[#FFF4EA]">
+            <Users className="w-5 h-5 text-[#F28C28]" />
           </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Total Assigned</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{totalAssigned}</p>
+            <p className="stat-label">Total Assigned</p>
+            <p className="stat-number">{totalAssigned}</p>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -16,72 +16,299 @@
 }
 
 @layer components {
-  /* === Button Hierarchy === */
+
+  /* =============================================
+     BUTTON SYSTEM
+  ============================================= */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all duration-200 text-sm px-4 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer;
+    @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all duration-200 text-sm px-4 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer select-none;
   }
   .btn-primary {
-    @apply btn bg-gradient-to-r from-[#F28C28] to-[#E96B1A] hover:from-[#E96B1A] hover:to-[#D85A09] text-white shadow-md shadow-brand-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all font-bold text-xs uppercase tracking-wider;
+    @apply btn bg-gradient-to-r from-[#F28C28] to-[#E96B1A] hover:from-[#E96B1A] hover:to-[#D85A09] text-white shadow-md shadow-orange-500/20 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-500/25 active:translate-y-0 font-bold;
   }
   .btn-secondary {
-    @apply btn border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-sm hover:-translate-y-0.5 active:translate-y-0 transition-all font-semibold;
+    @apply btn border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-[#FFF8F3] dark:hover:bg-slate-700/60 hover:border-[#F28C28]/40 shadow-sm hover:-translate-y-0.5 active:translate-y-0 font-semibold;
   }
   .btn-danger {
-    @apply btn bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/20 focus-visible:ring-rose-500 hover:-translate-y-0.5 active:translate-y-0 transition-all;
+    @apply btn bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 shadow-sm hover:-translate-y-0.5 active:translate-y-0;
   }
   .btn-ghost {
-    @apply btn text-slate-600 dark:text-slate-300 hover:bg-brand-50/80 dark:hover:bg-slate-800 hover:text-[#E96B1A] dark:hover:text-brand-300 transition-colors;
+    @apply btn text-slate-600 dark:text-slate-300 hover:bg-[#FFF4EA] dark:hover:bg-slate-800 hover:text-[#E96B1A] dark:hover:text-brand-300 transition-colors;
   }
   .btn-success {
-    @apply btn bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 focus-visible:ring-emerald-500 hover:-translate-y-0.5 active:translate-y-0 transition-all;
+    @apply btn bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 hover:border-emerald-600 shadow-sm hover:-translate-y-0.5 active:translate-y-0;
+  }
+  .btn-warning {
+    @apply btn bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white border border-amber-200 hover:border-amber-500 shadow-sm hover:-translate-y-0.5 active:translate-y-0;
   }
   .btn-sm {
     @apply text-xs px-3 py-1.5 rounded-lg;
   }
+  .btn-xs {
+    @apply text-[11px] px-2.5 py-1 rounded-lg;
+  }
   .btn-lg {
     @apply text-base px-6 py-3 rounded-2xl;
   }
+  .btn-icon {
+    @apply btn p-2 rounded-xl;
+  }
 
-  /* === Form Elements === */
+  /* =============================================
+     FORM ELEMENTS
+  ============================================= */
   .form-input {
-    @apply w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 transition-all shadow-sm;
+    @apply w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:border-[#F28C28] focus:ring-2 focus:ring-[#F28C28]/20 transition-all shadow-sm hover:border-slate-300;
+  }
+  .form-select {
+    @apply form-input appearance-none cursor-pointer;
   }
   .form-label {
-    @apply block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5;
+    @apply block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 tracking-wide;
   }
   .form-label-required::after {
     content: ' *';
     @apply text-rose-500;
   }
-
-  /* === Status Badges === */
-  .badge {
-    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
+  .form-group {
+    @apply space-y-1.5;
   }
-  .badge-draft    { @apply badge bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300; }
-  .badge-pending  { @apply badge bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60; }
-  .badge-active   { @apply badge bg-brand-50 text-[#E96B1A] dark:bg-brand-950/50 dark:text-brand-300 border border-brand-200/60 dark:border-brand-800/60; }
-  .badge-done     { @apply badge bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60; }
-  .badge-danger   { @apply badge bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60; }
 
-  /* === Cards === */
+  /* =============================================
+     STATUS BADGES
+  ============================================= */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+  .badge-draft    { @apply badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700; }
+  .badge-pending  { @apply badge bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60; }
+  .badge-active   { @apply badge bg-[#FFF4EA] text-[#E96B1A] dark:bg-brand-950/50 dark:text-brand-300 border border-brand-200/60 dark:border-brand-800/60; }
+  .badge-done     { @apply badge bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60; }
+  .badge-danger   { @apply badge bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60; }
+  .badge-info     { @apply badge bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60; }
+  .badge-purple   { @apply badge bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60; }
+
+  /* =============================================
+     CARDS
+  ============================================= */
   .card {
-    @apply bg-white dark:bg-slate-900 rounded-[18px] border border-slate-200/70 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none transition-all duration-300;
+    @apply bg-white dark:bg-slate-900 rounded-[18px] border border-slate-200/80 dark:border-slate-800 shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:shadow-none transition-all duration-200;
   }
   .card-hover {
-    @apply card hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:shadow-none;
+    @apply card hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(15,23,42,0.10)] dark:hover:border-slate-700 cursor-pointer;
+  }
+  .card-section {
+    @apply card overflow-hidden;
+  }
+  .card-action {
+    @apply card-hover p-5 flex items-center gap-4 text-left group;
   }
 
-  /* === Stat Widget === */
+  /* =============================================
+     STAT WIDGETS
+  ============================================= */
   .stat-card {
-    @apply card p-6 flex items-center gap-4 hover:-translate-y-0.5;
+    @apply card p-5 flex items-center gap-4 hover:-translate-y-0.5 transition-all duration-200;
   }
   .stat-icon {
-    @apply w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm;
+    @apply w-11 h-11 rounded-xl flex items-center justify-center shrink-0;
+  }
+  .stat-number {
+    @apply text-2xl font-black text-slate-900 dark:text-white mt-0.5 leading-none;
+  }
+  .stat-label {
+    @apply text-xs text-slate-500 dark:text-slate-400 font-medium;
+  }
+
+  /* =============================================
+     PAGE LAYOUT HELPERS
+  ============================================= */
+  .page-wrapper {
+    @apply space-y-6 pb-12 animate-fade-in;
+  }
+  .page-header {
+    @apply flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6;
+  }
+  .page-title {
+    @apply text-xl font-bold text-slate-900 dark:text-white tracking-tight;
+  }
+  .page-subtitle {
+    @apply text-sm text-slate-500 dark:text-slate-400 mt-0.5;
+  }
+  .section-header {
+    @apply px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3;
+  }
+  .section-title {
+    @apply font-semibold text-slate-900 dark:text-white text-sm;
+  }
+  .section-label {
+    @apply text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest;
+  }
+
+  /* =============================================
+     DASHBOARD HERO (Light/Warm variant)
+  ============================================= */
+  .hero-card {
+    @apply relative overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_8px_24px_rgba(15,23,42,0.06)] p-6;
+  }
+  .hero-card::before {
+    content: '';
+    @apply absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-[#F28C28] to-[#E96B1A] rounded-l-2xl;
+  }
+
+  /* =============================================
+     TABLE SYSTEM
+  ============================================= */
+  .apes-table-wrap {
+    @apply overflow-hidden rounded-[18px] border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900;
+  }
+  .apes-table {
+    @apply w-full text-sm;
+  }
+  .apes-thead {
+    @apply bg-[#FFFAF6] dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800;
+  }
+  .apes-th {
+    @apply px-4 py-3 text-left text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap;
+  }
+  .apes-th-right {
+    @apply apes-th text-right;
+  }
+  .apes-td {
+    @apply px-4 py-3.5 text-slate-700 dark:text-slate-300 align-middle;
+  }
+  .apes-td-right {
+    @apply apes-td text-right;
+  }
+  .apes-tr {
+    @apply border-b border-slate-100 dark:border-slate-800/80 transition-colors duration-150;
+  }
+  .apes-tr:last-child {
+    @apply border-b-0;
+  }
+  .apes-tr-hover {
+    @apply apes-tr hover:bg-[#FFFAF6] dark:hover:bg-slate-800/40;
+  }
+
+  /* =============================================
+     MODAL SYSTEM
+  ============================================= */
+  .modal-overlay {
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm;
+  }
+  .modal-panel {
+    @apply relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800 w-full overflow-hidden;
+  }
+  .modal-header {
+    @apply flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800;
+  }
+  .modal-title {
+    @apply font-bold text-slate-900 dark:text-white text-base;
+  }
+  .modal-body {
+    @apply p-6;
+  }
+  .modal-footer {
+    @apply flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30;
+  }
+
+  /* =============================================
+     SIDEBAR NAVIGATION
+  ============================================= */
+  .nav-item {
+    @apply w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all duration-150;
+  }
+  .nav-item-active {
+    @apply nav-item bg-gradient-to-r from-[#FFF4EA] via-[#FFF8F3] to-transparent text-[#E96B1A] font-bold border-l-[3px] border-[#F28C28] pl-[10px];
+  }
+  .nav-item-inactive {
+    @apply nav-item font-semibold text-slate-600 dark:text-slate-400 hover:bg-[#FFF8F3] dark:hover:bg-slate-800/80 hover:text-[#E96B1A] dark:hover:text-brand-300;
+  }
+
+  /* =============================================
+     ICON CONTAINERS
+  ============================================= */
+  .icon-container {
+    @apply w-10 h-10 rounded-xl flex items-center justify-center shrink-0;
+  }
+  .icon-container-sm {
+    @apply w-8 h-8 rounded-lg flex items-center justify-center shrink-0;
+  }
+  .icon-container-orange {
+    @apply icon-container bg-[#FFF4EA] dark:bg-brand-950;
+  }
+  .icon-container-green {
+    @apply icon-container bg-emerald-50 dark:bg-emerald-950/50;
+  }
+  .icon-container-amber {
+    @apply icon-container bg-amber-50 dark:bg-amber-950/50;
+  }
+  .icon-container-purple {
+    @apply icon-container bg-purple-50 dark:bg-purple-950/50;
+  }
+  .icon-container-blue {
+    @apply icon-container bg-blue-50 dark:bg-blue-950/50;
+  }
+  .icon-container-rose {
+    @apply icon-container bg-rose-50 dark:bg-rose-950/50;
+  }
+
+  /* =============================================
+     PROGRESS BARS
+  ============================================= */
+  .progress-track {
+    @apply w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden;
+  }
+  .progress-fill-orange {
+    @apply h-full bg-gradient-to-r from-[#F28C28] to-[#E96B1A] rounded-full transition-all duration-500;
+  }
+  .progress-fill-green {
+    @apply h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-500;
+  }
+  .progress-fill-amber {
+    @apply h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-500;
+  }
+
+  /* =============================================
+     SEARCH BAR
+  ============================================= */
+  .search-bar-wrap {
+    @apply relative flex items-center;
+  }
+  .search-bar-icon {
+    @apply absolute left-3 text-slate-400 pointer-events-none;
+  }
+  .search-bar-input {
+    @apply form-input pl-9;
   }
 }
 
-/* Custom Print Styles for exact 2-page scorecards */
+/* =============================================
+   ANIMATIONS
+============================================= */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out both;
+}
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out both;
+}
+
+/* =============================================
+   PRINT STYLES
+============================================= */
 @media print {
   body {
     background-color: white !important;
@@ -99,23 +326,30 @@
   }
 }
 
-/* Custom scrollbars */
+/* =============================================
+   CUSTOM SCROLLBARS
+============================================= */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #e2d5c8;
   border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d4b89a;
 }
 .dark ::-webkit-scrollbar-thumb {
   background: #334155;
 }
 
-/* Sidebar slide transition */
+/* =============================================
+   SIDEBAR TRANSITIONS
+============================================= */
 .sidebar-enter {
   transform: translateX(-100%);
 }
@@ -124,3 +358,30 @@
   transition: transform 250ms ease-out;
 }
 
+/* =============================================
+   TOOLTIP
+============================================= */
+[data-tooltip] {
+  position: relative;
+}
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1F2937;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms;
+  z-index: 100;
+}
+[data-tooltip]:hover::after {
+  opacity: 1;
+}

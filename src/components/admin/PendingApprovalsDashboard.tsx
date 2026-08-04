@@ -108,31 +108,36 @@ export const PendingApprovalsDashboard: React.FC<PendingApprovalsDashboardProps>
       
       {/* Toast */}
       {toastMsg && (
-        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-brand-500 flex items-center space-x-3 animate-in fade-in">
-          <Sparkles className="w-5 h-5 text-brand-400" />
+        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-[#F28C28]/50 flex items-center gap-3 animate-fade-in">
+          <Sparkles className="w-5 h-5 text-[#F28C28]" />
           <span className="text-sm font-semibold">{toastMsg}</span>
         </div>
       )}
 
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-slate-800 rounded-2xl p-6 text-white shadow-xl flex items-center justify-between">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Clock className="w-6 h-6 text-amber-400" />
-            <h2 className="text-xl font-black tracking-tight">HR Pending Account Approvals Queue</h2>
+      <div className="hero-card">
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
+        <div className="relative flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 text-[#F28C28]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">HR Pending Account Approvals Queue</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Review self-registered accounts, verify departments & positions, assign reporting lines.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-amber-200 mt-1">
-            Review self-registered employee accounts, verify departments & positions, assign reporting lines, and activate accounts.
-          </p>
+          <span className="px-3.5 py-1.5 rounded-xl font-bold text-xs bg-[#FFF4EA] text-[#E96B1A] border border-[#F28C28]/20 shrink-0">
+            {pendingList.length} Pending
+          </span>
         </div>
-        <span className="px-3.5 py-1.5 rounded-xl font-extrabold text-xs bg-amber-500 text-slate-950">
-          {pendingList.length} Pending Requests
-        </span>
       </div>
 
       {/* Pending Grid */}
       {pendingList.length === 0 ? (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-12 text-center space-y-3 border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div className="card p-12 text-center space-y-3">
           <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
           <h3 className="font-bold text-slate-800 dark:text-slate-200 text-base">No Pending Approvals</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
@@ -142,16 +147,16 @@ export const PendingApprovalsDashboard: React.FC<PendingApprovalsDashboardProps>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredPending.map((u) => (
-            <div key={u.id} className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-900/50 shadow-sm space-y-4">
+            <div key={u.id} className="card p-5 space-y-4 border-l-4 border-l-amber-400">
               <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-3">
-                  <img src={u.avatarUrl} alt={u.name} className="w-11 h-11 rounded-full object-cover ring-2 ring-amber-400" />
+                <div className="flex items-center gap-3">
+                  <img src={u.avatarUrl} alt={u.name} className="w-11 h-11 rounded-full object-cover ring-2 ring-[#F28C28]/30" />
                   <div>
                     <h4 className="font-bold text-slate-900 dark:text-white text-sm">{u.name}</h4>
                     <p className="text-xs text-slate-500">{u.email}</p>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800">
+                <span className="badge badge-pending text-[10px] font-extrabold uppercase">
                   Pending HR
                 </span>
               </div>
@@ -163,10 +168,10 @@ export const PendingApprovalsDashboard: React.FC<PendingApprovalsDashboardProps>
 
               <button
                 onClick={() => handleOpenReview(u)}
-                className="w-full py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md flex items-center justify-center space-x-1.5"
+                className="btn btn-warning btn-sm w-full justify-center"
               >
                 <UserCheck className="w-4 h-4" />
-                <span>Verify & Review Registration</span>
+                Verify & Review Registration
               </button>
             </div>
           ))}
@@ -175,8 +180,8 @@ export const PendingApprovalsDashboard: React.FC<PendingApprovalsDashboardProps>
 
       {/* Review & Approve Modal */}
       {selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-xl animate-slide-up max-h-[90vh] overflow-y-auto">
             
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
               <h3 className="font-bold text-slate-900 dark:text-white text-base">

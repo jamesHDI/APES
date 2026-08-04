@@ -85,24 +85,25 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ evaluations, depar
     <div className="space-y-6 pb-12">
       
       {/* Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-brand-900 to-slate-900 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <BarChart3 className="w-6 h-6 text-brand-300" />
-            <h2 className="text-xl font-black tracking-tight">Enterprise Reports & Analytics Center</h2>
+      <div className="hero-card">
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
+        <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0">
+              <BarChart3 className="w-5 h-5 text-[#F28C28]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Enterprise Reports & Analytics Center</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Generate, filter, and export performance reports across all departments.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-brand-200 mt-1">
-            Generate, filter, and export performance reports across all departments in Excel and PDF formats.
-          </p>
+          <button onClick={exportToExcel} className="btn btn-success btn-sm shrink-0">
+            <FileSpreadsheet className="w-4 h-4" />
+            Export to Excel (.xlsx)
+          </button>
         </div>
-
-        <button
-          onClick={exportToExcel}
-          className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg flex items-center space-x-2 shrink-0"
-        >
-          <FileSpreadsheet className="w-4 h-4" />
-          <span>Export to Excel (.xlsx)</span>
-        </button>
       </div>
 
       {/* Report Type Selector Pills */}
@@ -120,13 +121,13 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ evaluations, depar
             <button
               key={item.id}
               onClick={() => setSelectedReportType(item.id as any)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 ${
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 border ${
                 isActive
-                  ? 'bg-brand-600 text-white shadow-md'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  ? 'bg-[#F28C28] text-white border-[#F28C28] shadow-sm shadow-orange-500/20'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#F28C28]/40 hover:text-[#E96B1A]'
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-3.5 h-3.5" />
               <span>{item.label}</span>
             </button>
           );
@@ -134,8 +135,7 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ evaluations, depar
       </div>
 
       {/* Filter & Search Toolbar */}
-      <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-        
+      <div className="card p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="relative w-full sm:w-72">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -143,40 +143,33 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ evaluations, depar
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search employee or department..."
-            className="w-full pl-9 pr-4 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none"
+            className="search-bar-input"
           />
         </div>
-
-        <div className="flex items-center space-x-3 w-full sm:w-auto">
-          <span className="text-xs text-slate-400 font-bold uppercase">Filter Dept:</span>
-          <select
-            value={filterDept}
-            onChange={(e) => setFilterDept(e.target.value)}
-            className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-          >
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <span className="text-xs text-slate-400 font-semibold">Department:</span>
+          <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)} className="form-input py-2 text-xs w-auto">
             <option value="ALL">All Departments</option>
             {departments.map((d) => (
               <option key={d.id} value={d.name}>{d.name}</option>
             ))}
           </select>
         </div>
-
       </div>
 
       {/* Data Table */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm overflow-x-auto">
-        
+      <div className="apes-table-wrap overflow-x-auto">
         {selectedReportType === 'employee' && (
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="bg-slate-100 dark:bg-slate-750 font-bold text-slate-400 uppercase border-b border-slate-200 dark:border-slate-700">
-                <th className="p-3">Employee</th>
-                <th className="p-3">Department</th>
-                <th className="p-3">Eligibility Score (85%)</th>
-                <th className="p-3">Core Values (15%)</th>
-                <th className="p-3">Total Rating</th>
-                <th className="p-3">Classification</th>
-                <th className="p-3">Status</th>
+          <table className="apes-table">
+            <thead className="apes-thead">
+              <tr>
+                <th className="apes-th">Employee</th>
+                <th className="apes-th">Department</th>
+                <th className="apes-th">Eligibility Score (85%)</th>
+                <th className="apes-th">Core Values (15%)</th>
+                <th className="apes-th">Total Rating</th>
+                <th className="apes-th">Classification</th>
+                <th className="apes-th">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">

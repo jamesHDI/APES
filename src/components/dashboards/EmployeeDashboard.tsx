@@ -53,26 +53,31 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
     <div className="space-y-6 pb-12">
 
       {/* Welcome Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-brand-900 via-brand-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
-        {/* Decorative circles */}
-        <div className="absolute -top-8 -right-8 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
-        <div className="absolute -bottom-12 -left-8 w-56 h-56 bg-brand-400/10 rounded-full blur-3xl" />
+      <div className="hero-card">
+        {/* Decorative ambient glow */}
+        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
+        <div className="absolute -top-6 -right-6 w-32 h-32 bg-[#F28C28]/8 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <p className="text-brand-300 text-sm font-medium">{getGreeting()},</p>
-            <h2 className="text-2xl font-extrabold mt-0.5 tracking-tight">{currentUser.name}</h2>
-            <p className="text-brand-200 text-sm mt-1">
-              {currentUser.position} &nbsp;·&nbsp; {currentUser.departmentName}
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0 shadow-sm">
+              <Award className="w-6 h-6 text-[#F28C28]" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{getGreeting()}</p>
+              <h2 className="text-xl font-bold mt-0.5 tracking-tight text-slate-900 dark:text-white">{currentUser.name}</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                {currentUser.position} &nbsp;·&nbsp; {currentUser.departmentName}
+              </p>
+            </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/10 text-center shrink-0">
-            <p className="text-[11px] text-brand-300 uppercase font-semibold tracking-wide">Latest Rating</p>
-            <p className="text-3xl font-black text-amber-400 mt-1">
+          <div className="bg-[#FFF4EA] dark:bg-brand-950/40 px-5 py-4 rounded-2xl border border-[#F28C28]/20 text-center shrink-0">
+            <p className="text-[10px] text-[#F28C28] uppercase font-bold tracking-widest">Latest Rating</p>
+            <p className="text-3xl font-black text-[#E96B1A] mt-1 leading-none">
               {displayEvaluation?.finalRating ? displayEvaluation.finalRating.toFixed(2) : '—'}
             </p>
-            <p className="text-[11px] text-brand-200 font-medium mt-0.5">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
               {displayEvaluation?.ratingClassification ?? 'Not yet rated'}
             </p>
           </div>
