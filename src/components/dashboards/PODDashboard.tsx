@@ -371,7 +371,7 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
                           }`}
                           title="Open Complete Employee Scorecard Form"
                         >
-                          <span>{isReadyForPOD ? '🛡️ Validate & Archive' : '👁️ View Complete Form'}</span>
+                          <span>{isReadyForPOD ? 'Validate & Archive' : 'View Complete Form'}</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                       </td>
