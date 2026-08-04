@@ -64,13 +64,44 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
     }
 
     // Determine target employees
+    const isEligibleUser = (u: User) => {
+      if (u.isActive === false) return false;
+      if (u.isApproved === false || u.approvalStatus === 'pending' || u.approvalStatus === 'rejected') return false;
+      return true;
+    };
+
+    const eligibleUsers = users.filter(isEligibleUser);
+
     let targetUsers: User[] = [];
     if (assignmentType === 'all') {
-      targetUsers = users.filter(u => u.isActive !== false && u.isApproved !== false);
+      targetUsers = eligibleUsers;
     } else if (assignmentType === 'departments') {
-      targetUsers = users.filter(u => selectedDepts.includes(u.departmentId) || selectedDepts.includes(u.departmentName));
+      // Map selected department IDs/names to full department records
+      const selectedDeptRecords = departments.filter(
+        d => selectedDepts.includes(d.id) || selectedDepts.includes(d.name)
+      );
+
+      const targetDeptNames = selectedDeptRecords.map(d => d.name.toLowerCase().trim());
+      const targetDeptIds = selectedDeptRecords.map(d => d.id.toLowerCase().trim());
+      const targetDeptCodes = selectedDeptRecords.map(d => (d.code || '').toLowerCase().trim()).filter(Boolean);
+
+      targetUsers = eligibleUsers.filter(u => {
+        const uDeptId = (u.departmentId || '').toLowerCase().trim();
+        const uDeptName = (u.departmentName || '').toLowerCase().trim();
+
+        const matchesId = targetDeptIds.includes(uDeptId);
+        const matchesName = targetDeptNames.includes(uDeptName);
+        const matchesCode = targetDeptCodes.includes(uDeptId) || targetDeptCodes.includes(uDeptName);
+
+        // Case-insensitive substring match fallback (e.g. "Admin" matches "Admin Department" or "dept_adm")
+        const partialNameMatch = targetDeptNames.some(
+          tdn => tdn && (uDeptName.includes(tdn) || tdn.includes(uDeptName))
+        );
+
+        return matchesId || matchesName || matchesCode || partialNameMatch;
+      });
     } else if (assignmentType === 'employees') {
-      targetUsers = users.filter(u => selectedEmps.includes(u.id));
+      targetUsers = eligibleUsers.filter(u => selectedEmps.includes(u.id));
     }
 
     if (targetUsers.length === 0) {
