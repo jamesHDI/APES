@@ -83,15 +83,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-white/98 dark:bg-slate-900/98 backdrop-blur-md border-b border-[#EFE4D6] dark:border-slate-800 shadow-[0_1px_12px_rgba(15,23,42,0.06)] transition-colors shrink-0">
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-8 lg:px-10">
+      <div className="max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-6">
         <div className="flex items-center justify-between h-20 sm:h-24 gap-4">
 
           {/* Left: Hamburger + Brand */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {/* Mobile hamburger */}
             <button
               onClick={onToggleSidebar}
-              className="p-2.5 rounded-xl text-slate-500 dark:text-slate-300 hover:bg-[#FFF4EA] hover:text-[#E96B1A] dark:hover:bg-slate-800 transition-all duration-150 lg:hidden"
+              className="p-2 rounded-xl text-slate-500 dark:text-slate-300 hover:bg-[#FFF4EA] hover:text-[#E96B1A] dark:hover:bg-slate-800 transition-all duration-150 lg:hidden"
               aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
             >
               {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -99,7 +99,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Brand */}
             <div className="flex items-center gap-4">
-              <div className="shrink-0 bg-white dark:bg-slate-950/80 rounded-2xl px-5 py-2.5 flex items-center justify-center border border-slate-200/80 dark:border-slate-800/80 shadow-sm transition-all duration-200 min-w-[200px] sm:min-w-[260px] md:min-w-[300px]">
+              <div className="shrink-0 flex items-center justify-start py-1">
                 <img
                   src="/hdi-logo.png"
                   alt="HDI Hive"
