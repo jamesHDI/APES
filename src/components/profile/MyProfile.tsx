@@ -158,9 +158,6 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
         {/* Left Column: Profile Card */}
         <div className="lg:col-span-4 space-y-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-[18px] p-6 shadow-xl shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:-translate-y-0.5 relative overflow-hidden flex flex-col items-center text-center">
-            {/* Top 3px Orange Accent Line */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#F28C28] via-brand-500 to-[#E96B1A]" />
-
             <div className="relative mb-3 mt-1">
               <div className="w-28 h-28 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 ring-4 ring-white dark:ring-slate-800 shadow-md flex items-center justify-center">
                 {avatarPreview ? (
