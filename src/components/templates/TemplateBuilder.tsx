@@ -446,11 +446,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     </button>
                   </div>
                 </div>
-
                 {/* KPI List under KRA */}
                 <div className="space-y-3">
                   {kra.kpis.map((kpi) => (
-                    <div key={kpi.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 space-y-3">
+                    <div key={kpi.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="w-full space-y-2">
                           <input
@@ -461,7 +460,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                               const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
                               setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
                             }}
-                            className="w-full font-bold text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900"
+                            className="w-full font-bold text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-brand-500/20"
                             placeholder="KPI Name"
                           />
                           <input
@@ -472,14 +471,14 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                               const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
                               setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
                             }}
-                            className="w-full text-xs px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500"
+                            className="w-full text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-brand-500/20"
                             placeholder="KPI Description / Performance standard summary"
                           />
                         </div>
 
                         <div className="flex items-center space-x-3 shrink-0">
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase">Weight %</label>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Weight %</label>
                             <input
                               type="number"
                               value={kpi.weightPercent}
@@ -489,7 +488,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                                 const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
                                 setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
                               }}
-                              className="w-16 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center font-bold text-xs"
+                              className="w-16 px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-center font-bold text-xs"
                             />
                           </div>
 
@@ -503,10 +502,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                       </div>
 
                       {/* Rating Standards for Scale 1-4 */}
-                      <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1">
                         {kpi.standards.map((st, stIdx) => (
                           <div key={st.rating} className="flex items-center space-x-1.5">
-                            <span className="font-bold text-slate-400 w-4">{st.rating}:</span>
+                            <span className="font-bold text-slate-500 dark:text-slate-400 w-4 shrink-0">{st.rating}:</span>
                             <input
                               type="text"
                               value={st.description}
@@ -517,7 +516,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                                 const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
                                 setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
                               }}
-                              className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
                             />
                           </div>
                         ))}

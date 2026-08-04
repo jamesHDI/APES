@@ -393,25 +393,32 @@ export const fetchNotificationsFromSupabase = async (userId?: string, userRole?:
 
     if (!data) return [];
 
-    const mapped = data.map((n: any) => ({
-      id: n.id,
-      userId: n.user_id,
-      recipientRole: n.recipient_role,
-      recipientDepartment: n.recipient_department,
-      title: n.title,
-      message: n.message,
-      category: n.category || 'evaluation',
-      type: n.type || 'action_required',
-      read: n.read || false,
-      readByUsers: Array.isArray(n.read_by_users) ? n.read_by_users : [],
-      isAnnouncement: Boolean(n.is_announcement),
-      senderName: n.sender_name,
-      actionLink: n.action_link,
-      expirationDate: n.expiration_date,
-      evaluationId: n.evaluation_id,
-      date: 'Just now',
-      dateTime: n.created_at ? new Date(n.created_at).toLocaleString() : new Date().toLocaleString(),
-    }));
+    const mapped = data.map((n: any) => {
+      const createdAtDate = n.created_at ? new Date(n.created_at) : new Date();
+      const formattedDate = createdAtDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const formattedTime = createdAtDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const formattedDateTime = `${formattedDate} • ${formattedTime}`;
+
+      return {
+        id: n.id,
+        userId: n.user_id,
+        recipientRole: n.recipient_role,
+        recipientDepartment: n.recipient_department,
+        title: n.title,
+        message: n.message,
+        category: n.category || 'evaluation',
+        type: n.type || 'action_required',
+        read: n.read || false,
+        readByUsers: Array.isArray(n.read_by_users) ? n.read_by_users : [],
+        isAnnouncement: Boolean(n.is_announcement),
+        senderName: n.sender_name,
+        actionLink: n.action_link,
+        expirationDate: n.expiration_date,
+        evaluationId: n.evaluation_id,
+        date: formattedDate,
+        dateTime: formattedDateTime,
+      };
+    });
 
     return mapped;
   } catch (err) {

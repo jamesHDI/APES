@@ -246,7 +246,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                                 }`}>
                                   {n.isAnnouncement ? 'Announcement' : (n.category || 'Notification')}
                                 </span>
-                                <span className="text-[10px] text-slate-400 font-mono">{n.date}</span>
+                                <span className="text-[10px] text-slate-400 font-mono font-medium shrink-0 ml-2">{n.dateTime || n.date}</span>
                               </div>
                               <p className={`text-xs leading-snug ${!n.read ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
                                 {n.title}
