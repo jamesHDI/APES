@@ -176,97 +176,129 @@ export const PendingApprovalsDashboard: React.FC<PendingApprovalsDashboardProps>
       {/* Review & Approve Modal */}
       {selectedUser && (
         <div className="modal-overlay">
-          <div className="modal-panel max-w-xl animate-slide-up max-h-[90vh] overflow-y-auto">
+          <div className="modal-panel max-w-2xl p-6 sm:p-8 space-y-6 animate-slide-up max-h-[92vh] overflow-y-auto">
             
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
-              <h3 className="font-bold text-slate-900 dark:text-white text-base">
-                Verify Employee Registration — {selectedUser.name}
-              </h3>
-              <button onClick={() => setSelectedUser(null)} className="p-1 text-slate-400 hover:text-slate-600">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-lg tracking-tight">
+                  Verify Employee Registration
+                </h3>
+                <p className="text-xs text-brand-600 dark:text-brand-400 font-bold mt-0.5">
+                  Appraisee: {selectedUser.name} &nbsp;·&nbsp; {selectedUser.email}
+                </p>
+              </div>
+              <button 
+                onClick={() => setSelectedUser(null)} 
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Close verification dialog"
+              >
                 <UserX className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-300 space-y-1">
-              <p className="font-bold">HR Verification Requirement:</p>
-              <p>Confirm or adjust requested Department and Position, assign reporting managers, and grant PBAC role prior to activation.</p>
+            {/* Alert Banner */}
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/40 rounded-2xl border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 space-y-1.5 leading-relaxed">
+              <p className="font-extrabold text-xs text-amber-950 dark:text-amber-100 uppercase tracking-wider">HR Verification Requirement</p>
+              <p className="text-amber-800 dark:text-amber-300 font-medium">
+                Confirm or adjust requested Department and Position, assign reporting managers, and grant PBAC role prior to account activation.
+              </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Confirmed Department *</label>
-                <select
-                  value={editDeptId}
-                  onChange={(e) => setEditDeptId(e.target.value)}
-                  className="form-input font-bold"
-                >
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
-                  ))}
-                </select>
+            {/* Form Fields Grid */}
+            <div className="space-y-5">
+              {/* Row 1: Department & Position */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                    Confirmed Department <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={editDeptId}
+                    onChange={(e) => setEditDeptId(e.target.value)}
+                    className="form-input font-bold py-2.5 px-3.5 text-xs w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-700 rounded-xl"
+                  >
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                    Confirmed Position <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editPosition}
+                    onChange={(e) => setEditPosition(e.target.value)}
+                    className="form-input font-bold py-2.5 px-3.5 text-xs w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-700 rounded-xl"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Confirmed Position *</label>
-                <input
-                  type="text"
-                  required
-                  value={editPosition}
-                  onChange={(e) => setEditPosition(e.target.value)}
-                  className="form-input font-bold"
-                />
+              {/* Row 2: Immediate Supervisor & PBAC Role */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                    Immediate Supervisor (IS)
+                  </label>
+                  <select
+                    value={editIsId}
+                    onChange={(e) => setEditIsId(e.target.value)}
+                    className="form-input font-semibold py-2.5 px-3.5 text-xs w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-700 rounded-xl"
+                  >
+                    <option value="">Select Supervisor...</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name} ({u.position})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                    Assigned PBAC System Role
+                  </label>
+                  <select
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value as Role)}
+                    className="form-input font-bold py-2.5 px-3.5 text-xs w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-700 rounded-xl"
+                  >
+                    <option value="employee">Employee (Appraisee)</option>
+                    <option value="supervisor">Immediate Supervisor (IS)</option>
+                    <option value="dept_head">Department Head</option>
+                    <option value="president">President</option>
+                    <option value="pod">POD Reviewer</option>
+                    <option value="hr_admin">HR Administrator</option>
+                  </select>
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Immediate Supervisor (IS)</label>
-                <select
-                  value={editIsId}
-                  onChange={(e) => setEditIsId(e.target.value)}
-                  className="form-input"
-                >
-                  <option value="">Select Supervisor...</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>{u.name} ({u.position})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Assigned PBAC System Role</label>
-                <select
-                  value={editRole}
-                  onChange={(e) => setEditRole(e.target.value as Role)}
-                  className="form-input font-bold"
-                >
-                  <option value="employee">Employee (Appraisee)</option>
-                  <option value="supervisor">Immediate Supervisor (IS)</option>
-                  <option value="dept_head">Department Head</option>
-                  <option value="president">President</option>
-                  <option value="pod">POD Reviewer</option>
-                  <option value="hr_admin">HR Administrator</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+            {/* Modal Action Buttons Footer */}
+            <div className="pt-5 border-t border-slate-200 dark:border-slate-800 flex flex-col-reverse sm:flex-row items-center justify-between gap-3">
               <button
                 onClick={() => setShowRejectModal(true)}
-                className="px-4 py-2 rounded-xl bg-rose-100 dark:bg-rose-950/60 hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-300 text-xs font-bold border border-rose-200 dark:border-rose-800"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-rose-100 dark:bg-rose-950/60 hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-300 text-xs font-bold border border-rose-200 dark:border-rose-800 transition-colors flex items-center justify-center gap-2"
               >
-                Reject Registration
+                <UserX className="w-4 h-4" />
+                <span>Reject Registration</span>
               </button>
 
-              <div className="flex space-x-2">
-                <button onClick={() => setSelectedUser(null)} className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400">
+              <div className="w-full sm:w-auto flex items-center justify-end gap-3">
+                <button 
+                  onClick={() => setSelectedUser(null)} 
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
                   Cancel
                 </button>
                 <button
                   onClick={handleApprove}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md"
+                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
                 >
-                  Approve & Activate Account
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Approve & Activate Account</span>
                 </button>
               </div>
             </div>
