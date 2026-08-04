@@ -307,11 +307,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
           </span>
         </div>
 
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-          <p className="flex items-center space-x-2">
-            <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="truncate">Department: <strong>{u.departmentName}</strong></span>
-          </p>
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-xs text-slate-700 dark:text-slate-300 font-medium">
           <p className="flex items-center space-x-2">
             <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="truncate">{u.email}</span>
@@ -320,7 +316,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
 
         <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-            isHead ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+            isHead ? 'bg-[#FFF4EA] text-[#E96B1A] dark:bg-brand-950 dark:text-brand-300 border border-[#F28C28]/30' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
           }`}>
             {isHead ? 'Department Head' : `Role: ${u.role}`}
           </span>
