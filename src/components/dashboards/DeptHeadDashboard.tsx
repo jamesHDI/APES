@@ -29,9 +29,22 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
   // Find active personal Department Head evaluation strictly for current user
   const mySelfEvaluation = getUserActiveEvaluation(currentUser, evaluations);
 
-  // Filter evaluations belonging strictly to the department head's department
+  // Helper to match department names case-insensitively with alias support
+  const isMatchingDept = (evalDept?: string, headDept?: string) => {
+    if (!evalDept || !headDept) return false;
+    const e = evalDept.trim().toLowerCase();
+    const h = headDept.trim().toLowerCase();
+    if (e === h) return true;
+    if (e.includes(h) || h.includes(e)) return true;
+    if ((e.includes('admin') || e.includes('adm')) && (h.includes('admin') || h.includes('adm'))) return true;
+    if ((e.includes('sales') || e.includes('sls')) && (h.includes('sales') || h.includes('sls'))) return true;
+    if ((e.includes('accounting') || e.includes('acc')) && (h.includes('accounting') || h.includes('acc'))) return true;
+    return false;
+  };
+
+  // Filter evaluations belonging to the department head's department
   const deptEvaluations = evaluations.filter(
-    (e) => e.employeeId !== currentUser.id && e.departmentName === currentUser.departmentName
+    (e) => e.employeeId !== currentUser.id && isMatchingDept(e.departmentName, currentUser.departmentName)
   );
 
   const pendingDeptHeadReviews = deptEvaluations.filter(

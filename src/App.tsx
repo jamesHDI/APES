@@ -346,6 +346,40 @@ export const App: React.FC = () => {
   const handleSaveUsers = (updatedUsers: User[]) => {
     setUsers(updatedUsers);
     saveUsers(updatedUsers);
+
+    // Sync current logged-in user if their profile was updated
+    if (currentUser) {
+      const matchMe = updatedUsers.find(u => u.id === currentUser.id || u.email.toLowerCase() === currentUser.email.toLowerCase());
+      if (matchMe) {
+        setCurrentUser(matchMe);
+        setCurrentUserStore(matchMe);
+      }
+    }
+
+    // Sync active evaluations to match updated employee departments & names
+    let evalsChanged = false;
+    const syncedEvals = evaluations.map(ev => {
+      const matchedUser = updatedUsers.find(u => 
+        (ev.employeeId && (u.id === ev.employeeId || u.employeeNumber === ev.employeeId)) ||
+        (ev.employeeEmail && u.email.toLowerCase() === ev.employeeEmail.toLowerCase())
+      );
+      if (matchedUser && (ev.departmentName !== matchedUser.departmentName || ev.departmentId !== matchedUser.departmentId)) {
+        evalsChanged = true;
+        const updatedEv: Evaluation = {
+          ...ev,
+          departmentName: matchedUser.departmentName,
+          departmentId: matchedUser.departmentId || ev.departmentId,
+          updatedAt: new Date().toISOString()
+        };
+        saveSingleEvaluation(updatedEv);
+        return updatedEv;
+      }
+      return ev;
+    });
+
+    if (evalsChanged) {
+      setEvaluations(syncedEvals);
+    }
   };
 
   const handleUpdateCurrentUser = async (updatedUser: User) => {
