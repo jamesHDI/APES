@@ -419,6 +419,53 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   };
 
   const doFinalizePresident = () => {
+    const isPodEmployee = evalData.employeeEmail?.includes('pod') || 
+                          evalData.employeeName?.includes('Malene') || 
+                          evalData.departmentName?.includes('People Operations') || 
+                          (allUsers.find(u => u.id === evalData.employeeId)?.role === 'pod');
+
+    if (isPodEmployee) {
+      // POD self-evaluation completed by President -> Auto-completes to pod_validated / archived
+      const updatedAudit = addAuditEntry(
+        'President Executive Approval & POD Auto-Validation Completed',
+        evalData.status,
+        'pod_validated',
+        'System & POD',
+        'POD Officer self-evaluation reviewed & approved by President. Workflow auto-completed and archived.'
+      );
+
+      const updated: Evaluation = {
+        ...evalData,
+        status: 'pod_validated',
+        signatures: {
+          ...evalData.signatures,
+          pod: evalData.signatures.pod || {
+            role: 'pod',
+            signerName: 'People Operations (POD Auto-Validation)',
+            signatureDataUrl: 'https://signature.apes.hdi/pod_auto_valid.png',
+            signedAt: new Date().toISOString(),
+            ipAddress: '127.0.0.1'
+          }
+        },
+        auditTrail: updatedAudit,
+        updatedAt: new Date().toISOString()
+      };
+
+      onSave(updated);
+
+      triggerWorkflowNotification(
+        evalData.employeeId,
+        updated,
+        'POD Self-Evaluation Approved & Archived',
+        `Your self-evaluation has been approved by President ${currentUser.name}. Workflow completed and archived.`,
+        currentUser.name
+      );
+
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+      showToast(`POD Officer Evaluation approved by President! Automatically completed & archived.`);
+      return;
+    }
+
     const podUser = allUsers.find(u => u.role === 'pod' || u.id === 'usr_dh_pohr') || { id: 'usr_dh_pohr', name: 'Malene Pellazo' };
     const assignedTo = `${podUser.name} (Department Head - People Operations / POD)`;
 
