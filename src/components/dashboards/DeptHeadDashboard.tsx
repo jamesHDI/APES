@@ -70,17 +70,12 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
       <div className="hero-card">
         <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0 shadow-sm">
-              <Building2 className="w-6 h-6 text-[#F28C28]" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{getGreeting()}</p>
-              <h2 className="text-xl font-bold mt-0.5 text-slate-900 dark:text-white">{currentUser.name}</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                Department Head &nbsp;·&nbsp; <span className="text-[#F28C28] font-semibold">{currentUser.departmentName}</span>
-              </p>
-            </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{getGreeting()}</p>
+            <h2 className="text-xl font-bold mt-0.5 text-slate-900 dark:text-white">{currentUser.name}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              Department Head &nbsp;·&nbsp; <span className="text-[#F28C28] font-semibold">{currentUser.departmentName}</span>
+            </p>
           </div>
           <div className="bg-[#FFF4EA] dark:bg-brand-950/40 px-5 py-4 rounded-2xl border border-[#F28C28]/20 text-center shrink-0">
             <p className="text-[10px] text-[#F28C28] uppercase font-bold tracking-widest">Dept Average Score</p>

@@ -20,16 +20,11 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
       <div className="hero-card">
         <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
         <div className="relative flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0">
-              <Building2 className="w-5 h-5 text-[#F28C28]" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">HDI Hive Organizational Matrix</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
-                Structured reporting hierarchy and automated evaluation routing for HDI Department Heads and staff.
-              </p>
-            </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">HDI Hive Organizational Matrix</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
+              Structured reporting hierarchy and automated evaluation routing for HDI Department Heads and staff.
+            </p>
           </div>
           <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#FFF4EA] text-[#E96B1A] border border-[#F28C28]/20 shrink-0">
             Reporting Structure

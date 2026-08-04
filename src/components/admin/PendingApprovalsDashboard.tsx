@@ -118,16 +118,11 @@ export const PendingApprovalsDashboard: React.FC<PendingApprovalsDashboardProps>
       <div className="hero-card">
         <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
         <div className="relative flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5 text-[#F28C28]" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">HR Pending Account Approvals Queue</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Review self-registered accounts, verify departments & positions, assign reporting lines.
-              </p>
-            </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">HR Pending Account Approvals Queue</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Review self-registered accounts, verify departments & positions, assign reporting lines.
+            </p>
           </div>
           <span className="px-3.5 py-1.5 rounded-xl font-bold text-xs bg-[#FFF4EA] text-[#E96B1A] border border-[#F28C28]/20 shrink-0">
             {pendingList.length} Pending

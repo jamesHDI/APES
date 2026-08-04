@@ -46,16 +46,11 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
       <div className="hero-card">
         <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0">
-              <History className="w-5 h-5 text-[#F28C28]" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Evaluation History & Past Scorecards</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
-                Archive of all completed appraisal cycles, final ratings, and development plans.
-              </p>
-            </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Evaluation History & Past Scorecards</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
+              Archive of all completed appraisal cycles, final ratings, and development plans.
+            </p>
           </div>
           <div className="relative shrink-0">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />

@@ -139,16 +139,11 @@ export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
       <div className="hero-card">
         <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] to-transparent pointer-events-none rounded-r-2xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-[#FFF4EA] border border-[#F28C28]/20 flex items-center justify-center shrink-0">
-              <Building2 className="w-5 h-5 text-[#F28C28]" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Department & Unit Management</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Configure company departments, assign Department Heads, and review staff rosters.
-              </p>
-            </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Department & Unit Management</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Configure company departments, assign Department Heads, and review staff rosters.
+            </p>
           </div>
 
           <button onClick={handleOpenAdd} className="btn btn-primary btn-sm shrink-0">

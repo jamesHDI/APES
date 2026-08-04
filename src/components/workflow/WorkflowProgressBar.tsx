@@ -85,27 +85,20 @@ export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
   const statusText = getStatusText(status, isDeptHeadTrack);
 
   return (
-    <div className="card p-5 mb-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md rounded-2xl">
+    <div className="card p-5 mb-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm rounded-2xl">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 pb-3 border-b border-slate-100 dark:border-slate-700">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-            isDeptHeadTrack
-              ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
-              : 'bg-brand-100 text-brand-800 dark:bg-brand-950 dark:text-brand-300 border border-brand-200 dark:border-brand-800'
-          }`}>
+          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#FFF4EA] text-[#E96B1A] dark:bg-brand-950 dark:text-brand-300 border border-[#F28C28]/20">
             {isDeptHeadTrack ? 'Workflow 2 – Department Head Pipeline' : 'Workflow 1 – Regular Employee Pipeline'}
-          </span>
-          <span className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline">
-            Automatic Hierarchy Routing
           </span>
         </div>
 
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${
-            currentIndex === 3 ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
+            currentIndex === 3 ? 'bg-emerald-500' : 'bg-[#F28C28] animate-pulse'
           }`} />
-          <span className="text-xs px-3 py-1 rounded-full font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+          <span className="text-xs px-3 py-1 rounded-full font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
             {statusText}
           </span>
         </div>
@@ -114,10 +107,10 @@ export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
       {/* Stepper */}
       <div className="relative flex items-start justify-between mt-2 px-2">
         {/* Connecting Line Background */}
-        <div className="absolute top-5 left-8 right-8 h-0.5 bg-slate-200 dark:bg-slate-700 z-0" />
+        <div className="absolute top-5 left-8 right-8 h-0.5 bg-slate-200 dark:bg-slate-800 z-0" />
         {/* Active Line Fill */}
         <div
-          className="absolute top-5 left-8 h-0.5 bg-gradient-to-r from-brand-500 via-purple-500 to-emerald-500 z-0 transition-all duration-500"
+          className="absolute top-5 left-8 h-0.5 bg-gradient-to-r from-[#F28C28] to-[#E96B1A] z-0 transition-all duration-500"
           style={{ width: `calc(${(currentIndex / (steps.length - 1)) * 100}% - 4rem)` }}
         />
 
@@ -133,10 +126,10 @@ export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                   isCompleted
-                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                    ? 'bg-emerald-500 text-white shadow-sm'
                     : isCurrent
-                    ? 'bg-brand-600 text-white ring-4 ring-brand-100 dark:ring-brand-950 shadow-lg scale-110'
-                    : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-600'
+                    ? 'bg-[#F28C28] text-white ring-4 ring-[#FFF4EA] dark:ring-brand-950 shadow-sm scale-105'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700'
                 }`}
               >
                 {isCompleted ? (
@@ -153,27 +146,27 @@ export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
                 <p
                   className={`text-xs font-bold leading-tight ${
                     isCurrent
-                      ? 'text-brand-700 dark:text-brand-300'
+                      ? 'text-[#E96B1A] dark:text-brand-300'
                       : isCompleted
                       ? 'text-slate-800 dark:text-slate-200'
                       : 'text-slate-400 dark:text-slate-500'
                   }`}
                 >
                   {isCompleted
-                    ? `✅ ${step.label} Completed`
+                    ? `${step.label} Completed`
                     : isCurrent
-                    ? `🟡 Under ${step.label}`
-                    : `⏳ Pending ${step.label}`}
+                    ? `Under ${step.label}`
+                    : `Pending ${step.label}`}
                 </p>
 
                 {isCompleted && (
                   <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">
-                    ✓ {history?.approverName ?? step.role}
+                    {history?.approverName ?? step.role}
                   </p>
                 )}
 
                 {isCurrent && (
-                  <p className="text-[10px] text-brand-600 dark:text-brand-400 font-semibold mt-0.5">
+                  <p className="text-[10px] text-[#E96B1A] dark:text-brand-400 font-semibold mt-0.5">
                     Assigned: {step.role}
                   </p>
                 )}
