@@ -27,7 +27,7 @@ interface SystemAdminPanelProps {
   departments: Department[];
   cycles: EvaluationCycle[];
   auditLogs: AuditLog[];
-  onSaveUsers: (users: User[]) => void;
+  onSaveUsers: (users: User[]) => Promise<void>;
   onSaveDepartments: (depts: Department[]) => void;
   onSelectTab?: (tab: string) => void;
 }

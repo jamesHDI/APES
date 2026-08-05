@@ -27,7 +27,7 @@ import * as XLSX from 'xlsx';
 interface EmployeeManagementProps {
   users: User[];
   departments: Department[];
-  onSaveUsers: (updatedUsers: User[]) => void;
+  onSaveUsers: (updatedUsers: User[]) => Promise<void>;
 }
 
 export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
@@ -166,7 +166,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     setShowAddModal(true);
   };
 
-  const handleToggleStatus = (userId: string) => {
+  const handleToggleStatus = async (userId: string) => {
     const updated = userList.map((u) => {
       if (u.id === userId) {
         const nextStatus = !u.isActive;
@@ -176,10 +176,10 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
       return u;
     });
     setUserList(updated);
-    onSaveUsers(updated);
+    await onSaveUsers(updated);
   };
 
-  const handleDeleteUser = (user: User) => {
+  const handleDeleteUser = async (user: User) => {
     if (user.id === 'usr_default_admin' || user.email.toLowerCase() === 'admin.systemad@hdiadventures.com') {
       alert('The System Administrator account cannot be deleted.');
       return;
@@ -188,7 +188,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     if (confirm(`Are you sure you want to delete employee record for ${user.name} (${user.email})?`)) {
       const updated = userList.filter(u => u.id !== user.id);
       setUserList(updated);
-      onSaveUsers(updated);
+      await onSaveUsers(updated);
       deleteEmployeeFromSupabase(user.id);
       showToast(`Deleted account for ${user.name}`);
     }
@@ -249,7 +249,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
         return u;
       });
       setUserList(updated);
-      onSaveUsers(updated);
+      await onSaveUsers(updated);
       if (savedTargetUser) {
         await saveEmployeeToSupabase(savedTargetUser);
       }
@@ -259,10 +259,10 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     setShowAddModal(false);
   };
 
-  const handleRegisterNewUser = (newUser: User) => {
+  const handleRegisterNewUser = async (newUser: User) => {
     const updated = [newUser, ...userList];
     setUserList(updated);
-    onSaveUsers(updated);
+    await onSaveUsers(updated);
     showToast(`Registered new employee account for ${newUser.name}`);
   };
 

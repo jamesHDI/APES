@@ -87,7 +87,14 @@ export const App: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedEvalId, setSelectedEvalId] = useState<string>('');
-  const [darkMode, setDarkMode] = useState<boolean>(false);
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('apes_dark_mode_v3');
+      return stored === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [viewMode, setViewMode] = useState<'normal' | 'printable'>('normal');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
@@ -99,6 +106,9 @@ export const App: React.FC = () => {
     } else {
       document.documentElement.classList.remove('dark');
     }
+    try {
+      localStorage.setItem('apes_dark_mode_v3', String(darkMode));
+    } catch {}
   }, [darkMode]);
 
   useEffect(() => {
@@ -328,6 +338,19 @@ export const App: React.FC = () => {
     }
   };
 
+  const checkedAccountStatusRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!currentUser || !isAuthenticated) return;
+    const statusKey = `${currentUser.id}-${currentUser.isActive}-${currentUser.isApproved}-${currentUser.approvalStatus}`;
+    if (checkedAccountStatusRef.current === statusKey) return;
+    checkedAccountStatusRef.current = statusKey;
+
+    if (currentUser.isActive === false || currentUser.isApproved === false || currentUser.approvalStatus === 'pending' || currentUser.approvalStatus === 'rejected') {
+      handleLogout();
+    }
+  }, [currentUser, isAuthenticated, handleLogout]);
+
   const handleRegisterNewUser = (newUser: User) => {
     const updated = [newUser, ...users];
     setUsers(updated);
@@ -375,7 +398,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleSaveUsers = (updatedUsers: User[]) => {
+  const handleSaveUsers = async (updatedUsers: User[]) => {
     setUsers(updatedUsers);
     saveUsers(updatedUsers);
 
@@ -464,9 +487,12 @@ export const App: React.FC = () => {
     saveDepartments(updatedDepts);
   };
 
-  const handleSaveEvaluation = (updatedEval: Evaluation) => {
-    saveSingleEvaluation(updatedEval);
+  const handleSaveEvaluation = async (updatedEval: Evaluation) => {
+    await saveSingleEvaluation(updatedEval);
     const updatedList = evaluations.map((e) => e.id === updatedEval.id ? updatedEval : e);
+    if (!updatedList.some((e) => e.id === updatedEval.id)) {
+      updatedList.unshift(updatedEval);
+    }
     setEvaluations(updatedList);
     setNotifications(getRoleBasedNotifications(currentUser));
   };
@@ -872,30 +898,32 @@ export const App: React.FC = () => {
         onRegisterNewUser={handleRegisterNewUser}
       />
 
-      <Navbar
-        currentUser={currentUser}
-        onLogout={handleLogout}
-        darkMode={darkMode}
-        onToggleDarkMode={() => setDarkMode(!darkMode)}
-        onResetData={handleResetAllData}
-        notifications={notifications}
-        onMarkNotificationRead={handleMarkNotificationRead}
-        onSelectEvaluation={(id) => {
-          setSelectedEvalId(id);
-          setActiveTab('evaluations');
-          setViewMode('normal');
-        }}
-        onSelectTab={(tab) => {
-          setActiveTab(tab);
-          setViewMode('normal');
-          localStorage.setItem('apes_active_tab_v3', tab);
-        }}
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-        isSidebarOpen={isSidebarOpen}
-        onOpenAnnouncementModal={() => setShowAnnouncementModal(true)}
-      />
+      <div className="no-print">
+        <Navbar
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          darkMode={darkMode}
+          onToggleDarkMode={() => setDarkMode(!darkMode)}
+          onResetData={handleResetAllData}
+          notifications={notifications}
+          onMarkNotificationRead={handleMarkNotificationRead}
+          onSelectEvaluation={(id) => {
+            setSelectedEvalId(id);
+            setActiveTab('evaluations');
+            setViewMode('normal');
+          }}
+          onSelectTab={(tab) => {
+            setActiveTab(tab);
+            setViewMode('normal');
+            localStorage.setItem('apes_active_tab_v3', tab);
+          }}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          isSidebarOpen={isSidebarOpen}
+          onOpenAnnouncementModal={() => setShowAnnouncementModal(true)}
+        />
+      </div>
 
-      <div className="flex flex-1 overflow-hidden min-h-0">
+      <div className="no-print flex flex-1 overflow-hidden min-h-0">
         <Sidebar
           currentRole={currentUser.role}
           activeTab={activeTab}

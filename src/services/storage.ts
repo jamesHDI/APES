@@ -431,7 +431,7 @@ export const saveEvaluations = (evaluations: Evaluation[]) => {
   }
 };
 
-export const saveSingleEvaluation = (evaluation: Evaluation) => {
+export const saveSingleEvaluation = async (evaluation: Evaluation) => {
   const evaluations = getStoredEvaluations();
   const index = evaluations.findIndex((e) => e.id === evaluation.id);
   let updatedList = [...evaluations];
@@ -441,15 +441,15 @@ export const saveSingleEvaluation = (evaluation: Evaluation) => {
     updatedList.unshift(evaluation);
   }
   saveEvaluations(updatedList);
-  saveEvaluationToSupabase(evaluation);
+  await saveEvaluationToSupabase(evaluation);
 };
 
-export const assignNewEvaluationToEmployee = (
+export const assignNewEvaluationToEmployee = async (
   employee: User,
   template: EvaluationTemplate,
   appraisalPeriod: string = 'January - December 2026',
   assignedByName: string = 'People Operations (POD)'
-): Evaluation => {
+): Promise<Evaluation> => {
   const isDeptHeadTrack = employee.isDepartmentHead || employee.role === 'dept_head';
   const workflowType = isDeptHeadTrack ? ('WORKFLOW_DEPT_HEAD' as const) : ('WORKFLOW_REGULAR' as const);
 
@@ -527,7 +527,7 @@ export const assignNewEvaluationToEmployee = (
     updatedAt: dateStr
   };
 
-  saveSingleEvaluation(newEval);
+  await saveSingleEvaluation(newEval);
   return newEval;
 };
 

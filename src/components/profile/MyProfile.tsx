@@ -325,26 +325,14 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
         <div className="lg:col-span-8 space-y-6">
           {/* HR & Employment Information Form */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-[18px] p-6 shadow-xl shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:-translate-y-0.5 space-y-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#F28C28]/10 text-[#E96B1A] dark:text-brand-400 flex items-center justify-center shrink-0 shadow-sm">
-                  <Briefcase className="w-4.5 h-4.5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">Employment Information</h3>
-                  <p className="text-xs text-slate-400">Update position, department, and employment details</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#F28C28]/10 text-[#E96B1A] dark:text-brand-400 flex items-center justify-center shrink-0 shadow-sm">
+                <Briefcase className="w-4.5 h-4.5" />
               </div>
-
-              <button
-                type="button"
-                onClick={handleSaveProfile}
-                disabled={isSaving}
-                className="h-9 px-4 rounded-xl font-bold text-xs bg-[#F28C28] hover:bg-[#E96B1A] text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>{isSaving ? 'Saving...' : 'Save Profile'}</span>
-              </button>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">Employment Information</h3>
+                <p className="text-xs text-slate-400">Update position, department, and employment details</p>
+              </div>
             </div>
 
             {profileToast && (
@@ -512,22 +500,22 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
                   onChange={e => setPersonalEmail(e.target.value)}
                   placeholder="personal@email.com"
                   className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-[#F28C28] focus:ring-4 focus:ring-[#F28C28]/12 transition-all"
-                />
-              </div>
-            </div>
+                 />
+               </div>
+             </div>
 
-            <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={handleSaveProfile}
-                disabled={isSaving}
-                className="h-10 px-5 rounded-xl font-extrabold text-xs uppercase tracking-wider bg-gradient-to-r from-[#F28C28] to-[#E96B1A] hover:from-[#E96B1A] hover:to-[#D85A09] text-white shadow-md shadow-brand-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <Save className="w-4 h-4" />
-                <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
-              </button>
-            </div>
-          </div>
+             <div className="flex justify-end pt-2">
+               <button
+                 type="button"
+                 onClick={handleSaveProfile}
+                 disabled={isSaving}
+                 className="h-10 px-5 rounded-xl font-extrabold text-xs uppercase tracking-wider bg-gradient-to-r from-[#F28C28] to-[#E96B1A] hover:from-[#E96B1A] hover:to-[#D85A09] text-white shadow-md shadow-brand-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+               >
+                 <Save className="w-4 h-4" />
+                 <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
+               </button>
+             </div>
+           </div>
 
           {/* Change Password Section */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-[18px] p-6 shadow-xl shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:-translate-y-0.5 space-y-5">

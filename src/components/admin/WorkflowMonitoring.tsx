@@ -78,7 +78,7 @@ export const WorkflowMonitoring: React.FC<WorkflowMonitoringProps> = ({
     return matchSearch && matchDept && matchStage;
   });
 
-  const handleAssignSubmit = (e: React.FormEvent) => {
+  const handleAssignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const template = templates.find(t => t.id === selectedTemplateId) || templates[0];
     if (!template) {
@@ -92,7 +92,7 @@ export const WorkflowMonitoring: React.FC<WorkflowMonitoringProps> = ({
         alert('Please select an employee.');
         return;
       }
-      const newEval = assignNewEvaluationToEmployee(targetUser, template, appraisalPeriod, currentUser.name);
+      const newEval = await assignNewEvaluationToEmployee(targetUser, template, appraisalPeriod, currentUser.name);
       triggerWorkflowNotification(
         targetUser.id,
         newEval,
@@ -115,8 +115,8 @@ export const WorkflowMonitoring: React.FC<WorkflowMonitoringProps> = ({
       }
 
       let count = 0;
-      deptEmployees.forEach(emp => {
-        const newEval = assignNewEvaluationToEmployee(emp, template, appraisalPeriod, currentUser.name);
+      for (const emp of deptEmployees) {
+        const newEval = await assignNewEvaluationToEmployee(emp, template, appraisalPeriod, currentUser.name);
         triggerWorkflowNotification(
           emp.id,
           newEval,
@@ -126,7 +126,7 @@ export const WorkflowMonitoring: React.FC<WorkflowMonitoringProps> = ({
           'action_required'
         );
         count++;
-      });
+      }
       showToast(`Assigned evaluation template to ${count} employee(s) in ${targetDept.name}!`);
     }
 

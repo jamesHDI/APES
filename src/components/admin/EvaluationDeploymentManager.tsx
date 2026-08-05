@@ -55,7 +55,7 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  const handleCreateDeployment = (e: React.FormEvent) => {
+  const handleCreateDeployment = async (e: React.FormEvent) => {
     e.preventDefault();
     const template = templates.find(t => t.id === templateId) || templates[0];
     if (!template) {
@@ -137,12 +137,12 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
 
     // If active, generate evaluations and notify users
     if (initialStatus === 'active') {
-      targetUsers.forEach(u => {
-        const newEval = assignNewEvaluationToEmployee(u, template, period, currentUser.name);
+      for (const u of targetUsers) {
+        const newEval = await assignNewEvaluationToEmployee(u, template, period, currentUser.name);
         newEval.deploymentId = deploymentId;
         newEval.deadline = endDate;
         // Re-save so deploymentId & deadline are persisted to storage & Supabase
-        saveSingleEvaluation(newEval);
+        await saveSingleEvaluation(newEval);
         
         triggerWorkflowNotification(
           u.id,
@@ -152,13 +152,13 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
           currentUser.name,
           'action_required'
         );
-      });
-    }
+       }
+     }
 
-    showToast(`Successfully deployed evaluation cycle to ${targetUsers.length} employee(s)!`);
-    setIsModalOpen(false);
-    onRefreshData();
-  };
+     showToast(`Successfully deployed evaluation cycle to ${targetUsers.length} employee(s)!`);
+     setIsModalOpen(false);
+     onRefreshData();
+   };
 
   const handleUpdateStatus = (id: string, newStatus: DeploymentStatus) => {
     const updated = deployments.map(d => d.id === id ? { ...d, status: newStatus, updatedAt: new Date().toISOString().substring(0, 10) } : d);

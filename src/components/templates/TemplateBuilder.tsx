@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { EvaluationTemplate, KRACategory, KPITemplateItem, Department, User, Evaluation } from '../../types';
 import { createMasterBasedTemplate, MASTER_SALES_EVALUATION_TEMPLATE } from '../../constants/masterSalesTemplate';
 import { validateEvaluationTemplate } from '../../services/templateValidation';
-import { assignNewEvaluationToEmployee } from '../../services/storage';
+import { assignNewEvaluationToEmployee, createDraftEvaluationInMemory } from '../../services/storage';
 import { PrintableScorecard } from '../evaluation/PrintableScorecard';
 import { 
   SlidersHorizontal, 
@@ -567,7 +567,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             </div>
             <div className="flex-1 overflow-y-auto p-6 bg-slate-100 dark:bg-slate-950">
               <PrintableScorecard
-                evaluation={assignNewEvaluationToEmployee(
+                evaluation={createDraftEvaluationInMemory(
                   currentUser || { id: 'usr_preview', name: 'Sample Employee', role: 'employee', departmentName: activeTemplate.departmentName, position: 'Position Title' } as User,
                   activeTemplate,
                   activeTemplate.evaluationPeriod
