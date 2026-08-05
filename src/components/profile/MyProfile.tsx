@@ -259,7 +259,12 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
             <div className="relative mb-3 mt-1">
               <div className="w-28 h-28 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 ring-4 ring-white dark:ring-slate-800 shadow-md flex items-center justify-center">
                 {avatarPreview ? (
-                  <img src={avatarPreview} alt={currentUser.name} className="w-full h-full object-cover" />
+                  <img
+                    src={avatarPreview}
+                    alt={currentUser.name}
+                    className="w-full h-full object-cover"
+                    onError={() => console.warn(`[Avatar Source] Image failed to load: ${avatarPreview.substring(0, 60)}...`)}
+                  />
                 ) : (
                   <span className="text-[#E96B1A] dark:text-brand-400 font-extrabold text-3xl">
                     {currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2)}

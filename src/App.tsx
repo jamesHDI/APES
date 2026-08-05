@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, Role, Evaluation, EvaluationTemplate, Department, EvaluationCycle, Notification, isPendingUser } from './types';
 import { MASTER_SALES_EVALUATION_TEMPLATE } from './constants/masterSalesTemplate';
 import { 
@@ -88,6 +88,8 @@ export const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'normal' | 'printable'>('normal');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
+  const lastAvatarUpdateRef = useRef<{ url: string; timestamp: number } | null>(null);
+
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -176,9 +178,13 @@ export const App: React.FC = () => {
               (u) => u.email.toLowerCase() === prevUser.email.toLowerCase() || u.id === prevUser.id
             );
             if (updatedSelf) {
+              const tenSecondsAgo = Date.now() - 10000;
+              const hasRecentAvatarUpdate = lastAvatarUpdateRef.current && lastAvatarUpdateRef.current.timestamp > tenSecondsAgo;
               const mergedSelf: User = {
                 ...updatedSelf,
-                avatarUrl: prevUser.avatarUrl && prevUser.avatarUrl !== updatedSelf.avatarUrl ? prevUser.avatarUrl : (updatedSelf.avatarUrl || ''),
+                avatarUrl: hasRecentAvatarUpdate
+                  ? lastAvatarUpdateRef.current!.url
+                  : (prevUser.avatarUrl && prevUser.avatarUrl !== updatedSelf.avatarUrl ? prevUser.avatarUrl : (updatedSelf.avatarUrl || '')),
                 personalEmail: updatedSelf.personalEmail || prevUser.personalEmail || '',
                 requiresPasswordChange: updatedSelf.requiresPasswordChange ?? prevUser.requiresPasswordChange
               };
@@ -262,6 +268,7 @@ export const App: React.FC = () => {
 
     return () => {
       clearInterval(intervalId);
+      lastAvatarUpdateRef.current = null;
       if (supabase) {
         if (channel) supabase.removeChannel(channel);
         if (broadcastChannel) supabase.removeChannel(broadcastChannel);
@@ -418,6 +425,9 @@ export const App: React.FC = () => {
             saveUsers(list);
             return list;
           });
+        }
+        if (updatedUser.avatarUrl) {
+          lastAvatarUpdateRef.current = { url: updatedUser.avatarUrl, timestamp: Date.now() };
         }
       }
       triggerRealtimeBroadcast('data_changed', { type: 'employee', email: updatedUser.email });
