@@ -54,8 +54,9 @@ const mapRowToUser = (row: any): User => ({
   firstName: row.first_name,
   middleName: row.middle_name,
   lastName: row.last_name,
-  name: `${row.first_name} ${row.last_name}`,
+  name: row.name || `${row.first_name || ''} ${row.last_name || ''}`.trim(),
   email: row.email,
+  personalEmail: row.personal_email || '',
   contactNumber: row.contact_number,
   role: row.role,
   departmentId: row.department_id,
@@ -71,15 +72,14 @@ const mapRowToUser = (row: any): User => ({
   username: row.username,
   password: row.password || (row.email === 'Admin.Systemad@hdiadventures.com' ? 'ADMIN' : 'password'),
   requiresPasswordChange: row.requires_password_change ?? false,
-  avatarUrl: (row.email && row.email.toLowerCase() === 'admin.systemad@hdiadventures.com')
-    ? (row.avatar_url && !row.avatar_url.includes('photo-1534528741775') ? row.avatar_url : 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80')
-    : (row.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'),
+  avatarUrl: row.avatar_url || '',
   isActive: row.is_active,
   isApproved: row.is_approved,
   approvalStatus: row.approval_status,
   hrRejectionRemarks: row.hr_rejection_remarks,
   isDepartmentHead: row.is_department_head,
 });
+
 
 export const findEmployeeInSupabase = async (cleanId: string): Promise<User | null> => {
   if (!isSupabaseConfigured || !supabase || !cleanId) return null;
@@ -211,8 +211,10 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       employee_number: user.employeeNumber || `EMP-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
       first_name: user.firstName || user.name.split(' ')[0] || 'Employee',
       middle_name: user.middleName || '',
-      last_name: user.lastName || user.name.split(' ')[1] || 'User',
+      last_name: user.lastName || user.name.split(' ').slice(1).join(' ') || 'User',
+      name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
       email: cleanEmail,
+      personal_email: user.personalEmail || '',
       contact_number: user.contactNumber || '',
       department_id: user.departmentId ? ensureUuid(user.departmentId) : null,
       department_name: user.departmentName || 'General',
@@ -223,7 +225,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       username: user.username || `${cleanEmail.split('@')[0]}_${Date.now().toString().slice(-4)}_${Math.floor(1000 + Math.random() * 9000)}`,
       password: user.password || 'password123',
       requires_password_change: user.requiresPasswordChange ?? false,
-      avatar_url: user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      avatar_url: user.avatarUrl || '',
       is_active: user.isActive ?? false,
       is_approved: user.isApproved ?? false,
       approval_status: user.approvalStatus || 'pending',
@@ -235,13 +237,14 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
     if (isValidUuid(user.departmentId)) {
       payload.department_id = user.departmentId;
     }
+    // Always save supervisor/dept-head names even if no UUID is set
+    payload.immediate_superior_name = user.immediateSuperiorName || '';
+    payload.department_head_name = user.departmentHeadName || '';
     if (isValidUuid(user.immediateSuperiorId)) {
       payload.immediate_superior_id = user.immediateSuperiorId;
-      payload.immediate_superior_name = user.immediateSuperiorName;
     }
     if (isValidUuid(user.departmentHeadId)) {
       payload.department_head_id = user.departmentHeadId;
-      payload.department_head_name = user.departmentHeadName;
     }
 
     if (isExistingRecord) {
