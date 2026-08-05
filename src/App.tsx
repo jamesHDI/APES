@@ -174,10 +174,19 @@ export const App: React.FC = () => {
             if (updatedSelf) {
               const mergedSelf: User = {
                 ...updatedSelf,
-                avatarUrl: updatedSelf.avatarUrl || prevUser.avatarUrl || '',
+                avatarUrl: prevUser.avatarUrl && prevUser.avatarUrl !== updatedSelf.avatarUrl ? prevUser.avatarUrl : (updatedSelf.avatarUrl || ''),
                 personalEmail: updatedSelf.personalEmail || prevUser.personalEmail || '',
                 requiresPasswordChange: updatedSelf.requiresPasswordChange ?? prevUser.requiresPasswordChange
               };
+              if (
+                prevUser.avatarUrl === mergedSelf.avatarUrl &&
+                prevUser.name === mergedSelf.name &&
+                prevUser.email === mergedSelf.email &&
+                prevUser.position === mergedSelf.position &&
+                prevUser.departmentName === mergedSelf.departmentName
+              ) {
+                return prevUser;
+              }
               setCurrentUserStore(mergedSelf);
               return mergedSelf;
             }
@@ -392,13 +401,16 @@ export const App: React.FC = () => {
     if (isSupabaseConfigured) {
       const saveRes = await saveEmployeeToSupabaseDetailed(updatedUser);
       if (saveRes.success) {
-        // Re-fetch authoritative record directly from Supabase DB (Task 6)
         const freshUser = (await findEmployeeInSupabase(updatedUser.id)) || (await findEmployeeInSupabase(updatedUser.email));
         if (freshUser) {
-          setCurrentUser(freshUser);
-          setCurrentUserStore(freshUser);
+          const mergedFreshUser: User = {
+            ...freshUser,
+            avatarUrl: updatedUser.avatarUrl || freshUser.avatarUrl,
+          };
+          setCurrentUser(mergedFreshUser);
+          setCurrentUserStore(mergedFreshUser);
           setUsers(prev => {
-            const list = prev.map(u => (u.id === freshUser.id || u.email.toLowerCase() === freshUser.email.toLowerCase()) ? freshUser : u);
+            const list = prev.map(u => (u.id === mergedFreshUser.id || u.email.toLowerCase() === mergedFreshUser.email.toLowerCase()) ? mergedFreshUser : u);
             saveUsers(list);
             return list;
           });

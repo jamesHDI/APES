@@ -74,20 +74,27 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
     setTimeout(() => setPasswordToast(null), 3500);
   };
 
-  // Sync local form state whenever currentUser changes
+  // Track initial user ID to prevent background polling re-renders from overwriting active form edits
+  const activeUserIdRef = useRef(currentUser.id);
+
+  // Sync local form state ONLY when switching to a different user account or initial mount
   React.useEffect(() => {
-    setFirstName(currentUser.firstName || currentUser.name?.split(' ')[0] || '');
-    setLastName(currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || '');
-    setPosition(currentUser.position || '');
-    setDepartmentName(currentUser.departmentName || '');
-    setEmployeeNumber(currentUser.employeeNumber || '');
-    setEmploymentStatus(currentUser.employmentStatus || 'Regular');
-    setImmediateSuperiorName(currentUser.immediateSuperiorName || '');
-    setDepartmentHeadName(currentUser.departmentHeadName || '');
-    setContactNumber(currentUser.contactNumber || '');
-    setPersonalEmail(currentUser.personalEmail || '');
-    setAvatarPreview(currentUser.avatarUrl || '');
-  }, [currentUser]);
+    if (activeUserIdRef.current !== currentUser.id) {
+      console.log(`[Avatar Source] User switched to ${currentUser.id}. Initializing profile form state...`);
+      activeUserIdRef.current = currentUser.id;
+      setFirstName(currentUser.firstName || currentUser.name?.split(' ')[0] || '');
+      setLastName(currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || '');
+      setPosition(currentUser.position || '');
+      setDepartmentName(currentUser.departmentName || '');
+      setEmployeeNumber(currentUser.employeeNumber || '');
+      setEmploymentStatus(currentUser.employmentStatus || 'Regular');
+      setImmediateSuperiorName(currentUser.immediateSuperiorName || '');
+      setDepartmentHeadName(currentUser.departmentHeadName || '');
+      setContactNumber(currentUser.contactNumber || '');
+      setPersonalEmail(currentUser.personalEmail || '');
+      setAvatarPreview(currentUser.avatarUrl || '');
+    }
+  }, [currentUser.id]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -97,59 +104,74 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       return;
     }
 
+    console.log(`[Avatar Source] Step 1: User selected image "${file.name}" (${file.size} bytes). Processing preview...`);
+
+    let finalAvatarUrl: string | null = null;
+
     // Try cloud storage bucket upload first
     try {
       const { uploadAvatarToSupabase } = await import('../../services/supabaseService');
       const publicUrl = await uploadAvatarToSupabase(file, currentUser.id);
       if (publicUrl) {
-        setAvatarPreview(publicUrl);
-        showProfileFeedback('success', 'Profile picture uploaded to cloud storage.');
-        return;
+        console.log(`[Avatar Source] Step 2: Cloud storage upload SUCCESS. Public URL: ${publicUrl}`);
+        finalAvatarUrl = publicUrl;
       }
     } catch (err) {
-      console.warn('Storage upload note:', err);
+      console.warn('[Avatar Source] Storage upload note, falling back to data URL:', err);
     }
 
-    // Compressed image data URL fallback
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const rawDataUrl = ev.target?.result as string;
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_DIM = 250;
-        let width = img.width;
-        let height = img.height;
+    if (!finalAvatarUrl) {
+      // Compressed image data URL fallback
+      finalAvatarUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const rawDataUrl = ev.target?.result as string;
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_DIM = 250;
+            let width = img.width;
+            let height = img.height;
 
-        if (width > height) {
-          if (width > MAX_DIM) {
-            height = Math.round((height * MAX_DIM) / width);
-            width = MAX_DIM;
-          }
-        } else {
-          if (height > MAX_DIM) {
-            width = Math.round((width * MAX_DIM) / height);
-            height = MAX_DIM;
-          }
-        }
+            if (width > height) {
+              if (width > MAX_DIM) {
+                height = Math.round((height * MAX_DIM) / width);
+                width = MAX_DIM;
+              }
+            } else {
+              if (height > MAX_DIM) {
+                width = Math.round((width * MAX_DIM) / height);
+                height = MAX_DIM;
+              }
+            }
 
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
-          setAvatarPreview(compressedDataUrl);
-        } else {
-          setAvatarPreview(rawDataUrl);
-        }
-      };
-      img.onerror = () => {
-        setAvatarPreview(rawDataUrl);
-      };
-      img.src = rawDataUrl;
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              resolve(canvas.toDataURL('image/jpeg', 0.82));
+            } else {
+              resolve(rawDataUrl);
+            }
+          };
+          img.onerror = () => resolve(rawDataUrl);
+          img.src = rawDataUrl;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    console.log(`[Avatar Source] Step 3: Avatar URL ready: ${finalAvatarUrl.substring(0, 40)}... Setting preview and auto-saving to DB...`);
+    setAvatarPreview(finalAvatarUrl);
+
+    // Auto-save updated avatar directly to Supabase DB & user state
+    const autoSavedUser: User = {
+      ...currentUser,
+      avatarUrl: finalAvatarUrl
     };
-    reader.readAsDataURL(file);
+    onUpdateUser(autoSavedUser);
+    showProfileFeedback('success', 'Profile picture updated and saved to database successfully!');
   };
 
   const handleSaveProfile = () => {
