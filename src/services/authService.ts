@@ -298,10 +298,15 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
 };
 
 export const logoutUser = async () => {
-  if (isSupabaseConfigured && supabase) {
-    await supabase.auth.signOut();
+  try {
+    if (isSupabaseConfigured && supabase) {
+      await supabase.auth.signOut();
+    }
+  } catch (e) {
+    console.warn('[Auth] signOut failed, clearing local session state anyway:', e);
+  } finally {
+    clearCurrentUserStore();
   }
-  clearCurrentUserStore();
 };
 
 export const requestPasswordReset = async (email: string): Promise<{ success: boolean; message: string }> => {

@@ -175,36 +175,38 @@ export const App: React.FC = () => {
           setUsers(sbUsers);
           
           // Live profile sync across devices for logged-in user
-          setCurrentUser((prevUser: User) => {
-            if (!prevUser) return prevUser;
-            const updatedSelf = sbUsers.find(
-              (u) => u.email.toLowerCase() === prevUser.email.toLowerCase() || u.id === prevUser.id
-            );
-            if (updatedSelf) {
-              const tenSecondsAgo = Date.now() - 10000;
-              const hasRecentAvatarUpdate = lastAvatarUpdateRef.current && lastAvatarUpdateRef.current.timestamp > tenSecondsAgo;
-              const mergedSelf: User = {
-                ...updatedSelf,
-                avatarUrl: hasRecentAvatarUpdate
-                  ? lastAvatarUpdateRef.current!.url
-                  : (prevUser.avatarUrl && prevUser.avatarUrl !== updatedSelf.avatarUrl ? prevUser.avatarUrl : (updatedSelf.avatarUrl || '')),
-                personalEmail: updatedSelf.personalEmail || prevUser.personalEmail || '',
-                requiresPasswordChange: updatedSelf.requiresPasswordChange ?? prevUser.requiresPasswordChange
-              };
-              if (
-                prevUser.avatarUrl === mergedSelf.avatarUrl &&
-                prevUser.name === mergedSelf.name &&
-                prevUser.email === mergedSelf.email &&
-                prevUser.position === mergedSelf.position &&
-                prevUser.departmentName === mergedSelf.departmentName
-              ) {
-                return prevUser;
+          if (isAuthenticated) {
+            setCurrentUser((prevUser: User) => {
+              if (!prevUser) return prevUser;
+              const updatedSelf = sbUsers.find(
+                (u) => u.email.toLowerCase() === prevUser.email.toLowerCase() || u.id === prevUser.id
+              );
+              if (updatedSelf) {
+                const tenSecondsAgo = Date.now() - 10000;
+                const hasRecentAvatarUpdate = lastAvatarUpdateRef.current && lastAvatarUpdateRef.current.timestamp > tenSecondsAgo;
+                const mergedSelf: User = {
+                  ...updatedSelf,
+                  avatarUrl: hasRecentAvatarUpdate
+                    ? lastAvatarUpdateRef.current!.url
+                    : (prevUser.avatarUrl && prevUser.avatarUrl !== updatedSelf.avatarUrl ? prevUser.avatarUrl : (updatedSelf.avatarUrl || '')),
+                  personalEmail: updatedSelf.personalEmail || prevUser.personalEmail || '',
+                  requiresPasswordChange: updatedSelf.requiresPasswordChange ?? prevUser.requiresPasswordChange
+                };
+                if (
+                  prevUser.avatarUrl === mergedSelf.avatarUrl &&
+                  prevUser.name === mergedSelf.name &&
+                  prevUser.email === mergedSelf.email &&
+                  prevUser.position === mergedSelf.position &&
+                  prevUser.departmentName === mergedSelf.departmentName
+                ) {
+                  return prevUser;
+                }
+                setCurrentUserStore(mergedSelf);
+                return mergedSelf;
               }
-              setCurrentUserStore(mergedSelf);
-              return mergedSelf;
-            }
-            return prevUser;
-          });
+              return prevUser;
+            });
+          }
         }
 
         const sbDepts = await fetchDepartmentsFromSupabase();
@@ -312,13 +314,18 @@ export const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    await logoutUser();
     clearCurrentUserStore();
     sessionStorage.removeItem('apes_session_active_v3');
     localStorage.removeItem('apes_session_active_v3');
     localStorage.removeItem('apes_active_tab_v3');
     setCurrentUser(SEED_USERS[0]);
     setIsAuthenticated(false);
+
+    try {
+      await logoutUser();
+    } catch (e) {
+      console.warn('[App] Logout cleanup note:', e);
+    }
   };
 
   const handleRegisterNewUser = (newUser: User) => {
