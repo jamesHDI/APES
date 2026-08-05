@@ -205,7 +205,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div key={item.id}>
           <button
             onClick={() => toggleGroup(item.id)}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 ${
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-base font-semibold transition-all duration-150 ${
               hasActiveChild
                 ? 'bg-[#FFF4EA] text-[#E96B1A]'
                 : 'text-slate-500 dark:text-slate-400 hover:bg-[#FFF8F3] dark:hover:bg-slate-800/80 hover:text-[#E96B1A]'
@@ -241,7 +241,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <button
         key={item.id}
         onClick={() => handleSelectTab(item.id)}
-        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all duration-150 ${
+        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-base transition-all duration-150 ${
           isActive
             ? 'bg-gradient-to-r from-[#FFF4EA] via-[#FFF8F3] to-transparent text-[#E96B1A] font-bold border-l-[3px] border-[#F28C28] pl-[10px]'
             : 'font-semibold text-slate-500 dark:text-slate-400 hover:bg-[#FFF8F3] dark:hover:bg-slate-800/80 hover:text-[#E96B1A] dark:hover:text-brand-300'
@@ -311,7 +311,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Nav Items */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          <p className="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
+          <p className="px-3 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
             Navigation
           </p>
           {navItems.map(renderItem)}
@@ -324,8 +324,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <ShieldCheck className="w-3.5 h-3.5 text-[#F28C28]" />
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">HDI Hive · APES v3.0</p>
-              <p className="text-[9px] text-slate-400 dark:text-slate-500">Strictly Confidential</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400">HDI Hive · APES v3.0</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">Strictly Confidential</p>
             </div>
           </div>
         </div>
