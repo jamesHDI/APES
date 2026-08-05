@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { User, Role } from '../types';
-import { getStoredUsers, saveUsers, getStoredCurrentUser, setCurrentUserStore } from './storage';
+import { getStoredUsers, saveUsers, getStoredCurrentUser, setCurrentUserStore, clearCurrentUserStore } from './storage';
 import { triggerRegistrationNotification } from './notificationService';
 import { ensureUuid, generateUuid, saveEmployeeToSupabase, saveEmployeeToSupabaseDetailed, fetchEmployeesFromSupabase, findEmployeeInSupabase } from './supabaseService';
 
@@ -301,6 +301,7 @@ export const logoutUser = async () => {
   if (isSupabaseConfigured && supabase) {
     await supabase.auth.signOut();
   }
+  clearCurrentUserStore();
 };
 
 export const requestPasswordReset = async (email: string): Promise<{ success: boolean; message: string }> => {

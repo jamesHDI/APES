@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, Role, Evaluation, EvaluationTemplate, Department, EvaluationCycle, Notification, isPendingUser } from './types';
 import { MASTER_SALES_EVALUATION_TEMPLATE } from './constants/masterSalesTemplate';
 import { 
@@ -6,6 +6,7 @@ import {
   saveUsers,
   getStoredCurrentUser, 
   setCurrentUserStore, 
+  clearCurrentUserStore,
   getStoredDepartments, 
   saveDepartments,
   getStoredTemplates, 
@@ -312,9 +313,11 @@ export const App: React.FC = () => {
 
   const handleLogout = async () => {
     await logoutUser();
+    clearCurrentUserStore();
     sessionStorage.removeItem('apes_session_active_v3');
     localStorage.removeItem('apes_session_active_v3');
     localStorage.removeItem('apes_active_tab_v3');
+    setCurrentUser(SEED_USERS[0]);
     setIsAuthenticated(false);
   };
 
@@ -484,6 +487,7 @@ export const App: React.FC = () => {
       resetToDefaultSeedData();
       setUsers(getStoredUsers());
       setCurrentUser(SEED_USERS[0]);
+      setCurrentUserStore(SEED_USERS[0]);
       setDepartments(getStoredDepartments());
       setTemplates(getStoredTemplates());
       setCycles(getStoredCycles());
@@ -493,11 +497,11 @@ export const App: React.FC = () => {
     }
   };
 
-  const getCurrentEvaluation = (): Evaluation => {
+  const currentEvaluation = useMemo(() => {
     if (selectedEvalId) {
       const found = evaluations.find((e) => e.id === selectedEvalId);
       if (found) {
-        const isOwner = (found.employeeId && (found.employeeId === currentUser.id || found.employeeId === currentUser.employeeNumber)) || 
+        const isOwner = (found.employeeId && (found.employeeId === currentUser.id || found.employeeId === currentUser.employeeNumber)) ||
                         (found.employeeEmail && found.employeeEmail.toLowerCase() === currentUser.email.toLowerCase()) ||
                         (found.employeeName && found.employeeName.toLowerCase() === currentUser.name.toLowerCase());
         const isPrivileged = currentUser.role === 'system_admin' || currentUser.role === 'hr_admin' || currentUser.role === 'pod' || currentUser.role === 'dept_head' || currentUser.role === 'supervisor' || currentUser.role === 'president';
@@ -514,12 +518,9 @@ export const App: React.FC = () => {
     const latestEval = getUserLatestEvaluation(currentUser, evaluations);
     if (latestEval) return latestEval;
 
-    // Guaranteed Master Sales Layout evaluation initialization
     const fallbackTemplate = templates.find(t => t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
     return createDraftEvaluationInMemory(currentUser, fallbackTemplate, 'January-September 2025');
-  };
-
-  const currentEvaluation = getCurrentEvaluation();
+  }, [evaluations, selectedEvalId, currentUser, templates]);
 
   const renderMainContent = () => {
     if (viewMode === 'printable' && currentEvaluation) {

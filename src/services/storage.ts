@@ -291,26 +291,11 @@ export const saveUsers = (users: User[]) => {
 };
 
 export const getStoredCurrentUser = (): User | null => {
-  // 1. Try sessionStorage for tab-isolated active user
   const sessionData = sessionStorage.getItem(CURRENT_USER_KEY);
   if (sessionData) {
     try {
       const user: User = JSON.parse(sessionData);
       if (user && user.id) return user;
-    } catch {}
-  }
-
-  // 2. Fall back to localStorage for single-tab or initial session restoration
-  const localData = localStorage.getItem(CURRENT_USER_KEY);
-  if (localData) {
-    try {
-      const user: User = JSON.parse(localData);
-      if (user && user.id) {
-        try {
-          sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-        } catch {}
-        return user;
-      }
     } catch {}
   }
   return null;
@@ -319,9 +304,6 @@ export const getStoredCurrentUser = (): User | null => {
 export const setCurrentUserStore = (user: User) => {
   try {
     sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-  } catch (e) {}
-  try {
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
   } catch (e) {}
 };
 
@@ -627,7 +609,7 @@ export const getStoredAuditLogs = (): AuditLog[] => {
 
 export const resetToDefaultSeedData = () => {
   localStorage.setItem(USERS_KEY, JSON.stringify(SEED_USERS));
-  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(SEED_USERS[0]));
+  sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(SEED_USERS[0]));
   localStorage.setItem(DEPARTMENTS_KEY, JSON.stringify(SEED_DEPARTMENTS));
   localStorage.setItem(TEMPLATES_KEY, JSON.stringify(SEED_TEMPLATES));
   localStorage.setItem(CYCLES_KEY, JSON.stringify(SEED_CYCLES));
