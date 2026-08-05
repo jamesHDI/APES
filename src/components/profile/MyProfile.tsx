@@ -89,7 +89,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
     setAvatarPreview(currentUser.avatarUrl || '');
   }, [currentUser]);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
@@ -97,6 +97,20 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       return;
     }
 
+    // Try cloud storage bucket upload first
+    try {
+      const { uploadAvatarToSupabase } = await import('../../services/supabaseService');
+      const publicUrl = await uploadAvatarToSupabase(file, currentUser.id);
+      if (publicUrl) {
+        setAvatarPreview(publicUrl);
+        showProfileFeedback('success', 'Profile picture uploaded to cloud storage.');
+        return;
+      }
+    } catch (err) {
+      console.warn('Storage upload note:', err);
+    }
+
+    // Compressed image data URL fallback
     const reader = new FileReader();
     reader.onload = (ev) => {
       const rawDataUrl = ev.target?.result as string;

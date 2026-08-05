@@ -388,8 +388,22 @@ export const App: React.FC = () => {
     const updatedUsers = users.map(u => (u.id === updatedUser.id || u.email.toLowerCase() === updatedUser.email.toLowerCase()) ? updatedUser : u);
     setUsers(updatedUsers);
     saveUsers(updatedUsers);
+
     if (isSupabaseConfigured) {
-      await saveEmployeeToSupabaseDetailed(updatedUser);
+      const saveRes = await saveEmployeeToSupabaseDetailed(updatedUser);
+      if (saveRes.success) {
+        // Re-fetch authoritative record directly from Supabase DB (Task 6)
+        const freshUser = (await findEmployeeInSupabase(updatedUser.id)) || (await findEmployeeInSupabase(updatedUser.email));
+        if (freshUser) {
+          setCurrentUser(freshUser);
+          setCurrentUserStore(freshUser);
+          setUsers(prev => {
+            const list = prev.map(u => (u.id === freshUser.id || u.email.toLowerCase() === freshUser.email.toLowerCase()) ? freshUser : u);
+            saveUsers(list);
+            return list;
+          });
+        }
+      }
       triggerRealtimeBroadcast('data_changed', { type: 'employee', email: updatedUser.email });
     }
   };

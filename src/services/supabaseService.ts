@@ -204,6 +204,50 @@ export interface SupabaseSaveResult {
   };
 }
 
+export const uploadAvatarToSupabase = async (file: File | Blob, userId: string): Promise<string | null> => {
+  if (!isSupabaseConfigured || !supabase) return null;
+
+  try {
+    const fileExt = (file as File).type?.split('/')[1] || 'jpg';
+    const fileName = `avatar_${userId.replace(/[^a-zA-Z0-9_-]/g, '_')}_${Date.now()}.${fileExt}`;
+
+    // Attempt 1: Upload to 'avatars' storage bucket
+    const { data: uploadData, error: uploadErr } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    if (!uploadErr && uploadData) {
+      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      if (publicUrlData?.publicUrl) {
+        console.log('[Supabase Storage] Avatar uploaded successfully to avatars bucket:', publicUrlData.publicUrl);
+        return publicUrlData.publicUrl;
+      }
+    }
+
+    // Attempt 2: Upload to 'public' storage bucket if 'avatars' bucket does not exist
+    const { data: uploadData2, error: uploadErr2 } = await supabase.storage
+      .from('public')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    if (!uploadErr2 && uploadData2) {
+      const { data: publicUrlData2 } = supabase.storage.from('public').getPublicUrl(fileName);
+      if (publicUrlData2?.publicUrl) {
+        console.log('[Supabase Storage] Avatar uploaded successfully to public bucket:', publicUrlData2.publicUrl);
+        return publicUrlData2.publicUrl;
+      }
+    }
+  } catch (err) {
+    console.warn('[Supabase Storage Upload] Storage upload note:', err);
+  }
+  return null;
+};
+
 export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<SupabaseSaveResult> => {
   if (!isSupabaseConfigured || !supabase) {
     return { success: false, error: { code: 'NO_SB_CONFIG', message: 'Supabase cloud client is not configured.' } };
@@ -211,25 +255,22 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
 
   try {
     const cleanEmail = (user.email || '').trim().toLowerCase();
-    
-    let isExistingRecord = false;
-    let targetId = isValidUuid(user.id) ? user.id : ensureUuid(user.id);
-    if (cleanEmail) {
-      try {
-        const { data: existing } = await supabase
-          .from('employees')
-          .select('id')
-          .ilike('email', cleanEmail)
-          .maybeSingle();
 
-        if (existing && existing.id) {
-          targetId = existing.id;
-          isExistingRecord = true;
-        }
-      } catch (e) {
-        // Fallback to computed targetId
+    // Check if employee already exists in Supabase by ID or email
+    let existingId: string | null = null;
+    try {
+      const { data: existing } = await supabase
+        .from('employees')
+        .select('id')
+        .or(`id.eq.${user.id},email.ilike.${cleanEmail}`)
+        .maybeSingle();
+
+      if (existing && existing.id) {
+        existingId = existing.id;
       }
-    }
+    } catch (e) {}
+
+    const targetId = existingId || (isValidUuid(user.id) ? user.id : ensureUuid(user.id));
 
     const payload: any = {
       id: targetId,
@@ -241,7 +282,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       email: cleanEmail,
       personal_email: user.personalEmail || '',
       contact_number: user.contactNumber || '',
-      department_id: user.departmentId ? ensureUuid(user.departmentId) : null,
+      department_id: user.departmentId ? (isValidUuid(user.departmentId) ? user.departmentId : null) : null,
       department_name: user.departmentName || 'General',
       position: user.position || 'Staff',
       role: user.role || 'employee',
@@ -251,20 +292,16 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       password: user.password || 'password123',
       requires_password_change: user.requiresPasswordChange ?? false,
       avatar_url: user.avatarUrl || '',
-      is_active: user.isActive ?? false,
-      is_approved: user.isApproved ?? false,
-      approval_status: user.approvalStatus || 'pending',
+      is_active: user.isActive ?? true,
+      is_approved: user.isApproved ?? true,
+      approval_status: user.approvalStatus || 'approved',
       hr_rejection_remarks: user.hrRejectionRemarks || null,
       is_department_head: user.isDepartmentHead || false,
+      immediate_superior_name: user.immediateSuperiorName || '',
+      department_head_name: user.departmentHeadName || '',
       updated_at: new Date().toISOString()
     };
 
-    if (isValidUuid(user.departmentId)) {
-      payload.department_id = user.departmentId;
-    }
-    // Always save supervisor/dept-head names even if no UUID is set
-    payload.immediate_superior_name = user.immediateSuperiorName || '';
-    payload.department_head_name = user.departmentHeadName || '';
     if (isValidUuid(user.immediateSuperiorId)) {
       payload.immediate_superior_id = user.immediateSuperiorId;
     }
@@ -272,21 +309,28 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       payload.department_head_id = user.departmentHeadId;
     }
 
-    // Perform atomic upsert by email first, fallback to id update
     let saveErr: any = null;
-    if (cleanEmail) {
-      const { error } = await supabase.from('employees').upsert(payload, { onConflict: 'email' });
-      saveErr = error;
-    }
-
-    if (saveErr) {
-      // Fallback: update directly by targetId or email
-      delete payload.id;
+    if (existingId) {
       const { error: updateErr } = await supabase
         .from('employees')
         .update(payload)
-        .or(`id.eq.${targetId},email.ilike.${cleanEmail}`);
+        .eq('id', existingId);
       saveErr = updateErr;
+    } else if (cleanEmail) {
+      const { error: upsertErr } = await supabase
+        .from('employees')
+        .upsert(payload, { onConflict: 'email' });
+      saveErr = upsertErr;
+    }
+
+    if (saveErr) {
+      // Fallback update by id or email
+      delete payload.id;
+      const { error: fallbackErr } = await supabase
+        .from('employees')
+        .update(payload)
+        .or(`id.eq.${targetId},email.ilike.${cleanEmail}`);
+      saveErr = fallbackErr;
     }
 
     if (saveErr) {
