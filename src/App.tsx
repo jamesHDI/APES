@@ -28,7 +28,9 @@ import {
   fetchNotificationsFromSupabase,
   saveEmployeeToSupabase,
   saveEmployeeToSupabaseDetailed,
-  findEmployeeInSupabase
+  findEmployeeInSupabase,
+  isValidUuid,
+  ensureUuid
 } from './services/supabaseService';
 import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './services/supabaseClient';
 import { 
@@ -428,6 +430,19 @@ export const App: React.FC = () => {
         }
         if (updatedUser.avatarUrl) {
           lastAvatarUpdateRef.current = { url: updatedUser.avatarUrl, timestamp: Date.now() };
+        }
+      } else if (updatedUser.avatarUrl) {
+        console.warn('[Avatar Source] Full save failed, attempting direct avatar fallback update...', saveRes.error);
+        const cleanEmail = (updatedUser.email || '').trim().toLowerCase();
+        try {
+          const targetId = isValidUuid(updatedUser.id) ? updatedUser.id : ensureUuid(updatedUser.id);
+          await supabase
+            .from('employees')
+            .update({ avatar_url: updatedUser.avatarUrl, updated_at: new Date().toISOString() })
+            .or(`id.eq.${targetId},email.ilike.${cleanEmail}`);
+          lastAvatarUpdateRef.current = { url: updatedUser.avatarUrl, timestamp: Date.now() };
+        } catch (e) {
+          console.warn('[Avatar Source] Direct avatar fallback update note:', e);
         }
       }
       triggerRealtimeBroadcast('data_changed', { type: 'employee', email: updatedUser.email });

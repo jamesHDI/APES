@@ -403,7 +403,17 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
         updated_at: verifiedRow.updated_at
       });
     } else {
-      console.warn(`[Supabase DB Verification] Warning verifying saved row:`, verifyErr);
+      const warnDetails = verifyErr ? { code: verifyErr.code, message: verifyErr.message, details: verifyErr.details, hint: verifyErr.hint } : 'verifiedRow missing';
+      console.warn(`[Supabase DB Verification] Warning verifying saved row:`, warnDetails);
+      return {
+        success: false,
+        error: {
+          code: verifyErr?.code || 'VERIFY_MISSING',
+          message: verifyErr?.message || 'Save appeared to succeed, but the updated row could not be verified.',
+          details: verifyErr?.details || '',
+          hint: verifyErr?.hint || ''
+        }
+      };
     }
 
     triggerRealtimeBroadcast('data_changed', { type: 'employee', email: cleanEmail });
