@@ -113,8 +113,14 @@ export const App: React.FC = () => {
             try {
               const freshUser = await findEmployeeInSupabase(storedUser.email || storedUser.id);
               if (freshUser) {
-                storedUser = freshUser;
-                setCurrentUserStore(freshUser);
+                const mergedUser: User = {
+                  ...freshUser,
+                  avatarUrl: freshUser.avatarUrl || storedUser.avatarUrl || '',
+                  personalEmail: freshUser.personalEmail || storedUser.personalEmail || '',
+                  requiresPasswordChange: freshUser.requiresPasswordChange ?? storedUser.requiresPasswordChange
+                };
+                storedUser = mergedUser;
+                setCurrentUserStore(mergedUser);
               }
             } catch (e) {
               console.warn('[App Init] Could not fetch fresh profile from Supabase, using stored fallback:', e);
@@ -170,8 +176,14 @@ export const App: React.FC = () => {
               (u) => u.email.toLowerCase() === prevUser.email.toLowerCase() || u.id === prevUser.id
             );
             if (updatedSelf) {
-              setCurrentUserStore(updatedSelf);
-              return updatedSelf;
+              const mergedSelf: User = {
+                ...updatedSelf,
+                avatarUrl: updatedSelf.avatarUrl || prevUser.avatarUrl || '',
+                personalEmail: updatedSelf.personalEmail || prevUser.personalEmail || '',
+                requiresPasswordChange: updatedSelf.requiresPasswordChange ?? prevUser.requiresPasswordChange
+              };
+              setCurrentUserStore(mergedSelf);
+              return mergedSelf;
             }
             return prevUser;
           });
