@@ -740,7 +740,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               </button>
             )}
 
-            {currentRole === 'pod' && (
+            {currentRole === 'pod' && !isSelfEval && evalData.status === 'pending_pod' && (
               <button onClick={handleValidatePOD} className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Validate & Archive

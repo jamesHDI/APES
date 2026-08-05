@@ -475,6 +475,20 @@ export const App: React.FC = () => {
       );
     }
 
+    if (activeTab === 'dept_actions') {
+      return (
+        <DeptHeadDashboard
+          currentUser={currentUser}
+          evaluations={evaluations}
+          allUsers={users}
+          onOpenEvaluation={(id) => {
+            setSelectedEvalId(id);
+            setActiveTab('evaluations');
+          }}
+        />
+      );
+    }
+
     if (activeTab === 'evaluations' || activeTab === 'team_reviews' || activeTab === 'dept_head_reviews') {
       return (
         <EvaluationForm

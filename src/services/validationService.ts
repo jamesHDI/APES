@@ -22,16 +22,26 @@ export function validateEvaluationForSubmission(
 
   // Rule 2 & 3: Department Head assignment & Active status check
   const deptName = currentUser.departmentName || evaluation.departmentName;
+  const isEvalOwner = Boolean(
+    (currentUser.id && (currentUser.id === evaluation.employeeId || currentUser.employeeNumber === evaluation.employeeId)) ||
+    (currentUser.email && evaluation.employeeEmail && currentUser.email.toLowerCase().trim() === evaluation.employeeEmail.toLowerCase().trim()) ||
+    (currentUser.name && evaluation.employeeName && currentUser.name.toLowerCase().trim() === evaluation.employeeName.toLowerCase().trim())
+  );
+  const isDeptAuthorityRole = currentUser.role === 'dept_head' || currentUser.isDepartmentHead || currentUser.role === 'pod';
+
   const deptHeadUser = allUsers.find(
     u => (u.id === currentUser.departmentHeadId) || 
          (u.role === 'dept_head' && u.departmentName === deptName) ||
          (u.isDepartmentHead && u.departmentName === deptName)
   );
 
-  if (!deptHeadUser) {
-    errors.push(`No assigned Department Head found for department "${deptName}". Submission blocked.`);
-  } else if (deptHeadUser.isActive === false) {
-    errors.push(`Assigned Department Head (${deptHeadUser.name}) for "${deptName}" is currently inactive/archived. Submission blocked.`);
+  // Skip dept-head-present requirement when the submitter IS the dept authority (dept_head / pod doing self-eval)
+  if (!isDeptAuthorityRole || !isEvalOwner) {
+    if (!deptHeadUser) {
+      errors.push(`No assigned Department Head found for department "${deptName}". Submission blocked.`);
+    } else if (deptHeadUser.isActive === false) {
+      errors.push(`Assigned Department Head (${deptHeadUser.name}) for "${deptName}" is currently inactive/archived. Submission blocked.`);
+    }
   }
 
   // Rule 4: The evaluation template is assigned
@@ -40,12 +50,12 @@ export function validateEvaluationForSubmission(
   }
 
   // Stage-specific validation checks
-  const isSelfEvalStage = (evaluation.status === 'draft' || evaluation.status === 'reopened') && (currentUser.id === evaluation.employeeId || currentUser.role === 'employee');
+  const isSelfEvalStage = (evaluation.status === 'draft' || evaluation.status === 'reopened') && isEvalOwner;
   const isDeptHeadReviewerStage = (currentUser.role === 'dept_head' || Boolean(currentUser.isDepartmentHead)) && 
-    currentUser.id !== evaluation.employeeId && 
+    !isEvalOwner && 
     (evaluation.status === 'pending_dept_head' || evaluation.status === 'employee_submitted' || evaluation.status === 'pending_supervisor');
   const isPresidentStage = currentUser.role === 'president' && (evaluation.status === 'pending_president' || evaluation.status === 'department_head_submitted');
-  const isPODStage = (currentUser.role === 'pod' || currentUser.role === 'hr_admin') && evaluation.status === 'pending_pod';
+  const isPODStage = (currentUser.role === 'pod' || currentUser.role === 'hr_admin') && !isEvalOwner && evaluation.status === 'pending_pod';
 
   if (isSelfEvalStage) {
     const unratedKpis = evaluation.kpiRatings.filter(k => !k.selfRating || k.selfRating === 0);
