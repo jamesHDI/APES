@@ -192,7 +192,7 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
 
         <div className="stat-card">
           <div className="stat-icon bg-purple-100 dark:bg-purple-950">
-            <Crown className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            <Clock className="w-5 h-5 text-purple-600 dark:text-purple-400" />
           </div>
           <div>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Pending Executive Review</p>
@@ -219,9 +219,8 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
       <div className="card space-y-4 p-5 border-l-4 border-l-blue-500">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div>
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-blue-600" />
-              <span>Evaluations Waiting for POD Final Review ({pendingPODReviews.length})</span>
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+              Evaluations Waiting for POD Final Review ({pendingPODReviews.length})
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Evaluations completed by Department Heads / Supervisors awaiting final POD validation & archiving.
@@ -296,9 +295,8 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
       <div className="card space-y-4 p-5 border-l-4 border-l-purple-500">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div>
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
-              <Crown className="w-5 h-5 text-purple-600" />
-              <span>Evaluations Forwarded to Executive Review ({evaluations.filter(e => e.status === 'pending_president' || e.status === 'department_head_submitted').length})</span>
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+              Evaluations Forwarded to Executive Review ({evaluations.filter(e => e.status === 'pending_president' || e.status === 'department_head_submitted').length})
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Department Head scorecards currently under President & CEO executive review before returning to POD.
