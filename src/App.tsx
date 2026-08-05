@@ -105,24 +105,17 @@ export const App: React.FC = () => {
 
     const initSession = async () => {
       try {
-        const sessionActive = sessionStorage.getItem('apes_session_active_v3') === 'true';
         const savedTab = localStorage.getItem('apes_active_tab_v3');
         let storedUser = getStoredCurrentUser();
 
-        if (sessionActive && storedUser) {
-          // Fetch fresh user profile from Supabase PostgreSQL cloud database on mount
+        if (storedUser) {
+          // Fetch fresh authoritative user profile from Supabase PostgreSQL cloud database on mount/refresh
           if (isSupabaseConfigured) {
             try {
-              const freshUser = await findEmployeeInSupabase(storedUser.email || storedUser.id);
+              const freshUser = (await findEmployeeInSupabase(storedUser.id)) || (await findEmployeeInSupabase(storedUser.email));
               if (freshUser) {
-                const mergedUser: User = {
-                  ...freshUser,
-                  avatarUrl: freshUser.avatarUrl || storedUser.avatarUrl || '',
-                  personalEmail: freshUser.personalEmail || storedUser.personalEmail || '',
-                  requiresPasswordChange: freshUser.requiresPasswordChange ?? storedUser.requiresPasswordChange
-                };
-                storedUser = mergedUser;
-                setCurrentUserStore(mergedUser);
+                storedUser = freshUser;
+                setCurrentUserStore(freshUser);
               }
             } catch (e) {
               console.warn('[App Init] Could not fetch fresh profile from Supabase, using stored fallback:', e);
@@ -133,6 +126,7 @@ export const App: React.FC = () => {
             if (isMounted) {
               setCurrentUser(storedUser);
               setIsAuthenticated(true);
+              sessionStorage.setItem('apes_session_active_v3', 'true');
               setNotifications(getRoleBasedNotifications(storedUser));
               if (savedTab) setActiveTab(savedTab);
             }
@@ -393,6 +387,7 @@ export const App: React.FC = () => {
     setCurrentUserStore(updatedUser);
     const updatedUsers = users.map(u => (u.id === updatedUser.id || u.email.toLowerCase() === updatedUser.email.toLowerCase()) ? updatedUser : u);
     setUsers(updatedUsers);
+    saveUsers(updatedUsers);
     if (isSupabaseConfigured) {
       await saveEmployeeToSupabaseDetailed(updatedUser);
       triggerRealtimeBroadcast('data_changed', { type: 'employee', email: updatedUser.email });

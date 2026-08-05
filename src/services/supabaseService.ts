@@ -85,11 +85,26 @@ export const findEmployeeInSupabase = async (cleanId: string): Promise<User | nu
   if (!isSupabaseConfigured || !supabase || !cleanId) return null;
 
   try {
-    // Query 1: By Email
+    const target = (cleanId || '').trim();
+    const targetLower = target.toLowerCase();
+
+    // Query 1: By ID directly
+    const { data: byId, error: errId } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('id', target)
+      .maybeSingle();
+
+    if (byId && !errId) {
+      console.log(`[Supabase Auth] Employee matched by ID in Supabase: ${byId.id}`);
+      return mapRowToUser(byId);
+    }
+
+    // Query 2: By Email
     const { data: byEmail, error: errEmail } = await supabase
       .from('employees')
       .select('*')
-      .ilike('email', cleanId)
+      .ilike('email', targetLower)
       .maybeSingle();
 
     if (byEmail && !errEmail) {
@@ -97,11 +112,11 @@ export const findEmployeeInSupabase = async (cleanId: string): Promise<User | nu
       return mapRowToUser(byEmail);
     }
 
-    // Query 2: By Employee Number
+    // Query 3: By Employee Number
     const { data: byNum, error: errNum } = await supabase
       .from('employees')
       .select('*')
-      .ilike('employee_number', cleanId)
+      .ilike('employee_number', target)
       .maybeSingle();
 
     if (byNum && !errNum) {
@@ -109,11 +124,11 @@ export const findEmployeeInSupabase = async (cleanId: string): Promise<User | nu
       return mapRowToUser(byNum);
     }
 
-    // Query 3: By Username
+    // Query 4: By Username
     const { data: byUser, error: errUser } = await supabase
       .from('employees')
       .select('*')
-      .ilike('username', cleanId)
+      .ilike('username', targetLower)
       .maybeSingle();
 
     if (byUser && !errUser) {
@@ -121,20 +136,30 @@ export const findEmployeeInSupabase = async (cleanId: string): Promise<User | nu
       return mapRowToUser(byUser);
     }
 
-    // Fallback Auto-Seed: If query didn't find record in Supabase, search SEED_USERS and sync to Supabase
+    // Fallback Auto-Seed ONLY if account is totally missing from Supabase DB
     const { SEED_USERS } = await import('./storage');
     const matchedSeed = SEED_USERS.find(
       (u) =>
-        u.email.toLowerCase() === cleanId ||
-        (u.employeeNumber && u.employeeNumber.toLowerCase() === cleanId) ||
-        (u.username && u.username.toLowerCase() === cleanId) ||
-        cleanId.includes(u.email.toLowerCase()) ||
-        (u.username && cleanId.includes(u.username.toLowerCase())) ||
-        (u.username && u.username.toLowerCase().includes(cleanId))
+        u.id === target ||
+        u.email.toLowerCase() === targetLower ||
+        (u.employeeNumber && u.employeeNumber.toLowerCase() === targetLower) ||
+        (u.username && u.username.toLowerCase() === targetLower)
     );
 
     if (matchedSeed) {
-      console.log(`[Supabase Auth] Auto-seeding matched enterprise account "${matchedSeed.name}" (${matchedSeed.email}) into Supabase PostgreSQL...`);
+      // Check if row exists in Supabase before seeding
+      const { data: checkDb } = await supabase
+        .from('employees')
+        .select('*')
+        .or(`id.eq.${matchedSeed.id},email.ilike.${matchedSeed.email}`)
+        .maybeSingle();
+
+      if (checkDb) {
+        console.log(`[Supabase Auth] Found authoritative record for "${checkDb.email}" in Supabase DB.`);
+        return mapRowToUser(checkDb);
+      }
+
+      console.log(`[Supabase Auth] Initializing new seed account "${matchedSeed.name}" (${matchedSeed.email}) into Supabase...`);
       await saveEmployeeToSupabase(matchedSeed);
       return matchedSeed;
     }
