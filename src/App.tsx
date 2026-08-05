@@ -96,6 +96,10 @@ export const App: React.FC = () => {
     }
   }, [darkMode]);
 
+  useEffect(() => {
+    console.log(`[Avatar Source] App.tsx currentUser.avatarUrl changed to: ${currentUser.avatarUrl ? currentUser.avatarUrl.substring(0, 40) + '...' : '(empty)'}`);
+  }, [currentUser.avatarUrl]);
+
   // 1. Session Restoration Effect (On App Mount)
   useEffect(() => {
     let isMounted = true;
@@ -289,7 +293,7 @@ export const App: React.FC = () => {
           setNotifications(getRoleBasedNotifications(sbNotifs, authenticatedUser));
         }
       } catch (e) {
-        console.warn('Error syncing Supabase data on login:', e);
+        console.warn('Login sync note:', e);
       }
     }
 
@@ -401,7 +405,7 @@ export const App: React.FC = () => {
     if (isSupabaseConfigured) {
       const saveRes = await saveEmployeeToSupabaseDetailed(updatedUser);
       if (saveRes.success) {
-        const freshUser = (await findEmployeeInSupabase(updatedUser.id)) || (await findEmployeeInSupabase(updatedUser.email));
+        const freshUser = (saveRes.id ? await findEmployeeInSupabase(saveRes.id) : null) || (await findEmployeeInSupabase(updatedUser.id)) || (await findEmployeeInSupabase(updatedUser.email));
         if (freshUser) {
           const mergedFreshUser: User = {
             ...freshUser,

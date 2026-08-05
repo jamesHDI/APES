@@ -77,7 +77,6 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
   // Track initial user ID to prevent background polling re-renders from overwriting active form edits
   const activeUserIdRef = useRef(currentUser.id);
 
-  // Sync local form state ONLY when switching to a different user account or initial mount
   React.useEffect(() => {
     if (activeUserIdRef.current !== currentUser.id) {
       console.log(`[Avatar Source] User switched to ${currentUser.id}. Initializing profile form state...`);
@@ -95,6 +94,10 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       setAvatarPreview(currentUser.avatarUrl || '');
     }
   }, [currentUser.id]);
+
+  React.useEffect(() => {
+    console.log(`[Avatar Source] avatarPreview changed to: ${avatarPreview ? avatarPreview.substring(0, 40) + '...' : '(empty)'}`);
+  }, [avatarPreview]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -217,6 +217,7 @@ export const fetchEmployeesFromSupabase = async (): Promise<User[] | null> => {
 
 export interface SupabaseSaveResult {
   success: boolean;
+  id?: string;
   error?: {
     code?: string;
     message: string;
@@ -406,7 +407,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
     }
 
     triggerRealtimeBroadcast('data_changed', { type: 'employee', email: cleanEmail });
-    return { success: true };
+    return { success: true, id: targetId };
   } catch (err: any) {
     console.error('[Supabase DB Update] Exception Error:', err);
     return {
