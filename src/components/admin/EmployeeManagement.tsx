@@ -67,8 +67,8 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     lastName: '',
     email: '',
     contactNumber: '',
-    departmentId: departments[0]?.id || 'dept_sales',
-    departmentName: departments[0]?.name || 'Sales',
+    departmentId: '',
+    departmentName: '',
     position: '',
     role: 'employee',
     employmentStatus: 'Regular',
@@ -145,14 +145,18 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
 
   const handleOpenEdit = (user: User) => {
     setEditingUser(user);
+    // Find matching department by ID first, then by name, then leave blank
+    const matchedDept = departments.find(d => d.id === user.departmentId) ||
+      departments.find(d => d.name?.toLowerCase() === (user.departmentName || '').toLowerCase()) ||
+      null;
     setFormData({
       firstName: user.firstName || user.name?.split(' ')[0] || '',
       middleName: user.middleName || '',
       lastName: user.lastName || user.name?.split(' ').slice(1).join(' ') || '',
       email: user.email || '',
       contactNumber: user.contactNumber || '',
-      departmentId: user.departmentId || departments[0]?.id || '',
-      departmentName: user.departmentName || departments[0]?.name || '',
+      departmentId: matchedDept?.id || user.departmentId || '',
+      departmentName: matchedDept?.name || user.departmentName || '',
       position: user.position || '',
       role: user.role || 'employee',
       employmentStatus: user.employmentStatus || 'Regular',
@@ -638,6 +642,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                   }}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-500"
                 >
+                  <option value="">— Select Department —</option>
                   {departments.map((d) => (
                     <option key={d.id} value={d.id}>{d.name}</option>
                   ))}

@@ -105,6 +105,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items = [
         ...common,
         { id: 'pod_validation', label: 'POD Governance', icon: ShieldCheck },
+        {
+          id: 'pod_people',
+          label: 'People Management',
+          icon: Users,
+          children: [
+            { id: 'employee_mgmt', label: 'Employee Directory', icon: Users },
+            { id: 'pending_approvals', label: 'Pending Approvals', icon: UserCheck, badge: pendingAccountCount },
+          ],
+        },
         { id: 'workflow_monitoring', label: 'Workflow Monitoring', icon: GitBranch },
         { id: 'evaluation_deployment', label: 'Evaluation Deployment', icon: Rocket },
         { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal },
