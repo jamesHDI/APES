@@ -74,17 +74,66 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
     setTimeout(() => setPasswordToast(null), 3500);
   };
 
+  // Sync local form state whenever currentUser changes
+  React.useEffect(() => {
+    setFirstName(currentUser.firstName || currentUser.name?.split(' ')[0] || '');
+    setLastName(currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || '');
+    setPosition(currentUser.position || '');
+    setDepartmentName(currentUser.departmentName || '');
+    setEmployeeNumber(currentUser.employeeNumber || '');
+    setEmploymentStatus(currentUser.employmentStatus || 'Regular');
+    setImmediateSuperiorName(currentUser.immediateSuperiorName || '');
+    setDepartmentHeadName(currentUser.departmentHeadName || '');
+    setContactNumber(currentUser.contactNumber || '');
+    setPersonalEmail(currentUser.personalEmail || '');
+    setAvatarPreview(currentUser.avatarUrl || '');
+  }, [currentUser]);
+
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      showProfileFeedback('error', 'Image must be smaller than 2MB.');
+    if (file.size > 5 * 1024 * 1024) {
+      showProfileFeedback('error', 'Image file must be smaller than 5MB.');
       return;
     }
+
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
-      setAvatarPreview(dataUrl);
+      const rawDataUrl = ev.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_DIM = 250;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          }
+        } else {
+          if (height > MAX_DIM) {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          setAvatarPreview(compressedDataUrl);
+        } else {
+          setAvatarPreview(rawDataUrl);
+        }
+      };
+      img.onerror = () => {
+        setAvatarPreview(rawDataUrl);
+      };
+      img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
   };
@@ -112,11 +161,9 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       avatarUrl: avatarPreview || currentUser.avatarUrl,
     };
 
-    setTimeout(() => {
-      onUpdateUser(updatedUser);
-      setIsSaving(false);
-      showProfileFeedback('success', 'Profile and Employment Information updated successfully!');
-    }, 400);
+    onUpdateUser(updatedUser);
+    setIsSaving(false);
+    showProfileFeedback('success', 'Profile and Employment Information updated successfully!');
   };
 
   const handleChangePassword = async () => {

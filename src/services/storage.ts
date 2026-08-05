@@ -283,7 +283,11 @@ export const getStoredUsers = (): User[] => {
 };
 
 export const saveUsers = (users: User[]) => {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  try {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  } catch (e) {
+    console.warn('LocalStorage saveUsers quota warning:', e);
+  }
 };
 
 export const getStoredCurrentUser = (): User | null => {
@@ -302,7 +306,9 @@ export const getStoredCurrentUser = (): User | null => {
     try {
       const user: User = JSON.parse(localData);
       if (user && user.id) {
-        sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+        try {
+          sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+        } catch {}
         return user;
       }
     } catch {}
@@ -311,13 +317,21 @@ export const getStoredCurrentUser = (): User | null => {
 };
 
 export const setCurrentUserStore = (user: User) => {
-  sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+  try {
+    sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+  } catch (e) {}
+  try {
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+  } catch (e) {}
 };
 
 export const clearCurrentUserStore = () => {
-  sessionStorage.removeItem(CURRENT_USER_KEY);
-  localStorage.removeItem(CURRENT_USER_KEY);
+  try {
+    sessionStorage.removeItem(CURRENT_USER_KEY);
+  } catch (e) {}
+  try {
+    localStorage.removeItem(CURRENT_USER_KEY);
+  } catch (e) {}
 };
 
 export const getStoredDepartments = (): Department[] => {
