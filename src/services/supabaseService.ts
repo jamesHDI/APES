@@ -247,37 +247,34 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       payload.department_head_id = user.departmentHeadId;
     }
 
-    if (isExistingRecord) {
-      // User already exists in database: Update row by ID directly
+    // Perform atomic upsert by email first, fallback to id update
+    let saveErr: any = null;
+    if (cleanEmail) {
+      const { error } = await supabase.from('employees').upsert(payload, { onConflict: 'email' });
+      saveErr = error;
+    }
+
+    if (saveErr) {
+      // Fallback: update directly by targetId or email
       delete payload.id;
-      const { error: updateErr } = await supabase.from('employees').update(payload).eq('id', targetId);
-      if (updateErr) {
-        console.error('Supabase Employee Update Error:', updateErr);
-        return {
-          success: false,
-          error: {
-            code: updateErr.code,
-            message: updateErr.message,
-            details: updateErr.details,
-            hint: updateErr.hint
-          }
-        };
-      }
-    } else {
-      // New user self-registration: Perform INSERT
-      const { error: insertErr } = await supabase.from('employees').insert(payload);
-      if (insertErr) {
-        console.error('Supabase Employee Insert Error:', insertErr);
-        return {
-          success: false,
-          error: {
-            code: insertErr.code,
-            message: insertErr.message,
-            details: insertErr.details,
-            hint: insertErr.hint
-          }
-        };
-      }
+      const { error: updateErr } = await supabase
+        .from('employees')
+        .update(payload)
+        .or(`id.eq.${targetId},email.ilike.${cleanEmail}`);
+      saveErr = updateErr;
+    }
+
+    if (saveErr) {
+      console.error('Supabase Employee Save Error:', saveErr);
+      return {
+        success: false,
+        error: {
+          code: saveErr.code,
+          message: saveErr.message,
+          details: saveErr.details,
+          hint: saveErr.hint
+        }
+      };
     }
 
     triggerRealtimeBroadcast('data_changed', { type: 'employee', email: cleanEmail });
