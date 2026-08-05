@@ -17,6 +17,7 @@ export interface User {
   firstName?: string;
   middleName?: string;
   lastName?: string;
+  suffix?: string;
   name: string; // Full name
   email: string;
   contactNumber?: string;

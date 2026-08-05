@@ -54,6 +54,7 @@ const mapRowToUser = (row: any): User => ({
   firstName: row.first_name,
   middleName: row.middle_name,
   lastName: row.last_name,
+  suffix: row.suffix || '',
   name: row.name || `${row.first_name || ''} ${row.last_name || ''}`.trim(),
   email: row.email,
   personalEmail: row.personal_email || '',
@@ -87,32 +88,39 @@ export const findEmployeeInSupabase = async (cleanId: string): Promise<User | nu
   try {
     const target = (cleanId || '').trim();
     const targetLower = target.toLowerCase();
+    const mappedUuid = isValidUuid(target) ? target : ensureUuid(target);
 
-    // Query 1: By ID directly
-    const { data: byId, error: errId } = await supabase
-      .from('employees')
-      .select('*')
-      .eq('id', target)
-      .maybeSingle();
+    console.log(`[Supabase Auth] Trace Profile Loading - Searching employees table for identifier: "${target}" (mapped UUID: ${mappedUuid})...`);
 
-    if (byId && !errId) {
-      console.log(`[Supabase Auth] Employee matched by ID in Supabase: ${byId.id}`);
-      return mapRowToUser(byId);
+    // 1. Query by ID (mapped UUID or raw ID)
+    if (isValidUuid(mappedUuid)) {
+      const { data: byId, error: errId } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('id', mappedUuid)
+        .maybeSingle();
+
+      if (byId && !errId) {
+        console.log(`[Supabase Auth] SINGLE SOURCE OF TRUTH: Loaded employee record directly from Supabase DB by ID: ${byId.id} (${byId.email})`);
+        return mapRowToUser(byId);
+      }
     }
 
-    // Query 2: By Email
-    const { data: byEmail, error: errEmail } = await supabase
-      .from('employees')
-      .select('*')
-      .ilike('email', targetLower)
-      .maybeSingle();
+    // 2. Query by Email
+    if (targetLower.includes('@')) {
+      const { data: byEmail, error: errEmail } = await supabase
+        .from('employees')
+        .select('*')
+        .ilike('email', targetLower)
+        .maybeSingle();
 
-    if (byEmail && !errEmail) {
-      console.log(`[Supabase Auth] Employee matched by email in Supabase: ${byEmail.email}`);
-      return mapRowToUser(byEmail);
+      if (byEmail && !errEmail) {
+        console.log(`[Supabase Auth] SINGLE SOURCE OF TRUTH: Loaded employee record directly from Supabase DB by Email: ${byEmail.email}`);
+        return mapRowToUser(byEmail);
+      }
     }
 
-    // Query 3: By Employee Number
+    // 3. Query by Employee Number
     const { data: byNum, error: errNum } = await supabase
       .from('employees')
       .select('*')
@@ -120,11 +128,11 @@ export const findEmployeeInSupabase = async (cleanId: string): Promise<User | nu
       .maybeSingle();
 
     if (byNum && !errNum) {
-      console.log(`[Supabase Auth] Employee matched by employee_number in Supabase: ${byNum.employee_number}`);
+      console.log(`[Supabase Auth] SINGLE SOURCE OF TRUTH: Loaded employee record directly from Supabase DB by Employee Number: ${byNum.employee_number}`);
       return mapRowToUser(byNum);
     }
 
-    // Query 4: By Username
+    // 4. Query by Username
     const { data: byUser, error: errUser } = await supabase
       .from('employees')
       .select('*')
@@ -132,34 +140,48 @@ export const findEmployeeInSupabase = async (cleanId: string): Promise<User | nu
       .maybeSingle();
 
     if (byUser && !errUser) {
-      console.log(`[Supabase Auth] Employee matched by username in Supabase: ${byUser.username}`);
+      console.log(`[Supabase Auth] SINGLE SOURCE OF TRUTH: Loaded employee record directly from Supabase DB by Username: ${byUser.username}`);
       return mapRowToUser(byUser);
     }
 
-    // Fallback Auto-Seed ONLY if account is totally missing from Supabase DB
+    // 5. Query by Email fallback
+    const { data: byEmailFallback } = await supabase
+      .from('employees')
+      .select('*')
+      .ilike('email', targetLower)
+      .maybeSingle();
+
+    if (byEmailFallback) {
+      console.log(`[Supabase Auth] SINGLE SOURCE OF TRUTH: Loaded employee record directly from Supabase DB by Email fallback: ${byEmailFallback.email}`);
+      return mapRowToUser(byEmailFallback);
+    }
+
+    // Fallback Seed ONLY if account is completely missing from Supabase DB
     const { SEED_USERS } = await import('./storage');
     const matchedSeed = SEED_USERS.find(
       (u) =>
         u.id === target ||
+        ensureUuid(u.id) === mappedUuid ||
         u.email.toLowerCase() === targetLower ||
         (u.employeeNumber && u.employeeNumber.toLowerCase() === targetLower) ||
         (u.username && u.username.toLowerCase() === targetLower)
     );
 
     if (matchedSeed) {
-      // Check if row exists in Supabase before seeding
+      const seedUuid = ensureUuid(matchedSeed.id);
+      // Check if user already exists in Supabase DB by seed UUID or email
       const { data: checkDb } = await supabase
         .from('employees')
         .select('*')
-        .or(`id.eq.${matchedSeed.id},email.ilike.${matchedSeed.email}`)
+        .or(`id.eq.${seedUuid},email.ilike.${matchedSeed.email}`)
         .maybeSingle();
 
       if (checkDb) {
-        console.log(`[Supabase Auth] Found authoritative record for "${checkDb.email}" in Supabase DB.`);
+        console.log(`[Supabase Auth] SINGLE SOURCE OF TRUTH: Found authoritative database record for "${checkDb.email}" in Supabase DB. Returning DB record without overwriting.`);
         return mapRowToUser(checkDb);
       }
 
-      console.log(`[Supabase Auth] Initializing new seed account "${matchedSeed.name}" (${matchedSeed.email}) into Supabase...`);
+      console.log(`[Supabase Auth] Account "${matchedSeed.email}" absent from Supabase DB. Provisioning initial seed record...`);
       await saveEmployeeToSupabase(matchedSeed);
       return matchedSeed;
     }
@@ -177,7 +199,6 @@ export const fetchEmployeesFromSupabase = async (): Promise<User[] | null> => {
   try {
     const { data, error } = await supabase.from('employees').select('*');
     if (error || !data || data.length === 0) {
-      // Auto-seed SEED_USERS into Supabase employees table
       const { SEED_USERS } = await import('./storage');
       console.log('[Supabase Sync] Auto-seeding SEED_USERS into Supabase employees table...');
       for (const u of SEED_USERS) {
@@ -255,22 +276,36 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
 
   try {
     const cleanEmail = (user.email || '').trim().toLowerCase();
+    const mappedUuid = isValidUuid(user.id) ? user.id : ensureUuid(user.id);
 
-    // Check if employee already exists in Supabase by ID or email
+    console.log(`[Supabase DB Update] Preparing UPDATE/UPSERT for Employee:`, {
+      id: user.id,
+      mappedUuid,
+      email: cleanEmail,
+      username: user.username,
+      name: user.name,
+      avatarUrl: user.avatarUrl
+    });
+
+    // Check if employee already exists in Supabase by UUID or email
     let existingId: string | null = null;
     try {
-      const { data: existing } = await supabase
-        .from('employees')
-        .select('id')
-        .or(`id.eq.${user.id},email.ilike.${cleanEmail}`)
-        .maybeSingle();
-
+      let checkQuery = supabase.from('employees').select('id, email');
+      if (isValidUuid(mappedUuid)) {
+        checkQuery = checkQuery.or(`id.eq.${mappedUuid},email.ilike.${cleanEmail}`);
+      } else {
+        checkQuery = checkQuery.ilike('email', cleanEmail);
+      }
+      const { data: existing } = await checkQuery.maybeSingle();
       if (existing && existing.id) {
         existingId = existing.id;
+        console.log(`[Supabase DB Update] Matched existing DB record ID: ${existingId}`);
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[Supabase DB Update] Existing record check note:', e);
+    }
 
-    const targetId = existingId || (isValidUuid(user.id) ? user.id : ensureUuid(user.id));
+    const targetId = existingId || mappedUuid;
 
     const payload: any = {
       id: targetId,
@@ -278,6 +313,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       first_name: user.firstName || user.name.split(' ')[0] || 'Employee',
       middle_name: user.middleName || '',
       last_name: user.lastName || user.name.split(' ').slice(1).join(' ') || 'User',
+      suffix: user.suffix || '',
       name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
       email: cleanEmail,
       personal_email: user.personalEmail || '',
@@ -311,12 +347,14 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
 
     let saveErr: any = null;
     if (existingId) {
+      console.log(`[Supabase DB Update] Executing UPDATE query on employees table for ID: ${existingId}...`);
       const { error: updateErr } = await supabase
         .from('employees')
         .update(payload)
         .eq('id', existingId);
       saveErr = updateErr;
     } else if (cleanEmail) {
+      console.log(`[Supabase DB Update] Executing UPSERT query on employees table for Email: ${cleanEmail}...`);
       const { error: upsertErr } = await supabase
         .from('employees')
         .upsert(payload, { onConflict: 'email' });
@@ -324,7 +362,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
     }
 
     if (saveErr) {
-      // Fallback update by id or email
+      console.warn('[Supabase DB Update] Primary save note, attempting fallback UPDATE...', saveErr);
       delete payload.id;
       const { error: fallbackErr } = await supabase
         .from('employees')
@@ -334,7 +372,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
     }
 
     if (saveErr) {
-      console.error('Supabase Employee Save Error:', saveErr);
+      console.error('[Supabase DB Update] UPDATE Query Failed:', saveErr);
       return {
         success: false,
         error: {
@@ -346,10 +384,31 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       };
     }
 
+    // Step 1 Verification: Immediately SELECT updated row from database to verify persistence
+    const { data: verifiedRow, error: verifyErr } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('id', targetId)
+      .maybeSingle();
+
+    if (verifiedRow && !verifyErr) {
+      console.log(`[Supabase DB Verification] SUCCESS! Verified database update in employees table:`, {
+        id: verifiedRow.id,
+        email: verifiedRow.email,
+        name: verifiedRow.name,
+        position: verifiedRow.position,
+        department_name: verifiedRow.department_name,
+        avatar_url: verifiedRow.avatar_url,
+        updated_at: verifiedRow.updated_at
+      });
+    } else {
+      console.warn(`[Supabase DB Verification] Warning verifying saved row:`, verifyErr);
+    }
+
     triggerRealtimeBroadcast('data_changed', { type: 'employee', email: cleanEmail });
     return { success: true };
   } catch (err: any) {
-    console.error('Supabase Exception Error:', err);
+    console.error('[Supabase DB Update] Exception Error:', err);
     return {
       success: false,
       error: {
