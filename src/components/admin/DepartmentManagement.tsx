@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Department, User, EvaluationTemplate } from '../../types';
 import { Building2, Plus, Edit3, Trash2, Users, FileSpreadsheet, CheckCircle2, X, Sparkles } from 'lucide-react';
 
+import { isSameDepartment } from '../dashboards/DeptHeadDashboard';
+
 interface DepartmentManagementProps {
   departments: Department[];
   users: User[];
@@ -156,7 +158,12 @@ export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
       {/* Departments Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {deptList.map((d) => {
-          const deptStaff = users.filter(u => u.departmentName === d.name);
+          const deptStaff = users.filter(u => 
+            u.isActive !== false && 
+            u.isApproved !== false && 
+            u.approvalStatus !== 'pending' &&
+            isSameDepartment(u.departmentName || u.departmentId, d.name || d.id)
+          );
           return (
             <div key={d.id} className="card p-5 space-y-3">
               <div className="flex items-center justify-between">
@@ -208,7 +215,7 @@ export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
             <h3 className="font-bold text-slate-900 dark:text-white text-base">
-              Assigned Personnel in {selectedDept.name} Department ({users.filter(u => u.departmentName === selectedDept.name).length})
+              Assigned Personnel in {selectedDept.name} Department ({users.filter(u => isSameDepartment(u.departmentName || u.departmentId, selectedDept.name || selectedDept.id)).length})
             </h3>
             <button onClick={() => setSelectedDept(null)} className="p-1 text-slate-400 hover:text-slate-600">
               <X className="w-5 h-5" />
@@ -216,9 +223,9 @@ export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {users.filter(u => u.departmentName === selectedDept.name).map((u) => (
+            {users.filter(u => isSameDepartment(u.departmentName || u.departmentId, selectedDept.name || selectedDept.id)).map((u) => (
               <div key={u.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 flex items-center space-x-3">
-                <img src={u.avatarUrl} alt={u.name} className="w-9 h-9 rounded-full object-cover" />
+                <img src={u.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={u.name} className="w-9 h-9 rounded-full object-cover" />
                 <div>
                   <p className="font-bold text-xs text-slate-900 dark:text-white">{u.name}</p>
                   <p className="text-[10px] text-slate-500">{u.position}</p>

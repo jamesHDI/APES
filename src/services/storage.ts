@@ -284,7 +284,6 @@ export const getStoredUsers = (): User[] => {
 
 export const saveUsers = (users: User[]) => {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  users.forEach(u => saveEmployeeToSupabase(u));
 };
 
 export const getStoredCurrentUser = (): User | null => {
@@ -326,9 +325,11 @@ export const getStoredDepartments = (): Department[] => {
   if (data) {
     try {
       const depts: Department[] = JSON.parse(data);
-      // Filter out HDI Adventures if stored in local cache
       const filtered = depts.filter(d => d.name !== 'HDI Adventures' && d.id !== 'dept_hdi');
-      if (filtered.length >= 10) {
+      // Ensure key departments (Marketing, Operations) are always included
+      const hasMkt = filtered.some(d => d.code === 'MKT' || d.name === 'Marketing');
+      const hasOps = filtered.some(d => d.code === 'OPS' || d.name === 'Operations');
+      if (hasMkt && hasOps && filtered.length >= 10) {
         return filtered;
       }
     } catch {}
@@ -339,7 +340,6 @@ export const getStoredDepartments = (): Department[] => {
 
 export const saveDepartments = (departments: Department[]) => {
   localStorage.setItem(DEPARTMENTS_KEY, JSON.stringify(departments));
-  departments.forEach(d => saveDepartmentToSupabase(d));
 };
 
 export const getStoredTemplates = (): EvaluationTemplate[] => {

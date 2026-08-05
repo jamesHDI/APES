@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Evaluation, Department } from '../../types';
-import { ShieldCheck, CheckCircle2, Clock, Archive, BarChart3, ArrowRight, Search, GitBranch, Rocket, SlidersHorizontal } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, Clock, Archive, BarChart3, ArrowRight, Search, GitBranch, Rocket, SlidersHorizontal, Crown } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
 
 interface PODDashboardProps {
@@ -191,6 +191,18 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
         </div>
 
         <div className="stat-card">
+          <div className="stat-icon bg-purple-100 dark:bg-purple-950">
+            <Crown className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Pending Executive Review</p>
+            <p className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-0.5">
+              {evaluations.filter(e => e.status === 'pending_president' || e.status === 'department_head_submitted').length}
+            </p>
+          </div>
+        </div>
+
+        <div className="stat-card">
           <div className="stat-icon bg-brand-100 dark:bg-brand-950">
             <Archive className="w-5 h-5 text-brand-600 dark:text-brand-400" />
           </div>
@@ -200,6 +212,156 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
               {evaluations.length}
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* 1. SECTION: Evaluations Waiting for POD Review */}
+      <div className="card space-y-4 p-5 border-l-4 border-l-blue-500">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-blue-600" />
+              <span>Evaluations Waiting for POD Final Review ({pendingPODReviews.length})</span>
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Evaluations completed by Department Heads / Supervisors awaiting final POD validation & archiving.
+            </p>
+          </div>
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200">
+            Stage 4 of 4
+          </span>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/80 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                <th className="px-4 py-3 text-left">Employee Name</th>
+                <th className="px-4 py-3 text-left">Department</th>
+                <th className="px-4 py-3 text-left">Department Head / Reviewer</th>
+                <th className="px-4 py-3 text-left">Date Submitted</th>
+                <th className="px-4 py-3 text-center">Status</th>
+                <th className="px-4 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {pendingPODReviews.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-xs text-slate-400">
+                    No evaluations currently waiting for POD review.
+                  </td>
+                </tr>
+              ) : (
+                pendingPODReviews.map((ev) => {
+                  const dateSub = ev.signatures?.deptHead?.signedAt || ev.signatures?.supervisor?.signedAt || ev.updatedAt || ev.createdAt;
+                  const formattedDate = dateSub ? new Date(dateSub).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently';
+
+                  return (
+                    <tr key={ev.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="font-extrabold text-slate-900 dark:text-white text-xs">{ev.employeeName}</p>
+                        <p className="text-[11px] text-slate-400">{ev.position}</p>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        {ev.departmentName}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-400">
+                        {ev.signatures?.deptHead?.signerName || ev.signatures?.supervisor?.signerName || 'Department Head'}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-500 font-mono">
+                        {formattedDate}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <StatusBadge status={ev.status} />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => onOpenEvaluation(ev.id)}
+                          className="btn btn-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                        >
+                          <span>Validate & Archive</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 2. SECTION: Evaluations Forwarded to Executive Review (President) */}
+      <div className="card space-y-4 p-5 border-l-4 border-l-purple-500">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+              <Crown className="w-5 h-5 text-purple-600" />
+              <span>Evaluations Forwarded to Executive Review ({evaluations.filter(e => e.status === 'pending_president' || e.status === 'department_head_submitted').length})</span>
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Department Head scorecards currently under President & CEO executive review before returning to POD.
+            </p>
+          </div>
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200">
+            Stage 3 of 4
+          </span>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/80 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                <th className="px-4 py-3 text-left">Department Head Name</th>
+                <th className="px-4 py-3 text-left">Department</th>
+                <th className="px-4 py-3 text-left">Date Forwarded</th>
+                <th className="px-4 py-3 text-center">Status</th>
+                <th className="px-4 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {evaluations.filter(e => e.status === 'pending_president' || e.status === 'department_head_submitted').length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6 text-center text-xs text-slate-400">
+                    No Department Head evaluations currently under Executive Review.
+                  </td>
+                </tr>
+              ) : (
+                evaluations.filter(e => e.status === 'pending_president' || e.status === 'department_head_submitted').map((ev) => {
+                  const dateFwd = ev.signatures?.deptHead?.signedAt || ev.updatedAt || ev.createdAt;
+                  const formattedDate = dateFwd ? new Date(dateFwd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently';
+
+                  return (
+                    <tr key={ev.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="font-extrabold text-slate-900 dark:text-white text-xs">{ev.employeeName}</p>
+                        <p className="text-[11px] text-slate-400">{ev.position}</p>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        {ev.departmentName}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-500 font-mono">
+                        {formattedDate}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <StatusBadge status={ev.status} />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => onOpenEvaluation(ev.id)}
+                          className="btn btn-xs bg-purple-600 hover:bg-purple-700 text-white font-bold"
+                        >
+                          <span>View Executive Status</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
