@@ -15,6 +15,8 @@ import {
   saveEvaluations, 
   saveSingleEvaluation, 
   assignNewEvaluationToEmployee,
+  createDraftEvaluationInMemory,
+  deduplicateEvaluations,
   getStoredAuditLogs,
   resetToDefaultSeedData,
   SEED_USERS
@@ -193,7 +195,7 @@ export const App: React.FC = () => {
         if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
 
         const sbEvals = await fetchEvaluationsFromSupabase();
-        if (sbEvals && sbEvals.length > 0) setEvaluations(sbEvals);
+        if (sbEvals && sbEvals.length > 0) setEvaluations(deduplicateEvaluations(sbEvals));
 
         const sbNotifs = await fetchNotificationsFromSupabase(currentUser?.id, currentUser?.role);
         if (sbNotifs) {
@@ -279,7 +281,7 @@ export const App: React.FC = () => {
 
         if (sbUsers && sbUsers.length > 0) setUsers(sbUsers);
         if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
-        if (sbEvals && sbEvals.length > 0) setEvaluations(sbEvals);
+        if (sbEvals && sbEvals.length > 0) setEvaluations(deduplicateEvaluations(sbEvals));
         if (sbNotifs) {
           setNotifications(getRoleBasedNotifications(sbNotifs, authenticatedUser));
         }
@@ -464,7 +466,7 @@ export const App: React.FC = () => {
 
     // Guaranteed Master Sales Layout evaluation initialization
     const fallbackTemplate = templates.find(t => t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
-    return assignNewEvaluationToEmployee(currentUser, fallbackTemplate, 'January-September 2025', 'System Default');
+    return createDraftEvaluationInMemory(currentUser, fallbackTemplate, 'January-September 2025');
   };
 
   const currentEvaluation = getCurrentEvaluation();

@@ -411,22 +411,42 @@ export const getStoredCycles = (): EvaluationCycle[] => {
   return SEED_CYCLES;
 };
 
+export const deduplicateEvaluations = (evals: Evaluation[]): Evaluation[] => {
+  if (!Array.isArray(evals)) return [];
+  const seen = new Set<string>();
+  const result: Evaluation[] = [];
+
+  for (const e of evals) {
+    if (!e || !e.id) continue;
+    // Deduplicate by ID
+    if (seen.has(e.id)) continue;
+    seen.add(e.id);
+    result.push(e);
+  }
+  return result;
+};
+
 export const getStoredEvaluations = (): Evaluation[] => {
   const data = localStorage.getItem(EVALUATIONS_KEY);
   if (data) {
     try {
       const evaluations: Evaluation[] = JSON.parse(data);
       if (evaluations && evaluations.length > 0) {
-        return evaluations.filter(e => e.employeeName !== 'Maritess Bacle' && e.employeeName !== 'Grazie Esguerra' && e.id !== 'eval_maritess_2025' && e.id !== 'eval_grazie_depthead_2025');
+        const filtered = evaluations.filter(e => e.employeeName !== 'Maritess Bacle' && e.employeeName !== 'Grazie Esguerra' && e.id !== 'eval_maritess_2025' && e.id !== 'eval_grazie_depthead_2025');
+        return deduplicateEvaluations(filtered);
       }
     } catch {}
   }
-  return SEED_EVALUATIONS.filter(e => e.employeeName !== 'Maritess Bacle' && e.employeeName !== 'Grazie Esguerra' && e.id !== 'eval_maritess_2025' && e.id !== 'eval_grazie_depthead_2025');
+  return deduplicateEvaluations(SEED_EVALUATIONS.filter(e => e.employeeName !== 'Maritess Bacle' && e.employeeName !== 'Grazie Esguerra' && e.id !== 'eval_maritess_2025' && e.id !== 'eval_grazie_depthead_2025'));
 };
 
 export const saveEvaluations = (evaluations: Evaluation[]) => {
-  localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evaluations));
-  evaluations.forEach(e => saveEvaluationToSupabase(e));
+  const cleanList = deduplicateEvaluations(evaluations);
+  try {
+    localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(cleanList));
+  } catch (e) {
+    console.warn('LocalStorage saveEvaluations quota warning:', e);
+  }
 };
 
 export const saveSingleEvaluation = (evaluation: Evaluation) => {
@@ -527,6 +547,76 @@ export const assignNewEvaluationToEmployee = (
 
   saveSingleEvaluation(newEval);
   return newEval;
+};
+
+export const createDraftEvaluationInMemory = (
+  employee: User,
+  template: EvaluationTemplate,
+  appraisalPeriod: string = 'January - December 2026'
+): Evaluation => {
+  const isDeptHeadTrack = employee.isDepartmentHead || employee.role === 'dept_head';
+  const workflowType = isDeptHeadTrack ? ('WORKFLOW_DEPT_HEAD' as const) : ('WORKFLOW_REGULAR' as const);
+
+  const activeTemplate = (template && template.kraCategories && template.kraCategories.length > 0)
+    ? template
+    : MASTER_SALES_EVALUATION_TEMPLATE;
+
+  const kpiRatings = activeTemplate.kraCategories.flatMap((kra) =>
+    kra.kpis.map((kpi) => ({
+      kpiId: kpi.id,
+      kraId: kra.id,
+      kraName: kra.name,
+      name: kpi.name,
+      weightPercent: kpi.weightPercent,
+      selfRating: 0,
+      supervisorRating: 0,
+      presidentRating: 0,
+      weightedScore: 0,
+      comments: '',
+      standards: kpi.standards,
+      evidenceRequired: kpi.evidenceRequired,
+    }))
+  );
+
+  const defaultCoreValues = [
+    { coreValueId: 'cv_integrity', name: 'Integrity & Ethics', description: 'Upholds highest standards of honesty, fairness, and business ethics.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
+    { coreValueId: 'cv_excellence', name: 'Excellence & Performance', description: 'Consistently delivers top-tier results and strives for continuous improvement.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
+    { coreValueId: 'cv_teamwork', name: 'Teamwork & Collaboration', description: 'Fosters positive collaboration across departments and supports team goals.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
+    { coreValueId: 'cv_accountability', name: 'Accountability & Ownership', description: 'Takes full ownership of duties, commitments, and professional conduct.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' }
+  ];
+
+  const dateStr = new Date().toISOString().substring(0, 10);
+
+  return {
+    id: `draft_fallback_${employee.id}`,
+    cycleId: 'cycle_2026_annual',
+    templateId: activeTemplate.id,
+    workflowType,
+    employeeId: employee.id,
+    employeeName: employee.name,
+    employeeEmail: employee.email,
+    departmentName: employee.departmentName || activeTemplate.departmentName || 'General',
+    position: employee.position || 'Staff Specialist',
+    isDepartmentHead: isDeptHeadTrack,
+    appraisalPeriod,
+    appraisalDate: dateStr,
+    status: 'draft',
+    eligibilityScore: 0,
+    coreValuesScore: 0,
+    totalEligibilityWeightedRating: 0,
+    totalCoreValuesWeightedRating: 0,
+    finalRating: 0,
+    ratingClassification: 'Pending Evaluation',
+    kpiRatings,
+    coreValueRatings: defaultCoreValues,
+    developmentPlan: { strengths: '', areasForImprovement: '', learningNeeds: [] },
+    personnelAction: { actionType: 'no_action' },
+    signatures: {},
+    evidenceFiles: [],
+    auditTrail: [],
+    createdAt: dateStr,
+    updatedAt: dateStr
+  };
 };
 
 export const getStoredAuditLogs = (): AuditLog[] => {

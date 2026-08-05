@@ -522,7 +522,7 @@ export const fetchEvaluationsFromSupabase = async (): Promise<Evaluation[] | nul
       }
     }
 
-    return evals.map((e: any) => ({
+    const mapped = evals.map((e: any) => ({
       id: e.id,
       cycleId: e.cycle_id || 'cycle_2025_annual',
       templateId: e.template_id || 'template_sales',
@@ -551,6 +551,16 @@ export const fetchEvaluationsFromSupabase = async (): Promise<Evaluation[] | nul
       createdAt: e.created_at,
       updatedAt: e.updated_at
     }));
+
+    const seen = new Set<string>();
+    const uniqueEvals: Evaluation[] = [];
+    for (const ev of mapped) {
+      if (!ev || !ev.id) continue;
+      if (seen.has(ev.id)) continue;
+      seen.add(ev.id);
+      uniqueEvals.push(ev);
+    }
+    return uniqueEvals;
   } catch (err) {
     console.warn('Error fetching evaluations from Supabase:', err);
     return null;
