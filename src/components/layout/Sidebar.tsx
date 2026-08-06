@@ -285,12 +285,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Sidebar Panel */}
       <aside
         className={`
-          fixed top-16 left-0 bottom-0 z-40 w-64
+          fixed top-16 left-4 bottom-0 z-40 w-64
           bg-gradient-to-b from-[#FFFAF6] via-[#FFF8F3] to-[#FFF6EF]
           dark:from-slate-900 dark:via-slate-900 dark:to-slate-900
           border-r border-[#EFE4D6] dark:border-slate-800
           flex flex-col transition-transform duration-250 ease-out
-          lg:sticky lg:top-0 lg:translate-x-0 lg:shrink-0 lg:h-[calc(100vh-4rem)]
+          lg:sticky lg:top-0 lg:left-5 lg:translate-x-0 lg:shrink-0 lg:h-[calc(100vh-4rem)]
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >

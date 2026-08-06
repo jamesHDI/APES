@@ -761,7 +761,6 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       </div>
 
       {/* Numbered Tab Stepper */}
-      {/* Numbered Tab Stepper */}
       {(() => {
         const tabs = [
           { id: 'part1a' as const, step: 1, label: '1. KPI Evaluation (85%)', sub: 'Performance indicators' },
@@ -779,15 +778,12 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                  <button
                    key={tab.id}
                    onClick={() => setActiveTab(tab.id as any)}
-                   className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-semibold text-base transition-all shrink-0 ${
+                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-semibold text-sm transition-all shrink-0 ${
                      isActive
                        ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20'
                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                    }`}
                  >
-                   <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
-                     isActive ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                   }`}>{tab.step}</span>
                    <span>{tab.label}</span>
                  </button>
               );

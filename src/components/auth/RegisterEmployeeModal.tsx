@@ -33,7 +33,7 @@ export const RegisterEmployeeModal: React.FC<RegisterEmployeeModalProps> = ({
     immediateSuperiorId: '',
     departmentHeadId: '',
     username: '',
-    password: 'password123',
+    password: '',
   });
 
   const [validationError, setValidationError] = useState<string | null>(null);

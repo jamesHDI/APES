@@ -54,14 +54,10 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
   const inputPw = (password || '').trim();
   const storedPw = (matchedUser.password || '').trim();
 
-  const defaultSeedPasswords = ['ADMIN', '123456', 'password', 'password123', 'admin', 'admin123'];
-
   let isPwValid = false;
   if (!storedPw) {
     isPwValid = true;
   } else if (inputPw === storedPw || inputPw.toLowerCase() === storedPw.toLowerCase()) {
-    isPwValid = true;
-  } else if (defaultSeedPasswords.includes(inputPw) || defaultSeedPasswords.includes(inputPw.toLowerCase())) {
     isPwValid = true;
   }
 
@@ -85,14 +81,14 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
   }
 
   if (matchedUser.isActive === false) {
-    return { user: null, error: `Account ${matchedUser.name} is currently Deactivated / Inactive. Contact HR Administrator.` };
+    return { user: null, error: 'Your account has been placed on hold. Please contact the People Operations Department for assistance.' };
   }
 
   // 5. Supabase Auth Session Establishment
   if (isSupabaseConfigured && supabase) {
     try {
       const authEmail = matchedUser.email.toLowerCase();
-      const authPassword = password || matchedUser.password || 'password123';
+      const authPassword = password || matchedUser.password;
 
       let { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
         email: authEmail,

@@ -326,7 +326,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       employment_status: user.employmentStatus || 'Regular',
       date_hired: user.dateHired || new Date().toISOString().substring(0, 10),
       username: user.username || `${cleanEmail.split('@')[0]}_${Date.now().toString().slice(-4)}_${Math.floor(1000 + Math.random() * 9000)}`,
-      password: user.password || 'password123',
+      password: user.password || '',
       requires_password_change: user.requiresPasswordChange ?? false,
       avatar_url: user.avatarUrl || '',
       is_active: user.isActive ?? true,

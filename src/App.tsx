@@ -69,6 +69,7 @@ import { PendingApprovalsDashboard } from './components/admin/PendingApprovalsDa
 import { LoginModal } from './components/auth/LoginModal';
 import { MyProfile } from './components/profile/MyProfile';
 import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
+import { ShieldAlert } from 'lucide-react';
 
 import { determineWorkflowType, isUserDepartmentHead, getUserActiveEvaluation, getUserLatestEvaluation, isEvaluationCompleted } from './utils/workflowUtils';
 
@@ -101,6 +102,7 @@ export const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [evaluationHistory, setEvaluationHistory] = useState<any[]>([]);
   const [scorecardArchives, setScorecardArchives] = useState<EvaluationScorecardArchive[]>([]);
+  const [inactiveAccountModal, setInactiveAccountModal] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
 
   const lastAvatarUpdateRef = useRef<{ url: string; timestamp: number } | null>(null);
 
@@ -118,6 +120,21 @@ export const App: React.FC = () => {
   useEffect(() => {
     console.log(`[Avatar Source] App.tsx currentUser.avatarUrl changed to: ${currentUser.avatarUrl ? currentUser.avatarUrl.substring(0, 40) + '...' : '(empty)'}`);
   }, [currentUser.avatarUrl]);
+
+  useEffect(() => {
+    if (!currentUser || !isAuthenticated) return;
+    if (currentUser.isActive === false) {
+      setInactiveAccountModal({
+        open: true,
+        message: 'Your account has been placed on hold by the System Administrator or People Operations. Please contact HR/POD for assistance.'
+      });
+    }
+  }, [currentUser, isAuthenticated]);
+
+  const handleInactiveAccountOk = async () => {
+    setInactiveAccountModal({ open: false, message: '' });
+    await handleLogout();
+  };
 
   // 1. Session Restoration Effect (On App Mount)
   useEffect(() => {
@@ -915,51 +932,53 @@ export const App: React.FC = () => {
         onRegisterNewUser={handleRegisterNewUser}
       />
 
-      <div className="no-print">
-        <Navbar
-          currentUser={currentUser}
-          onLogout={handleLogout}
-          darkMode={darkMode}
-          onToggleDarkMode={() => setDarkMode(!darkMode)}
-          onResetData={handleResetAllData}
-          notifications={notifications}
-          onMarkNotificationRead={handleMarkNotificationRead}
-          onSelectEvaluation={(id) => {
-            setSelectedEvalId(id);
-            setActiveTab('evaluations');
-            setViewMode('normal');
-          }}
-          onSelectTab={(tab) => {
-            setActiveTab(tab);
-            setViewMode('normal');
-            localStorage.setItem('apes_active_tab_v3', tab);
-          }}
-          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-          isSidebarOpen={isSidebarOpen}
-          onOpenAnnouncementModal={() => setShowAnnouncementModal(true)}
-        />
-      </div>
+      <div>
+        <div className="no-print">
+          <Navbar
+            currentUser={currentUser}
+            onLogout={handleLogout}
+            darkMode={darkMode}
+            onToggleDarkMode={() => setDarkMode(!darkMode)}
+            onResetData={handleResetAllData}
+            notifications={notifications}
+            onMarkNotificationRead={handleMarkNotificationRead}
+            onSelectEvaluation={(id) => {
+              setSelectedEvalId(id);
+              setActiveTab('evaluations');
+              setViewMode('normal');
+            }}
+            onSelectTab={(tab) => {
+              setActiveTab(tab);
+              setViewMode('normal');
+              localStorage.setItem('apes_active_tab_v3', tab);
+            }}
+            onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+            isSidebarOpen={isSidebarOpen}
+            onOpenAnnouncementModal={() => setShowAnnouncementModal(true)}
+          />
+        </div>
 
-      <div className="no-print flex flex-1 overflow-hidden min-h-0">
-        <Sidebar
-          currentRole={currentUser.role}
-          activeTab={activeTab}
-          onSelectTab={(tab) => {
-            setActiveTab(tab);
-            setViewMode('normal');
-            localStorage.setItem('apes_active_tab_v3', tab);
-          }}
-          pendingCount={notifications.filter(n => !n.read).length}
-          pendingAccountCount={pendingAccountCount}
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-        />
+        <div className="no-print flex flex-1 overflow-hidden min-h-0">
+          <Sidebar
+            currentRole={currentUser.role}
+            activeTab={activeTab}
+            onSelectTab={(tab) => {
+              setActiveTab(tab);
+              setViewMode('normal');
+              localStorage.setItem('apes_active_tab_v3', tab);
+            }}
+            pendingCount={notifications.filter(n => !n.read).length}
+            pendingAccountCount={pendingAccountCount}
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(false)}
+          />
 
-        <main className="flex-1 min-w-0 overflow-y-auto">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-            {renderMainContent()}
-          </div>
-        </main>
+          <main className="flex-1 min-w-0 overflow-y-auto">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+              {renderMainContent()}
+            </div>
+          </main>
+        </div>
       </div>
 
       {/* Organization Announcement Modal */}
@@ -980,6 +999,29 @@ export const App: React.FC = () => {
           isForced={true}
           onPasswordChanged={handleUpdateCurrentUser}
         />
+      )}
+
+      {/* Inactive Account Modal */}
+      {inactiveAccountModal.open && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">Account On Hold</h3>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{inactiveAccountModal.message}</p>
+            <div className="flex justify-end">
+              <button
+                onClick={handleInactiveAccountOk}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-md transition-colors"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

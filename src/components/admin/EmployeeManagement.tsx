@@ -194,15 +194,6 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     }
   };
 
-  const handleResetToDefaultPassword = () => {
-    setFormData(prev => ({
-      ...prev,
-      passwordInput: 'password123',
-      forcePasswordChange: true
-    }));
-    showToast('Password reset to default (password123). Click Save Changes to apply.');
-  };
-
   const handleSaveEmployee = async () => {
     if (!formData.firstName || !formData.lastName || !formData.email) {
       alert('Please fill in required fields: First Name, Last Name, Email');
@@ -700,13 +691,6 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                     Account Password & Login Credentials
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleResetToDefaultPassword}
-                  className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shadow-sm transition-colors"
-                >
-                  Reset to Default (password123)
-                </button>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center pt-1">
