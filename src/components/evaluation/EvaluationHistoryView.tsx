@@ -107,75 +107,75 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
 
   const viewingArchive = viewingArchiveId ? scorecardArchives.find(a => a.id === viewingArchiveId) : null;
 
-  if (viewingArchive) {
-    const archivedEvaluation: Evaluation = {
-      id: viewingArchive.evaluationId,
-      cycleId: viewingArchive.cycleId || '',
-      templateId: viewingArchive.templateId || '',
-      workflowType: viewingArchive.workflowType as any,
-      employeeId: viewingArchive.employeeId,
-      employeeName: viewingArchive.employeeName,
-      employeeEmail: viewingArchive.employeeEmail,
-      departmentName: viewingArchive.departmentName,
-      departmentId: viewingArchive.departmentId,
-      position: viewingArchive.position,
-      appraisalPeriod: viewingArchive.appraisalPeriod,
-      appraisalDate: '',
-      eligibilityScore: viewingArchive.eligibilityScore,
-      coreValuesScore: viewingArchive.coreValuesScore,
-      totalEligibilityWeightedRating: viewingArchive.eligibilityScore,
-      totalCoreValuesWeightedRating: viewingArchive.coreValuesScore,
-      finalRating: viewingArchive.finalRating,
-      ratingClassification: viewingArchive.ratingClassification,
-      kpiRatings: viewingArchive.kpiRatingsData || [],
-      coreValueRatings: viewingArchive.coreValueRatingsData || [],
-      developmentPlan: (viewingArchive.developmentPlanData || {}) as any,
-      personnelAction: (viewingArchive.personnelActionData || {}) as any,
-      signatures: (viewingArchive.signaturesData || {}) as any,
-      evidenceFiles: viewingArchive.evidenceFilesData || [],
-      stepHistory: viewingArchive.stepHistoryData || [],
-      auditTrail: viewingArchive.auditTrailData || [],
-      status: viewingArchive.status as any,
-      createdAt: viewingArchive.createdAt,
-      updatedAt: viewingArchive.archivedAt,
-      appraiseeSummaryComment: viewingArchive.appraiseeSummaryComment,
-      supervisorSummaryComment: viewingArchive.supervisorSummaryComment,
-      presidentSummaryComment: viewingArchive.presidentSummaryComment,
-      podValidationComment: viewingArchive.podValidationComment,
-    };
+    if (viewingArchive) {
+      const archivedEvaluation: Evaluation = {
+        id: viewingArchive.evaluationId,
+        cycleId: viewingArchive.cycleId || '',
+        templateId: viewingArchive.templateId || '',
+        workflowType: viewingArchive.workflowType as any,
+        employeeId: viewingArchive.employeeId,
+        employeeName: viewingArchive.employeeName,
+        employeeEmail: viewingArchive.employeeEmail,
+        departmentName: viewingArchive.departmentName,
+        departmentId: viewingArchive.departmentId,
+        position: viewingArchive.position,
+        appraisalPeriod: viewingArchive.appraisalPeriod,
+        appraisalDate: '',
+        eligibilityScore: viewingArchive.eligibilityScore,
+        coreValuesScore: viewingArchive.coreValuesScore,
+        totalEligibilityWeightedRating: viewingArchive.eligibilityScore,
+        totalCoreValuesWeightedRating: viewingArchive.coreValuesScore,
+        finalRating: viewingArchive.finalRating,
+        ratingClassification: viewingArchive.ratingClassification,
+        kpiRatings: viewingArchive.kpiRatingsData || [],
+        coreValueRatings: viewingArchive.coreValueRatingsData || [],
+        developmentPlan: (viewingArchive.developmentPlanData || {}) as any,
+        personnelAction: (viewingArchive.personnelActionData || {}) as any,
+        signatures: viewingArchive.signaturesData || [],
+        evidenceFiles: viewingArchive.evidenceFilesData || [],
+        stepHistory: viewingArchive.stepHistoryData || [],
+        auditTrail: viewingArchive.auditTrailData || [],
+        status: viewingArchive.status as any,
+        createdAt: viewingArchive.createdAt,
+        updatedAt: viewingArchive.archivedAt,
+        appraiseeSummaryComment: viewingArchive.appraiseeSummaryComment,
+        supervisorSummaryComment: viewingArchive.supervisorSummaryComment,
+        presidentSummaryComment: viewingArchive.presidentSummaryComment,
+        podValidationComment: viewingArchive.podValidationComment,
+      };
 
-    return (
-      <div className="space-y-6 pb-12">
-        <div className="hero-card">
-          <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Official Scorecard Archive</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
-                Immutable official record. This document cannot be modified.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setViewingArchiveId(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-              >
-                Back to History
-              </button>
-              <button
-                onClick={() => handleDownloadArchive(viewingArchive)}
-                className="px-4 py-2 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2"
-              >
-                <Download className="w-3.5 h-3.5" />
-                Download Official Scorecard
-              </button>
+      return (
+        <div className="space-y-6 pb-12">
+          <div className="no-print hero-card">
+            <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Official Scorecard Archive</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
+                  Immutable official record. This document cannot be modified.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setViewingArchiveId(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Back to History
+                </button>
+                <button
+                  onClick={() => handleDownloadArchive(viewingArchive)}
+                  className="px-4 py-2 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Download Official Scorecard
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <PrintableScorecard evaluation={archivedEvaluation} onBack={() => setViewingArchiveId(null)} />
-      </div>
-    );
-  }
+          <PrintableScorecard evaluation={archivedEvaluation} onBack={() => setViewingArchiveId(null)} />
+        </div>
+      );
+    }
 
   return (
     <div className="space-y-6 pb-12">
