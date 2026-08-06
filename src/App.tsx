@@ -932,7 +932,7 @@ export const App: React.FC = () => {
         onRegisterNewUser={handleRegisterNewUser}
       />
 
-      <div className="flex-1 overflow-hidden min-h-0">
+      <div className="flex flex-1 flex-col overflow-hidden min-h-0">
         <div className="no-print">
           <Navbar
             currentUser={currentUser}
