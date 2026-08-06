@@ -324,12 +324,21 @@
     break-after: page;
   }
 
+  /* Ensure layout containers don't clip printable content */
+  #root, #app, main, .flex-1, aside, nav {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Scorecard print sizing */
   #printable-scorecard-content.print-a4 {
     width: 210mm;
     min-height: 297mm;
     padding: 15mm;
     margin: 0 auto;
     font-size: 10.5px;
+    max-width: 210mm !important;
+    box-shadow: none !important;
   }
 
   #printable-scorecard-content.print-letter {
@@ -338,6 +347,14 @@
     padding: 0.5in;
     margin: 0 auto;
     font-size: 10.5px;
+    max-width: 8.5in !important;
+    box-shadow: none !important;
+  }
+
+  #printable-scorecard-content {
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
   }
 }
 
