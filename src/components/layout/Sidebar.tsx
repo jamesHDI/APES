@@ -321,13 +321,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Footer */}
         <div className="px-4 py-2 border-t border-[#EFE4D6] dark:border-slate-800">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-center text-center gap-1">
             <div className="w-6 h-6 rounded-md bg-[#F28C28]/15 flex items-center justify-center shrink-0">
               <ShieldCheck className="w-3.5 h-3.5 text-[#F28C28]" />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400">HDI Hive · APES v3.0</p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500">Strictly Confidential</p>
+              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-tight">HDI Hive · APES v3.0</p>
+              <p className="text-[9px] text-slate-400 dark:text-slate-500 leading-tight">Strictly Confidential</p>
             </div>
           </div>
         </div>
