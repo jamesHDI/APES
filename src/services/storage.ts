@@ -5,7 +5,9 @@ import {
   saveDepartmentToSupabase, 
   saveEvaluationToSupabase,
   saveEvaluationHistoryToSupabase,
-  saveScorecardArchiveToSupabase
+  saveScorecardArchiveToSupabase,
+  generateScorecardPdfBlob,
+  uploadScorecardPdfToSupabase
 } from './supabaseService';
 
 const USERS_KEY = 'apes_users_v3';
@@ -463,6 +465,19 @@ export const saveSingleEvaluation = async (evaluation: Evaluation, historyActor?
     const alreadyArchived = existingArchives.some((a) => a.evaluationId === evaluation.id);
     if (!alreadyArchived) {
       const archive = buildScorecardArchive(evaluation, historyActor || { name: evaluation.employeeName, role: 'system' });
+
+      const pdfBlob = await generateScorecardPdfBlob(evaluation);
+      if (pdfBlob) {
+        const uploadResult = await uploadScorecardPdfToSupabase(evaluation, pdfBlob);
+        if (uploadResult) {
+          archive.pdfUrl = uploadResult.pdfUrl;
+          archive.storagePath = uploadResult.storagePath;
+          archive.fileName = uploadResult.fileName;
+          archive.fileSize = uploadResult.fileSize;
+          archive.uploadedAt = uploadResult.uploadedAt;
+        }
+      }
+
       await saveScorecardArchiveToSupabase(archive);
       saveScorecardArchive(archive);
     }

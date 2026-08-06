@@ -360,6 +360,11 @@ export interface EvaluationScorecardArchive {
   submittedById?: string;
   createdAt: string;
   archivedAt: string;
+  pdfUrl?: string;
+  storagePath?: string;
+  fileName?: string;
+  fileSize?: number;
+  uploadedAt?: string;
 }
 
 export interface Evaluation {

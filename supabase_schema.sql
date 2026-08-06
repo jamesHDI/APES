@@ -303,7 +303,12 @@ CREATE TABLE IF NOT EXISTS public.evaluation_scorecard_archives (
     submitted_by_role VARCHAR(50) NOT NULL,
     submitted_by_id VARCHAR(100),
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    archived_at TIMESTAMPTZ DEFAULT NOW()
+    archived_at TIMESTAMPTZ DEFAULT NOW(),
+    pdf_url TEXT,
+    storage_path VARCHAR(255),
+    file_name VARCHAR(255),
+    file_size BIGINT,
+    uploaded_at TIMESTAMPTZ
 );
 
 ALTER TABLE public.evaluation_scorecard_archives ENABLE ROW LEVEL SECURITY;

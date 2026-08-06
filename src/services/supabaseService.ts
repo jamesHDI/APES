@@ -836,7 +836,12 @@ export const saveScorecardArchiveToSupabase = async (archive: EvaluationScorecar
       submitted_by_role: archive.submittedByRole,
       submitted_by_id: archive.submittedById || null,
       created_at: archive.createdAt,
-      archived_at: archive.archivedAt
+      archived_at: archive.archivedAt,
+      pdf_url: archive.pdfUrl || null,
+      storage_path: archive.storagePath || null,
+      file_name: archive.fileName || null,
+      file_size: archive.fileSize || null,
+      uploaded_at: archive.uploadedAt || null
     };
 
     const { error } = await supabase.from('evaluation_scorecard_archives').insert(payload, { onConflict: 'id' });
@@ -873,6 +878,378 @@ export const uploadFileToSupabaseStorage = async (
     return publicUrlData?.publicUrl || null;
   } catch (err) {
     console.warn(`Error uploading file to Supabase storage bucket ${bucket}:`, err);
+    return null;
+  }
+};
+
+// ==============================================================================
+// 6. SCORECARD PDF GENERATION & STORAGE
+// ==============================================================================
+
+export const generateScorecardPdfBlob = async (evaluation: Evaluation): Promise<Blob | null> => {
+  try {
+    const { default: html2canvas } = await import('html2canvas');
+    const { default: jsPDF } = await import('jspdf');
+
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:1200px;background:#fff;font-family:Inter,system-ui,sans-serif;';
+    container.innerHTML = `
+      <div style="padding:20mm 15mm;color:#000;font-size:10.5px;line-height:1.35;">
+        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #c8102e;padding-bottom:8px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <img src="/hdi-logo.png" style="height:32px;width:auto;object-fit:contain;" />
+            <div>
+              <div style="font-size:18px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em;color:#0f172a;">SCORECARD / PERFORMANCE EVALUATION</div>
+              <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">HDI HIVE • STRICTLY CONFIDENTIAL</div>
+            </div>
+          </div>
+          <div style="text-align:right;font-size:11px;">
+            <div><strong style="text-transform:uppercase;">Department/Subsidiary:</strong> ${evaluation.departmentName}</div>
+            <div><strong style="text-transform:uppercase;">Name of Employee:</strong> ${evaluation.employeeName}</div>
+            <div><strong style="text-transform:uppercase;">Appraisal Period:</strong> ${evaluation.appraisalPeriod}</div>
+            <div><strong style="text-transform:uppercase;">Appraisal Date:</strong> ${evaluation.appraisalDate}</div>
+          </div>
+        </div>
+
+        <div style="background:#f1f5f9;padding:6px;font-weight:700;text-align:center;border:1px solid #94a3b8;text-transform:uppercase;font-size:11px;margin-bottom:8px;">
+          PART 1A: EVALUATION ON ELIGIBILITY FACTORS (WEIGHT: 85%)
+          <div style="font-weight:400;font-size:9.5px;font-style:italic;color:#475569;margin-top:2px;">STANDARD: 1- Did not Meet Expectations; 2- Barely Meets Expectations; 3- Meets Expectations; 4- Exceeds Expectations</div>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;border:1px solid #94a3b8;font-size:10.5px;">
+          <thead>
+            <tr style="background:#e2e8f0;text-align:center;font-weight:700;border-bottom:1px solid #94a3b8;">
+              <th style="border:1px solid #94a3b8;padding:6px;width:22%;">KEY RESULT AREAS (KRA)</th>
+              <th style="border:1px solid #94a3b8;padding:6px;width:42%;">PERFORMANCE INDICATORS (KPI)</th>
+              <th style="border:1px solid #94a3b8;padding:6px;width:16%;">SCALE STANDARDS</th>
+              <th style="border:1px solid #94a3b8;padding:6px;width:8%;">WEIGHT</th>
+              <th style="border:1px solid #94a3b8;padding:6px;width:6%;">RATING</th>
+              <th style="border:1px solid #94a3b8;padding:6px;width:6%;">WEIGHTED SCORE</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(evaluation.kpiRatings || []).map((kpi: any, idx: number) => {
+              const isFirstInKra = idx === 0 || (evaluation.kpiRatings[idx - 1]?.kraName !== kpi.kraName);
+              const kraKpis = (evaluation.kpiRatings || []).filter((k: any) => k.kraName === kpi.kraName);
+              const kraWeightSum = kraKpis.reduce((acc: number, k: any) => acc + (k.weightPercent || 0), 0);
+              const kraWeightedScoreSum = kraKpis.reduce((acc: number, k: any) => acc + (k.weightedScore || 0), 0).toFixed(2);
+              return `
+                ${isFirstInKra ? `<tr style="background:#f1f5f9;font-weight:700;border-top:1px solid #94a3b8;border-bottom:1px solid #94a3b8;">
+                  <td colspan="3" style="border:1px solid #94a3b8;padding:6px;text-transform:uppercase;background:#f1f5f9;">${kpi.kraName}</td>
+                  <td style="border:1px solid #94a3b8;padding:6px;text-align:center;font-weight:700;">${kraWeightSum}%</td>
+                  <td style="border:1px solid #94a3b8;padding:6px;"></td>
+                  <td style="border:1px solid #94a3b8;padding:6px;text-align:center;font-weight:700;">${kraWeightedScoreSum}</td>
+                </tr>` : ''}
+                <tr>
+                  <td style="border:1px solid #94a3b8;padding:6px;font-weight:600;vertical-align:top;">${kpi.name}</td>
+                  <td style="border:1px solid #94a3b8;padding:6px;vertical-align:top;color:#334155;">${kpi.comments || kpi.name}</td>
+                  <td style="border:1px solid #94a3b8;padding:6px;vertical-align:top;font-size:9.5px;">
+                    ${(kpi.standards || []).map((st: any) => `<div style="padding:2px 0;${kpi.supervisorRating === st.rating ? 'font-weight:700;color:#c2410c;text-decoration:underline;' : ''}">${st.description} (${st.rating})</div>`).join('')}
+                  </td>
+                  <td style="border:1px solid #94a3b8;padding:6px;text-align:center;vertical-align:middle;font-weight:500;">${kpi.weightPercent}%</td>
+                  <td style="border:1px solid #94a3b8;padding:6px;text-align:center;vertical-align:middle;font-weight:700;font-size:13px;">${kpi.supervisorRating || kpi.selfRating || '-'}</td>
+                  <td style="border:1px solid #94a3b8;padding:6px;text-align:center;vertical-align:middle;font-weight:700;font-size:13px;">${(kpi.weightedScore || 0).toFixed(2)}</td>
+                </tr>
+              `;
+            }).join('')}
+            <tr style="background:#fef3c7;font-weight:700;border-top:2px solid #475569;font-size:12px;">
+              <td colspan="3" style="border:1px solid #94a3b8;padding:6px;text-align:right;text-transform:uppercase;">TOTAL WEIGHTED ELIGIBILITY RATING (PART 1A):</td>
+              <td style="border:1px solid #94a3b8;padding:6px;text-align:center;color:#c2410c;font-weight:700;">85%</td>
+              <td style="border:1px solid #94a3b8;padding:6px;"></td>
+              <td style="border:1px solid #94a3b8;padding:6px;text-align:center;color:#c8102e;font-weight:900;">${(evaluation.eligibilityScore || 0).toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:10px;page-break-before:always;"></div>
+
+        <div style="background:#f1f5f9;padding:6px;font-weight:700;text-align:center;border:1px solid #94a3b8;text-transform:uppercase;font-size:11px;margin-bottom:8px;">
+          PART 1B: EVALUATION ON SUITABILITY FACTORS (CORE VALUES - WEIGHT: 15%)
+          <div style="font-weight:400;font-size:9.5px;font-style:italic;color:#475569;margin-top:2px;">(4): Category A Actively promotes core values | (3): Category B Actively supports core values | (2): Category C Not consistent</div>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;border:1px solid #94a3b8;font-size:10.5px;margin-bottom:10px;">
+          <thead>
+            <tr style="background:#e2e8f0;text-align:center;font-weight:700;">
+              <th style="border:1px solid #94a3b8;padding:6px;width:35%;">CORE VALUES PRACTICE</th>
+              <th style="border:1px solid #94a3b8;padding:6px;width:15%;">ASSESSOR</th>
+              <th style="border:1px solid #94a3b8;padding:6px;width:15%;">RATING</th>
+              <th style="border:1px solid #94a3b8;padding:6px;width:15%;">WEIGHT</th>
+              <th style="border:1px solid #94a3b8;padding:6px;width:20%;">TOTAL WEIGHTED RATING</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(evaluation.coreValueRatings || []).map((cv: any) => `
+              <tr>
+                <td rowSpan="3" style="border:1px solid #94a3b8;padding:6px;font-weight:600;vertical-align:top;">
+                  ${cv.name}
+                  <div style="font-size:9.5px;font-weight:400;color:#475569;margin-top:4px;">${cv.comments || ''}</div>
+                </td>
+                <td style="border:1px solid #94a3b8;padding:6px;text-align:center;">POD</td>
+                <td style="border:1px solid #94a3b8;padding:6px;text-align:center;font-weight:700;">${cv.podRating || 0}</td>
+                <td rowSpan="3" style="border:1px solid #94a3b8;padding:6px;text-align:center;vertical-align:middle;font-weight:700;">15%</td>
+                <td rowSpan="3" style="border:1px solid #94a3b8;padding:6px;text-align:center;vertical-align:middle;font-weight:700;font-size:13px;">${(cv.weightedScore || 0).toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td style="border:1px solid #94a3b8;padding:6px;text-align:center;">Peer</td>
+                <td style="border:1px solid #94a3b8;padding:6px;text-align:center;font-weight:700;">${cv.peerRating || 0}</td>
+              </tr>
+              <tr>
+                <td style="border:1px solid #94a3b8;padding:6px;text-align:center;">IS (Superior)</td>
+                <td style="border:1px solid #94a3b8;padding:6px;text-align:center;font-weight:700;">${cv.isRating || 0}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <div style="background:#f1f5f9;padding:6px;font-weight:700;text-align:center;border:1px solid #94a3b8;text-transform:uppercase;font-size:11px;margin-bottom:8px;">
+          PART 1C: EVALUATION SUMMARY
+        </div>
+
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:10px;">
+          <table style="border-collapse:collapse;border:1px solid #94a3b8;font-size:10.5px;">
+            <thead>
+              <tr style="background:#e2e8f0;text-align:center;font-weight:700;">
+                <th style="border:1px solid #94a3b8;padding:6px;">COMPONENT</th>
+                <th style="border:1px solid #94a3b8;padding:6px;">WEIGHT</th>
+                <th style="border:1px solid #94a3b8;padding:6px;">RATING</th>
+                <th style="border:1px solid #94a3b8;padding:6px;">TOTAL INDIVIDUAL PERFORMANCE RATING</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="border:1px solid #94a3b8;padding:6px;font-weight:700;">ELIGIBILITY (Part 1A)</td>
+                <td style="border:1px solid #94a3b8;padding:6px;text-align:center;">85%</td>
+                <td style="border:1px solid #94a3b8;padding:6px;text-align:center;font-weight:700;">${(evaluation.eligibilityScore || 0).toFixed(2)}</td>
+                <td rowSpan="2" style="border:1px solid #94a3b8;padding:6px;text-align:center;vertical-align:middle;font-weight:900;font-size:16px;background:#ecfdf5;color:#065f46;">${(evaluation.finalRating || 0).toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td style="border:1px solid #94a3b8;padding:6px;font-weight:700;">SUITABILITY (Part 1B)</td>
+                <td style="border:1px solid #94a3b8;padding:6px;text-align:center;">15%</td>
+                <td style="border:1px solid #94a3b8;padding:6px;text-align:center;font-weight:700;">${(evaluation.totalCoreValuesWeightedRating || 0).toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="border:1px solid #94a3b8;padding:10px;background:#f8fafc;">
+            <div style="font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #cbd5e1;padding-bottom:4px;margin-bottom:8px;">RATING CLASSIFICATION</div>
+            <div style="display:flex;flex-direction:column;gap:4px;font-size:9.5px;">
+              <div style="padding:4px;border-radius:4px;${evaluation.finalRating >= 1.00 && evaluation.finalRating <= 1.99 ? 'font-weight:700;color:#991b1b;background:#fee2e2;' : 'color:#475569;'}">1.00 - 1.99 : Did Not Meet Expectations (DME)</div>
+              <div style="padding:4px;border-radius:4px;${evaluation.finalRating >= 2.00 && evaluation.finalRating <= 2.99 ? 'font-weight:700;color:#92400e;background:#fef3c7;' : 'color:#475569;'}">2.00 - 2.99 : Barely Meets Expectations (BME)</div>
+              <div style="padding:4px;border-radius:4px;${evaluation.finalRating >= 3.00 && evaluation.finalRating <= 3.50 ? 'font-weight:700;color:#1e40af;background:#dbeafe;' : 'color:#475569;'}">3.00 - 3.50 : Meets Expectations (ME)</div>
+              <div style="padding:4px;border-radius:4px;${evaluation.finalRating >= 3.51 && evaluation.finalRating <= 4.00 ? 'font-weight:700;color:#065f46;background:#d1fae5;' : 'color:#475569;'}">3.51 - 4.00 : Exceeds Expectations (EE)</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="border:1px solid #94a3b8;padding:10px;margin-bottom:10px;page-break-inside:avoid;">
+          <div style="font-weight:700;font-size:11px;text-transform:uppercase;background:#f1f5f9;padding:6px;border-bottom:1px solid #cbd5e1;margin-bottom:8px;">PART 2A: PERSONAL DEVELOPMENT PLAN</div>
+          <div style="margin-bottom:8px;">
+            <div style="font-weight:700;font-size:10px;text-transform:uppercase;color:#1e293b;">1. KEY STRENGTHS:</div>
+            <div style="padding:8px;background:#f8fafc;border:1px solid #e2e8f0;min-height:36px;font-size:10.5px;">${evaluation.developmentPlan?.strengths || 'N/A'}</div>
+          </div>
+          <div style="margin-bottom:8px;">
+            <div style="font-weight:700;font-size:10px;text-transform:uppercase;color:#1e293b;">2. AREAS FOR IMPROVEMENT:</div>
+            <div style="padding:8px;background:#f8fafc;border:1px solid #e2e8f0;min-height:36px;font-size:10.5px;">${evaluation.developmentPlan?.areasForImprovement || 'N/A'}</div>
+          </div>
+          <div>
+            <div style="font-weight:700;font-size:10px;text-transform:uppercase;color:#1e293b;">3. WORKPLACE LEARNING & DEVELOPMENT NEEDS (Programs/Courses):</div>
+            <ul style="list-style:disc;padding-left:16px;display:flex;flex-direction:column;gap:4px;font-size:10.5px;margin-top:4px;">
+              ${(evaluation.developmentPlan?.learningNeeds || []).map((need: any) => `<li><strong>${need.program}</strong> — Target Date: ${need.targetDate} (Assigned: ${need.responsiblePerson})</li>`).join('')}
+            </ul>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;">
+          <div style="border:1px solid #94a3b8;padding:10px;page-break-inside:avoid;">
+            <div style="font-weight:700;font-size:10.5px;text-transform:uppercase;border-bottom:1px solid #cbd5e1;padding-bottom:4px;margin-bottom:8px;">PART 2B: IMMEDIATE SUPERIOR'S SUMMARY</div>
+            <div style="font-size:10px;color:#1e293b;font-style:italic;min-height:40px;margin-bottom:10px;">"${evaluation.supervisorSummaryComment || 'No comments added.'}"</div>
+            <div style="border-top:1px solid #cbd5e1;padding-top:10px;text-align:center;">
+              ${evaluation.signatures?.supervisor ? `
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <img src="${evaluation.signatures.supervisor.signatureDataUrl}" style="height:32px;object-fit:contain;" />
+                  <div style="font-weight:700;text-decoration:underline;font-size:11px;margin-top:4px;">${evaluation.signatures.supervisor.signerName}</div>
+                  <div style="font-size:9px;color:#64748b;font-weight:600;">${evaluation.signatures.supervisor.position || ''} ${evaluation.signatures.supervisor.department || ''}</div>
+                  <div style="font-size:8px;color:#94a3b8;font-family:monospace;margin-top:2px;">Date: ${evaluation.signatures.supervisor.dateSigned || evaluation.signatures.supervisor.signedAt} ${evaluation.signatures.supervisor.timeSigned || ''}</div>
+                </div>
+              ` : `<div style="font-size:10px;color:#94a3b8;font-style:italic;padding:12px 0;">Pending Immediate Superior Signature</div>`}
+            </div>
+          </div>
+
+          <div style="border:1px solid #94a3b8;padding:10px;page-break-inside:avoid;">
+            <div style="font-weight:700;font-size:10.5px;text-transform:uppercase;border-bottom:1px solid #cbd5e1;padding-bottom:4px;margin-bottom:8px;">PART 2C: APPRAISEE'S SUMMARY</div>
+            <div style="font-size:10px;color:#1e293b;font-style:italic;min-height:40px;margin-bottom:10px;">"${evaluation.appraiseeSummaryComment || 'No comments added.'}"</div>
+            <div style="border-top:1px solid #cbd5e1;padding-top:10px;text-align:center;">
+              ${evaluation.signatures?.employee ? `
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <img src="${evaluation.signatures.employee.signatureDataUrl}" style="height:32px;object-fit:contain;" />
+                  <div style="font-weight:700;text-decoration:underline;font-size:11px;margin-top:4px;">${evaluation.signatures.employee.signerName}</div>
+                  <div style="font-size:9px;color:#64748b;font-weight:600;">${evaluation.signatures.employee.position || evaluation.position} ${evaluation.signatures.employee.department || evaluation.departmentName}</div>
+                  <div style="font-size:8px;color:#94a3b8;font-family:monospace;margin-top:2px;">Date: ${evaluation.signatures.employee.dateSigned || evaluation.signatures.employee.signedAt} ${evaluation.signatures.employee.timeSigned || ''}</div>
+                </div>
+              ` : `<div style="font-size:10px;color:#94a3b8;font-style:italic;padding:12px 0;">Pending Appraisee Signature</div>`}
+            </div>
+          </div>
+        </div>
+
+        <div style="border:1px solid #94a3b8;padding:10px;margin-bottom:10px;page-break-inside:avoid;">
+          <div style="font-weight:700;font-size:11px;text-transform:uppercase;background:#f1f5f9;padding:6px;border-bottom:1px solid #cbd5e1;margin-bottom:8px;">PART 3: PERSONNEL ACTION (To be filled out by the Head of the Department)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:10px;">
+            <div>
+              <label style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><input type="checkbox" ${evaluation.personnelAction?.actionType === 'promotion' ? 'checked' : ''} readonly /> Promotion Recommended</label>
+              <label style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><input type="checkbox" ${evaluation.personnelAction?.actionType === 'salary_adjustment' ? 'checked' : ''} readonly /> Salary Adjustment</label>
+              <label style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><input type="checkbox" ${evaluation.personnelAction?.actionType === 'regularization' ? 'checked' : ''} readonly /> Regularization</label>
+            </div>
+            <div>
+              <label style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><input type="checkbox" ${evaluation.personnelAction?.actionType === 'transfer' ? 'checked' : ''} readonly /> Transfer</label>
+              <label style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><input type="checkbox" ${evaluation.personnelAction?.actionType === 'pip' ? 'checked' : ''} readonly /> Performance Improvement Plan (PIP for BME 2.00-2.99)</label>
+              <label style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><input type="checkbox" ${evaluation.personnelAction?.actionType === 'termination' ? 'checked' : ''} readonly /> Termination</label>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:10px;display:flex;flex-direction:column;gap:4px;">
+            <div><strong>New Position:</strong> ${evaluation.personnelAction?.newPosition || 'N/A'}</div>
+            <div><strong>Date of Effectivity:</strong> ${evaluation.personnelAction?.effectiveDate || 'N/A'}</div>
+            <div><strong>Department Head Remarks:</strong> ${evaluation.personnelAction?.remarks || 'N/A'}</div>
+          </div>
+        </div>
+
+        <div style="border:1px solid #94a3b8;padding:10px;background:#f8fafc;page-break-inside:avoid;">
+          <div style="font-weight:700;font-size:10px;text-transform:uppercase;text-align:center;border-bottom:1px solid #cbd5e1;padding-bottom:4px;margin-bottom:10px;color:#1e293b;">PART 4: POD / HR EVALUATION & DIGITAL SIGNATURE VERIFICATION</div>
+          <div style="font-size:10px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px;background:#fff;padding:8px;border:1px solid #e2e8f0;">
+            <div><strong>POD Core Values Validation Rating:</strong> ${(evaluation.totalCoreValuesWeightedRating || 0).toFixed(2)} (15%)</div>
+            <div><strong>POD / HR Remarks & Comments:</strong> ${evaluation.podValidationComment || 'Validated by People Operations Development (POD).'}</div>
+            <div><strong>Personnel Action Final Status:</strong> ${evaluation.personnelAction?.isApproved ? 'Approved & Enforced' : 'Pending Final HR Enforcement'}</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;text-align:center;">
+            <div style="border:1px solid #e2e8f0;background:#fff;padding:8px;border-radius:6px;">
+              <div style="font-weight:700;font-size:9px;text-transform:uppercase;color:#64748b;margin-bottom:6px;">1. Employee Signature</div>
+              ${evaluation.signatures?.employee ? `
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <img src="${evaluation.signatures.employee.signatureDataUrl}" style="height:28px;object-fit:contain;" />
+                  <div style="font-weight:700;text-decoration:underline;font-size:9.5px;margin-top:4px;">${evaluation.signatures.employee.signerName}</div>
+                  <div style="font-size:8px;color:#64748b;font-weight:600;">${evaluation.signatures.employee.position || evaluation.position}</div>
+                  <div style="font-size:8px;color:#94a3b8;">${evaluation.signatures.employee.department || evaluation.departmentName}</div>
+                  <div style="font-size:7.5px;color:#94a3b8;font-family:monospace;margin-top:2px;">Date: ${evaluation.signatures.employee.dateSigned || evaluation.signatures.employee.signedAt} ${evaluation.signatures.employee.timeSigned || ''}</div>
+                </div>
+              ` : `<div style="font-size:9px;color:#94a3b8;font-style:italic;padding:10px 0;">Pending Signature</div>`}
+            </div>
+
+            <div style="border:1px solid #e2e8f0;background:#fff;padding:8px;border-radius:6px;">
+              <div style="font-weight:700;font-size:9px;text-transform:uppercase;color:#64748b;margin-bottom:6px;">2. Department Head</div>
+              ${(evaluation.signatures?.deptHead || evaluation.signatures?.supervisor) ? `
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <img src="${(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.signatureDataUrl}" style="height:28px;object-fit:contain;" />
+                  <div style="font-weight:700;text-decoration:underline;font-size:9.5px;margin-top:4px;">${(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.signerName}</div>
+                  <div style="font-size:8px;color:#64748b;font-weight:600;">${(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.position || 'Department Head'}</div>
+                  <div style="font-size:8px;color:#94a3b8;">${(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.department || evaluation.departmentName}</div>
+                  <div style="font-size:7.5px;color:#94a3b8;font-family:monospace;margin-top:2px;">Date: ${(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.dateSigned || (evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.signedAt} ${(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.timeSigned || ''}</div>
+                </div>
+              ` : `<div style="font-size:9px;color:#94a3b8;font-style:italic;padding:10px 0;">Pending Signature</div>`}
+            </div>
+
+            <div style="border:1px solid #e2e8f0;background:#fff;padding:8px;border-radius:6px;">
+              <div style="font-weight:700;font-size:9px;text-transform:uppercase;color:#b45309;margin-bottom:6px;">3. President & CEO</div>
+              ${evaluation.signatures?.president ? `
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <img src="${evaluation.signatures.president.signatureDataUrl}" style="height:28px;object-fit:contain;" />
+                  <div style="font-weight:700;text-decoration:underline;font-size:9.5px;margin-top:4px;">${evaluation.signatures.president.signerName}</div>
+                  <div style="font-size:8px;color:#64748b;font-weight:600;">${evaluation.signatures.president.position || 'President & CEO'}</div>
+                  <div style="font-size:8px;color:#94a3b8;">Executive Office</div>
+                  <div style="font-size:7.5px;color:#94a3b8;font-family:monospace;margin-top:2px;">Date: ${evaluation.signatures.president.dateSigned || evaluation.signatures.president.signedAt} ${evaluation.signatures.president.timeSigned || ''}</div>
+                </div>
+              ` : `<div style="font-size:9px;color:#94a3b8;font-style:italic;padding:10px 0;">${evaluation.workflowType === 'WORKFLOW_DEPT_HEAD' || evaluation.isDepartmentHead ? 'Pending President Signature' : 'N/A (Regular Track)'}</div>`}
+            </div>
+
+            <div style="border:1px solid #e2e8f0;background:#fff;padding:8px;border-radius:6px;">
+              <div style="font-weight:700;font-size:9px;text-transform:uppercase;color:#4338ca;margin-bottom:6px;">4. POD / HR Officer</div>
+              ${(evaluation.signatures?.pod || evaluation.signatures?.hr) ? `
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <img src="${(evaluation.signatures.pod || evaluation.signatures.hr)?.signatureDataUrl}" style="height:28px;object-fit:contain;" />
+                  <div style="font-weight:700;text-decoration:underline;font-size:9.5px;margin-top:4px;">${(evaluation.signatures.pod || evaluation.signatures.hr)?.signerName}</div>
+                  <div style="font-size:8px;color:#64748b;font-weight:600;">${(evaluation.signatures.pod || evaluation.signatures.hr)?.position || 'POD Quality Lead'}</div>
+                  <div style="font-size:8px;color:#94a3b8;">People Operations Dev</div>
+                  <div style="font-size:7.5px;color:#94a3b8;font-family:monospace;margin-top:2px;">Date: ${(evaluation.signatures.pod || evaluation.signatures.hr)?.dateSigned || (evaluation.signatures.pod || evaluation.signatures.hr)?.signedAt} ${(evaluation.signatures.pod || evaluation.signatures.hr)?.timeSigned || ''}</div>
+                </div>
+              ` : `<div style="font-size:9px;color:#94a3b8;font-style:italic;padding:10px 0;">Pending POD Signature</div>`}
+            </div>
+          </div>
+        </div>
+
+        <div style="text-align:right;font-size:9px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-top:10px;">
+          HDI HIVE • STRICTLY CONFIDENTIAL • Page 2 of 2
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(container);
+
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+    });
+
+    document.body.removeChild(container);
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+    const scaledWidth = imgWidth * ratio;
+    const scaledHeight = imgHeight * ratio;
+    const x = (pdfWidth - scaledWidth) / 2;
+    const y = 0;
+
+    pdf.addImage(imgData, 'JPEG', x, y, scaledWidth, scaledHeight);
+    const rawBlob = pdf.output('blob') as Blob | Promise<Blob>;
+    const blob = rawBlob instanceof Promise ? await rawBlob : rawBlob;
+
+    return blob;
+  } catch (err) {
+    console.warn('Error generating scorecard PDF:', err);
+    return null;
+  }
+};
+
+export const uploadScorecardPdfToSupabase = async (
+  evaluation: Evaluation,
+  fileBlob: Blob
+): Promise<{ pdfUrl: string; storagePath: string; fileName: string; fileSize: number; uploadedAt: string } | null> => {
+  if (!isSupabaseConfigured || !supabase) return null;
+
+  try {
+    const sanitizedPeriod = evaluation.appraisalPeriod.replace(/[^a-zA-Z0-9]/g, '-');
+    const sanitizedName = evaluation.employeeName.replace(/[^a-zA-Z0-9]/g, '-');
+    const fileName = `scorecard-${sanitizedName}-${sanitizedPeriod}-${evaluation.id}.pdf`;
+    const storagePath = `evaluation-scoreboards/${evaluation.employeeId}/${fileName}`;
+
+    const { error } = await supabase.storage
+      .from('apes-attachments')
+      .upload(storagePath, fileBlob, {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+
+    if (error) {
+      console.error('[Scorecard PDF] Upload error:', error.message, error.details);
+      return null;
+    }
+
+    const { data: publicUrlData } = supabase.storage.from('apes-attachments').getPublicUrl(storagePath);
+
+    return {
+      pdfUrl: publicUrlData?.publicUrl || '',
+      storagePath,
+      fileName,
+      fileSize: fileBlob.size,
+      uploadedAt: new Date().toISOString(),
+    };
+  } catch (err) {
+    console.warn('Error uploading scorecard PDF to Supabase:', err);
     return null;
   }
 };

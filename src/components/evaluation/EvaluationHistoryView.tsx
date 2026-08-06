@@ -1,6 +1,7 @@
 import React from 'react';
-import { User, EvaluationHistory, EvaluationScorecardArchive } from '../../types';
+import { User, Evaluation, EvaluationHistory, EvaluationScorecardArchive } from '../../types';
 import { StatusBadge } from '../common/StatusBadge';
+import { PrintableScorecard } from './PrintableScorecard';
 import { 
   History, 
   FileCheck, 
@@ -89,19 +90,60 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
     }
   };
 
-  const handleDownloadArchive = (archive: EvaluationScorecardArchive) => {
-    const blob = new Blob([JSON.stringify(archive, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `scorecard-${archive.employeeName.replace(/\s+/g, '-')}-${archive.appraisalPeriod}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleDownloadArchive = async (archive: EvaluationScorecardArchive) => {
+    if (archive.pdfUrl) {
+      const a = document.createElement('a');
+      a.href = archive.pdfUrl;
+      a.download = archive.fileName || `scorecard-${archive.employeeName.replace(/\s+/g, '-')}-${archive.appraisalPeriod}.pdf`;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      alert('No archived PDF is available for this scorecard yet.');
+    }
   };
 
   const viewingArchive = viewingArchiveId ? scorecardArchives.find(a => a.id === viewingArchiveId) : null;
 
   if (viewingArchive) {
+    const archivedEvaluation: Evaluation = {
+      id: viewingArchive.evaluationId,
+      cycleId: viewingArchive.cycleId || '',
+      templateId: viewingArchive.templateId || '',
+      workflowType: viewingArchive.workflowType as any,
+      employeeId: viewingArchive.employeeId,
+      employeeName: viewingArchive.employeeName,
+      employeeEmail: viewingArchive.employeeEmail,
+      departmentName: viewingArchive.departmentName,
+      departmentId: viewingArchive.departmentId,
+      position: viewingArchive.position,
+      appraisalPeriod: viewingArchive.appraisalPeriod,
+      appraisalDate: '',
+      eligibilityScore: viewingArchive.eligibilityScore,
+      coreValuesScore: viewingArchive.coreValuesScore,
+      totalEligibilityWeightedRating: viewingArchive.eligibilityScore,
+      totalCoreValuesWeightedRating: viewingArchive.coreValuesScore,
+      finalRating: viewingArchive.finalRating,
+      ratingClassification: viewingArchive.ratingClassification,
+      kpiRatings: viewingArchive.kpiRatingsData || [],
+      coreValueRatings: viewingArchive.coreValueRatingsData || [],
+      developmentPlan: (viewingArchive.developmentPlanData || {}) as any,
+      personnelAction: (viewingArchive.personnelActionData || {}) as any,
+      signatures: (viewingArchive.signaturesData || {}) as any,
+      evidenceFiles: viewingArchive.evidenceFilesData || [],
+      stepHistory: viewingArchive.stepHistoryData || [],
+      auditTrail: viewingArchive.auditTrailData || [],
+      status: viewingArchive.status as any,
+      createdAt: viewingArchive.createdAt,
+      updatedAt: viewingArchive.archivedAt,
+      appraiseeSummaryComment: viewingArchive.appraiseeSummaryComment,
+      supervisorSummaryComment: viewingArchive.supervisorSummaryComment,
+      presidentSummaryComment: viewingArchive.presidentSummaryComment,
+      podValidationComment: viewingArchive.podValidationComment,
+    };
+
     return (
       <div className="space-y-6 pb-12">
         <div className="hero-card">
@@ -124,90 +166,13 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
                 className="px-4 py-2 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2"
               >
                 <Download className="w-3.5 h-3.5" />
-                Download Archive
+                Download Official Scorecard
               </button>
             </div>
           </div>
         </div>
 
-        <div className="card p-6 space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Employee</p>
-              <p className="font-bold text-slate-900 dark:text-white">{viewingArchive.employeeName}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Department & Position</p>
-              <p className="font-semibold text-slate-700 dark:text-slate-300">{viewingArchive.departmentName} • {viewingArchive.position}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Appraisal Period</p>
-              <p className="font-semibold text-slate-700 dark:text-slate-300">{viewingArchive.appraisalPeriod}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Workflow Stage</p>
-              <p className="font-semibold text-slate-700 dark:text-slate-300">{getWorkflowLabel(viewingArchive.workflowStage)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Final Rating</p>
-              <p className="font-black text-hdi-red text-lg">{viewingArchive.finalRating.toFixed(2)} / 4.00</p>
-              <p className="text-xs font-bold text-slate-500">{viewingArchive.ratingClassification}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Archived</p>
-              <p className="font-semibold text-slate-700 dark:text-slate-300">{new Date(viewingArchive.archivedAt).toLocaleString()}</p>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">KPI Ratings</p>
-            <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl overflow-auto max-h-48 text-slate-700 dark:text-slate-300">
-              {JSON.stringify(viewingArchive.kpiRatingsData, null, 2)}
-            </pre>
-          </div>
-
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Core Values Ratings</p>
-            <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl overflow-auto max-h-48 text-slate-700 dark:text-slate-300">
-              {JSON.stringify(viewingArchive.coreValueRatingsData, null, 2)}
-            </pre>
-          </div>
-
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Development Plan</p>
-            <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl overflow-auto max-h-48 text-slate-700 dark:text-slate-300">
-              {JSON.stringify(viewingArchive.developmentPlanData, null, 2)}
-            </pre>
-          </div>
-
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Personnel Action</p>
-            <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl overflow-auto max-h-48 text-slate-700 dark:text-slate-300">
-              {JSON.stringify(viewingArchive.personnelActionData, null, 2)}
-            </pre>
-          </div>
-
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Signatures</p>
-            <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl overflow-auto max-h-48 text-slate-700 dark:text-slate-300">
-              {JSON.stringify(viewingArchive.signaturesData, null, 2)}
-            </pre>
-          </div>
-
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Evidence Files</p>
-            <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl overflow-auto max-h-48 text-slate-700 dark:text-slate-300">
-              {JSON.stringify(viewingArchive.evidenceFilesData, null, 2)}
-            </pre>
-          </div>
-
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Audit Trail</p>
-            <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl overflow-auto max-h-48 text-slate-700 dark:text-slate-300">
-              {JSON.stringify(viewingArchive.auditTrailData, null, 2)}
-            </pre>
-          </div>
-        </div>
+        <PrintableScorecard evaluation={archivedEvaluation} onBack={() => setViewingArchiveId(null)} />
       </div>
     );
   }
