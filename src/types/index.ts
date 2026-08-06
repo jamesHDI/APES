@@ -324,6 +324,44 @@ export interface EvaluationHistory {
   createdAt: string;
 }
 
+export interface EvaluationScorecardArchive {
+  id: string;
+  evaluationId: string;
+  employeeId: string;
+  employeeName: string;
+  employeeEmail?: string;
+  departmentName: string;
+  departmentId?: string;
+  position: string;
+  appraisalPeriod: string;
+  cycleId?: string;
+  templateId?: string;
+  workflowType: string;
+  workflowStage: string;
+  status: string;
+  kpiRatingsData: any[];
+  coreValueRatingsData: any[];
+  signaturesData: Record<string, any>;
+  developmentPlanData: Record<string, any>;
+  personnelActionData: Record<string, any>;
+  evidenceFilesData: any[];
+  stepHistoryData?: any[];
+  auditTrailData?: any[];
+  eligibilityScore: number;
+  coreValuesScore: number;
+  finalRating: number;
+  ratingClassification: string;
+  appraiseeSummaryComment?: string;
+  supervisorSummaryComment?: string;
+  presidentSummaryComment?: string;
+  podValidationComment?: string;
+  submittedByName: string;
+  submittedByRole: string;
+  submittedById?: string;
+  createdAt: string;
+  archivedAt: string;
+}
+
 export interface Evaluation {
   id: string;
   cycleId: string;

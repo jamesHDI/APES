@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { User, Role, Evaluation, EvaluationTemplate, Department, EvaluationCycle, Notification, isPendingUser } from './types';
+import { User, Role, Evaluation, EvaluationTemplate, Department, EvaluationCycle, Notification, isPendingUser, EvaluationScorecardArchive } from './types';
 import { MASTER_SALES_EVALUATION_TEMPLATE } from './constants/masterSalesTemplate';
 import { 
   getStoredUsers, 
@@ -19,6 +19,7 @@ import {
   createDraftEvaluationInMemory,
   deduplicateEvaluations,
   getStoredEvaluationHistory,
+  getStoredScorecardArchives,
   getStoredAuditLogs,
   resetToDefaultSeedData,
   SEED_USERS
@@ -99,6 +100,7 @@ export const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'normal' | 'printable'>('normal');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [evaluationHistory, setEvaluationHistory] = useState<any[]>([]);
+  const [scorecardArchives, setScorecardArchives] = useState<EvaluationScorecardArchive[]>([]);
 
   const lastAvatarUpdateRef = useRef<{ url: string; timestamp: number } | null>(null);
 
@@ -178,9 +180,10 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // 1.5. Load evaluation history
+  // 1.5. Load evaluation history and scorecard archives
   useEffect(() => {
     setEvaluationHistory(getStoredEvaluationHistory());
+    setScorecardArchives(getStoredScorecardArchives());
   }, []);
 
   // 2. Real-time Database & Notification Polling (Every 3s)
@@ -744,6 +747,7 @@ export const App: React.FC = () => {
         <EvaluationHistoryView
           currentUser={currentUser}
           historyRecords={evaluationHistory}
+          scorecardArchives={scorecardArchives}
           onOpenEvaluation={(id) => {
             setSelectedEvalId(id);
             setActiveTab('evaluations');
@@ -751,6 +755,12 @@ export const App: React.FC = () => {
           }}
           onViewPrintable={(id) => {
             setSelectedEvalId(id);
+            setActiveTab('evaluations');
+            setViewMode('printable');
+          }}
+          onViewArchive={(archiveId) => {
+            // Open archive viewer - navigate to printable view of the archived evaluation
+            setSelectedEvalId(archiveId);
             setActiveTab('evaluations');
             setViewMode('printable');
           }}

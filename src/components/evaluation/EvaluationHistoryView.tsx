@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, EvaluationHistory } from '../../types';
+import { User, EvaluationHistory, EvaluationScorecardArchive } from '../../types';
 import { StatusBadge } from '../common/StatusBadge';
 import { 
   History, 
@@ -7,25 +7,32 @@ import {
   Calendar,
   Search,
   Printer,
-  Eye
+  Eye,
+  Download,
+  FileText
 } from 'lucide-react';
 
 interface EvaluationHistoryViewProps {
   currentUser: User;
   historyRecords: EvaluationHistory[];
+  scorecardArchives: EvaluationScorecardArchive[];
   onOpenEvaluation: (evalId: string) => void;
   onViewPrintable?: (evalId: string) => void;
+  onViewArchive?: (archiveId: string) => void;
 }
 
 export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
   currentUser,
   historyRecords,
+  scorecardArchives,
   onOpenEvaluation,
   onViewPrintable,
+  onViewArchive,
 }) => {
   const [search, setSearch] = React.useState('');
   const [filterStatus, setFilterStatus] = React.useState('');
   const [filterCycle, setFilterCycle] = React.useState('');
+  const [viewingArchiveId, setViewingArchiveId] = React.useState<string | null>(null);
 
   const isPrivileged = currentUser.role === 'pod' || currentUser.role === 'hr_admin';
   const isPresident = currentUser.role === 'president';
@@ -68,6 +75,142 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
     };
     return labels[stage] || stage;
   };
+
+  const getArchiveForHistory = (historyId: string): EvaluationScorecardArchive | undefined => {
+    return scorecardArchives.find(a => a.evaluationId === historyId);
+  };
+
+  const handleViewArchive = (evaluationId: string) => {
+    const archive = getArchiveForHistory(evaluationId);
+    if (archive) {
+      setViewingArchiveId(archive.id);
+    } else if (onViewArchive) {
+      onViewArchive(evaluationId);
+    }
+  };
+
+  const handleDownloadArchive = (archive: EvaluationScorecardArchive) => {
+    const blob = new Blob([JSON.stringify(archive, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `scorecard-${archive.employeeName.replace(/\s+/g, '-')}-${archive.appraisalPeriod}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const viewingArchive = viewingArchiveId ? scorecardArchives.find(a => a.id === viewingArchiveId) : null;
+
+  if (viewingArchive) {
+    return (
+      <div className="space-y-6 pb-12">
+        <div className="hero-card">
+          <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Official Scorecard Archive</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-2xl">
+                Immutable official record. This document cannot be modified.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setViewingArchiveId(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                Back to History
+              </button>
+              <button
+                onClick={() => handleDownloadArchive(viewingArchive)}
+                className="px-4 py-2 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download Archive
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="card p-6 space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Employee</p>
+              <p className="font-bold text-slate-900 dark:text-white">{viewingArchive.employeeName}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Department & Position</p>
+              <p className="font-semibold text-slate-700 dark:text-slate-300">{viewingArchive.departmentName} • {viewingArchive.position}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Appraisal Period</p>
+              <p className="font-semibold text-slate-700 dark:text-slate-300">{viewingArchive.appraisalPeriod}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Workflow Stage</p>
+              <p className="font-semibold text-slate-700 dark:text-slate-300">{getWorkflowLabel(viewingArchive.workflowStage)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Final Rating</p>
+              <p className="font-black text-hdi-red text-lg">{viewingArchive.finalRating.toFixed(2)} / 4.00</p>
+              <p className="text-xs font-bold text-slate-500">{viewingArchive.ratingClassification}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Archived</p>
+              <p className="font-semibold text-slate-700 dark:text-slate-300">{new Date(viewingArchive.archivedAt).toLocaleString()}</p>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">KPI Ratings</p>
+            <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl overflow-auto max-h-48 text-slate-700 dark:text-slate-300">
+              {JSON.stringify(viewingArchive.kpiRatingsData, null, 2)}
+            </pre>
+          </div>
+
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Core Values Ratings</p>
+            <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl overflow-auto max-h-48 text-slate-700 dark:text-slate-300">
+              {JSON.stringify(viewingArchive.coreValueRatingsData, null, 2)}
+            </pre>
+          </div>
+
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Development Plan</p>
+            <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl overflow-auto max-h-48 text-slate-700 dark:text-slate-300">
+              {JSON.stringify(viewingArchive.developmentPlanData, null, 2)}
+            </pre>
+          </div>
+
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Personnel Action</p>
+            <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl overflow-auto max-h-48 text-slate-700 dark:text-slate-300">
+              {JSON.stringify(viewingArchive.personnelActionData, null, 2)}
+            </pre>
+          </div>
+
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Signatures</p>
+            <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl overflow-auto max-h-48 text-slate-700 dark:text-slate-300">
+              {JSON.stringify(viewingArchive.signaturesData, null, 2)}
+            </pre>
+          </div>
+
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Evidence Files</p>
+            <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl overflow-auto max-h-48 text-slate-700 dark:text-slate-300">
+              {JSON.stringify(viewingArchive.evidenceFilesData, null, 2)}
+            </pre>
+          </div>
+
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Audit Trail</p>
+            <pre className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl overflow-auto max-h-48 text-slate-700 dark:text-slate-300">
+              {JSON.stringify(viewingArchive.auditTrailData, null, 2)}
+            </pre>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-12">
@@ -149,7 +292,7 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
                 <th className="py-3 px-4">Score & Rating</th>
                 <th className="py-3 px-4">Submitted By</th>
                 <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4 text-right">Action</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700 text-xs">
@@ -160,56 +303,80 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredHistory.map((h) => (
-                  <tr key={h.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
-                      {h.employeeName}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <p className="font-semibold text-slate-700 dark:text-slate-300">{h.position}</p>
-                      <span className="text-[10px] font-bold text-[#E96B1A] dark:text-brand-300">{h.departmentName}</span>
-                    </td>
-                    <td className="py-3.5 px-4 font-medium text-slate-600 dark:text-slate-400">
-                      {h.appraisalPeriod}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">{getWorkflowLabel(h.workflowStage)}</span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <StatusBadge status={h.status} />
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="font-black text-hdi-red text-sm">{h.finalRating > 0 ? h.finalRating.toFixed(2) : (h.eligibilityScore || 0).toFixed(2)}</span>
-                      <span className="text-[10px] text-slate-400"> / 4.00</span>
-                      <p className="text-[10px] font-bold text-slate-500">{h.ratingClassification}</p>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <p className="font-semibold text-slate-700 dark:text-slate-300">{h.submittedByName}</p>
-                      <p className="text-[10px] text-slate-400">{h.submittedByRole}</p>
-                    </td>
-                    <td className="py-3.5 px-4 font-medium text-slate-600 dark:text-slate-400">
-                      {new Date(h.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button
-                          onClick={() => onOpenEvaluation(h.evaluationId)}
-                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center space-x-1.5 transition-colors"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-brand-500" />
-                          <span>View</span>
-                        </button>
-                        <button
-                          onClick={() => onViewPrintable ? onViewPrintable(h.evaluationId) : onOpenEvaluation(h.evaluationId)}
-                          className="px-3 py-1.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition-all"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                          <span>Print</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                filteredHistory.map((h) => {
+                  const archive = getArchiveForHistory(h.evaluationId);
+                  const hasArchive = !!archive;
+                  return (
+                    <tr key={h.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                        {h.employeeName}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <p className="font-semibold text-slate-700 dark:text-slate-300">{h.position}</p>
+                        <span className="text-[10px] font-bold text-[#E96B1A] dark:text-brand-300">{h.departmentName}</span>
+                      </td>
+                      <td className="py-3.5 px-4 font-medium text-slate-600 dark:text-slate-400">
+                        {h.appraisalPeriod}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">{getWorkflowLabel(h.workflowStage)}</span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <StatusBadge status={h.status} />
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-black text-hdi-red text-sm">{h.finalRating > 0 ? h.finalRating.toFixed(2) : (h.eligibilityScore || 0).toFixed(2)}</span>
+                        <span className="text-[10px] text-slate-400"> / 4.00</span>
+                        <p className="text-[10px] font-bold text-slate-500">{h.ratingClassification}</p>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <p className="font-semibold text-slate-700 dark:text-slate-300">{h.submittedByName}</p>
+                        <p className="text-[10px] text-slate-400">{h.submittedByRole}</p>
+                      </td>
+                      <td className="py-3.5 px-4 font-medium text-slate-600 dark:text-slate-400">
+                        {new Date(h.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => onOpenEvaluation(h.evaluationId)}
+                            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center space-x-1.5 transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-brand-500" />
+                            <span>View</span>
+                          </button>
+                          {hasArchive && (
+                            <>
+                              <button
+                                onClick={() => handleViewArchive(h.evaluationId)}
+                                className="px-3 py-1.5 rounded-xl bg-[#FFF4EA] hover:bg-[#FFE8D1] dark:bg-brand-950 dark:hover:bg-brand-900 text-[#E96B1A] dark:text-brand-300 font-bold text-xs flex items-center space-x-1.5 transition-colors"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>View Official Scorecard</span>
+                              </button>
+                              <button
+                                onClick={() => handleDownloadArchive(archive!)}
+                                className="px-3 py-1.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition-all"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                <span>Download</span>
+                              </button>
+                            </>
+                          )}
+                          {!hasArchive && (
+                            <button
+                              onClick={() => onViewPrintable ? onViewPrintable(h.evaluationId) : onOpenEvaluation(h.evaluationId)}
+                              className="px-3 py-1.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition-all"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                              <span>Print</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

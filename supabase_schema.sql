@@ -267,6 +267,51 @@ DROP POLICY IF EXISTS "Allow public evaluation_history select" ON public.evaluat
 CREATE POLICY "Allow public evaluation_history insert" ON public.evaluation_history FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public evaluation_history select" ON public.evaluation_history FOR SELECT USING (true);
 
+-- 15. EVALUATION SCORECARD ARCHIVES TABLE (IMMUTABLE OFFICIAL SCORECARDS)
+CREATE TABLE IF NOT EXISTS public.evaluation_scorecard_archives (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    evaluation_id UUID NOT NULL REFERENCES public.evaluations(id) ON DELETE CASCADE,
+    employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
+    employee_name VARCHAR(150) NOT NULL,
+    employee_email VARCHAR(150),
+    department_name VARCHAR(100) NOT NULL,
+    department_id UUID,
+    position VARCHAR(100) NOT NULL,
+    appraisal_period VARCHAR(100) NOT NULL,
+    cycle_id UUID,
+    template_id UUID,
+    workflow_type VARCHAR(50) NOT NULL,
+    workflow_stage VARCHAR(50) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    kpi_ratings_data JSONB DEFAULT '[]'::jsonb,
+    core_value_ratings_data JSONB DEFAULT '[]'::jsonb,
+    signatures_data JSONB DEFAULT '{}'::jsonb,
+    development_plan_data JSONB DEFAULT '{}'::jsonb,
+    personnel_action_data JSONB DEFAULT '{}'::jsonb,
+    evidence_files_data JSONB DEFAULT '[]'::jsonb,
+    step_history_data JSONB DEFAULT '[]'::jsonb,
+    audit_trail_data JSONB DEFAULT '[]'::jsonb,
+    eligibility_score NUMERIC(5,2) DEFAULT 0.00,
+    core_values_score NUMERIC(5,2) DEFAULT 0.00,
+    final_rating NUMERIC(5,2) DEFAULT 0.00,
+    rating_classification VARCHAR(100) DEFAULT 'Unsatisfactory',
+    appraisee_summary_comment TEXT,
+    supervisor_summary_comment TEXT,
+    president_summary_comment TEXT,
+    pod_validation_comment TEXT,
+    submitted_by_name VARCHAR(150) NOT NULL,
+    submitted_by_role VARCHAR(50) NOT NULL,
+    submitted_by_id VARCHAR(100),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    archived_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.evaluation_scorecard_archives ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public scorecard archives insert" ON public.evaluation_scorecard_archives;
+DROP POLICY IF EXISTS "Allow public scorecard archives select" ON public.evaluation_scorecard_archives;
+CREATE POLICY "Allow public scorecard archives insert" ON public.evaluation_scorecard_archives FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public scorecard archives select" ON public.evaluation_scorecard_archives FOR SELECT USING (true);
+
 -- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ==============================================================================
@@ -317,6 +362,7 @@ BEGIN
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.departments; EXCEPTION WHEN duplicate_object THEN NULL; END;
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.audit_logs; EXCEPTION WHEN duplicate_object THEN NULL; END;
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluation_history; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluation_scorecard_archives; EXCEPTION WHEN duplicate_object THEN NULL; END;
 END $$;
 
 -- STORAGE BUCKETS SETUP

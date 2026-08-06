@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './supabaseClient';
-import { User, Department, Evaluation, Notification, EvaluationHistory } from '../types';
+import { User, Department, Evaluation, Notification, EvaluationHistory, EvaluationScorecardArchive } from '../types';
 
 // Helper: Ensure valid UUID format for PostgreSQL UUID columns
 export const isValidUuid = (str?: string): boolean => {
@@ -793,6 +793,61 @@ export const saveEvaluationHistoryToSupabase = async (history: EvaluationHistory
     return !error;
   } catch (err) {
     console.warn('Error saving evaluation history to Supabase:', err);
+    return false;
+  }
+};
+
+export const saveScorecardArchiveToSupabase = async (archive: EvaluationScorecardArchive): Promise<boolean> => {
+  if (!isSupabaseConfigured || !supabase) return false;
+
+  try {
+    const payload = {
+      id: archive.id,
+      evaluation_id: archive.evaluationId,
+      employee_id: archive.employeeId,
+      employee_name: archive.employeeName,
+      employee_email: archive.employeeEmail || null,
+      department_name: archive.departmentName,
+      department_id: archive.departmentId || null,
+      position: archive.position,
+      appraisal_period: archive.appraisalPeriod,
+      cycle_id: archive.cycleId || null,
+      template_id: archive.templateId || null,
+      workflow_type: archive.workflowType,
+      workflow_stage: archive.workflowStage,
+      status: archive.status,
+      kpi_ratings_data: archive.kpiRatingsData || [],
+      core_value_ratings_data: archive.coreValueRatingsData || [],
+      signatures_data: archive.signaturesData || {},
+      development_plan_data: archive.developmentPlanData || {},
+      personnel_action_data: archive.personnelActionData || {},
+      evidence_files_data: archive.evidenceFilesData || [],
+      step_history_data: archive.stepHistoryData || [],
+      audit_trail_data: archive.auditTrailData || [],
+      eligibility_score: archive.eligibilityScore,
+      core_values_score: archive.coreValuesScore,
+      final_rating: archive.finalRating,
+      rating_classification: archive.ratingClassification,
+      appraisee_summary_comment: archive.appraiseeSummaryComment || null,
+      supervisor_summary_comment: archive.supervisorSummaryComment || null,
+      president_summary_comment: archive.presidentSummaryComment || null,
+      pod_validation_comment: archive.podValidationComment || null,
+      submitted_by_name: archive.submittedByName,
+      submitted_by_role: archive.submittedByRole,
+      submitted_by_id: archive.submittedById || null,
+      created_at: archive.createdAt,
+      archived_at: archive.archivedAt
+    };
+
+    const { error } = await supabase.from('evaluation_scorecard_archives').insert(payload, { onConflict: 'id' });
+    if (error) {
+      console.error('[Scorecard Archive] Supabase insert error:', error.message, error.details);
+    } else {
+      console.log(`[APES Sync - Archive] Saved scorecard archive ${archive.id} for evaluation ${archive.evaluationId} (${archive.employeeName}).`);
+    }
+    return !error;
+  } catch (err) {
+    console.warn('Error saving scorecard archive to Supabase:', err);
     return false;
   }
 };

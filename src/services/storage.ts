@@ -1,10 +1,11 @@
-import { User, Department, EvaluationTemplate, EvaluationCycle, EvaluationDeployment, Evaluation, AuditLog, Role, EvaluationHistory } from '../types';
+import { User, Department, EvaluationTemplate, EvaluationCycle, EvaluationDeployment, Evaluation, AuditLog, Role, EvaluationHistory, EvaluationScorecardArchive } from '../types';
 import { MASTER_SALES_EVALUATION_TEMPLATE } from '../constants/masterSalesTemplate';
 import { 
   saveEmployeeToSupabase, 
   saveDepartmentToSupabase, 
   saveEvaluationToSupabase,
-  saveEvaluationHistoryToSupabase
+  saveEvaluationHistoryToSupabase,
+  saveScorecardArchiveToSupabase
 } from './supabaseService';
 
 const USERS_KEY = 'apes_users_v3';
@@ -16,6 +17,7 @@ const DEPLOYMENTS_KEY = 'apes_deployments_v3';
 const EVALUATIONS_KEY = 'apes_evaluations_v3';
 const AUDIT_LOGS_KEY = 'apes_audit_logs_v3';
 const EVALUATION_HISTORY_KEY = 'apes_evaluation_history_v3';
+const SCORECARD_ARCHIVES_KEY = 'apes_scorecard_archives_v3';
 
 // Initial Pre-seeded Enterprise Data
 export const SEED_USERS: User[] = [
@@ -446,13 +448,23 @@ export const saveSingleEvaluation = async (evaluation: Evaluation, historyActor?
   await saveEvaluationToSupabase(evaluation);
 
   const previousEval = index >= 0 ? evaluations[index] : null;
-  if (!previousEval || previousEval.status !== evaluation.status) {
-    if (historyActor) {
-      const snapshot = buildEvaluationHistorySnapshot(evaluation, historyActor);
-      await saveEvaluationHistoryToSupabase(snapshot);
-      const history = getStoredEvaluationHistory();
-      history.unshift(snapshot);
-      saveEvaluationHistory(history);
+  const statusChanged = !previousEval || previousEval.status !== evaluation.status;
+
+  if (statusChanged && historyActor) {
+    const snapshot = buildEvaluationHistorySnapshot(evaluation, historyActor);
+    await saveEvaluationHistoryToSupabase(snapshot);
+    const history = getStoredEvaluationHistory();
+    history.unshift(snapshot);
+    saveEvaluationHistory(history);
+  }
+
+  if (statusChanged && (evaluation.status === 'archived' || evaluation.status === 'pod_validated')) {
+    const existingArchives = getStoredScorecardArchives();
+    const alreadyArchived = existingArchives.some((a) => a.evaluationId === evaluation.id);
+    if (!alreadyArchived) {
+      const archive = buildScorecardArchive(evaluation, historyActor || { name: evaluation.employeeName, role: 'system' });
+      await saveScorecardArchiveToSupabase(archive);
+      saveScorecardArchive(archive);
     }
   }
 };
@@ -669,6 +681,75 @@ export const getStoredEvaluationHistory = (): EvaluationHistory[] => {
       const history: EvaluationHistory[] = JSON.parse(data);
       if (history && history.length > 0) {
         return history;
+      }
+    } catch {}
+  }
+  return [];
+};
+
+const buildScorecardArchive = (evaluation: Evaluation, actor: { name: string; role: string; id?: string }): EvaluationScorecardArchive => {
+  return {
+    id: `arch_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    evaluationId: evaluation.id,
+    employeeId: evaluation.employeeId,
+    employeeName: evaluation.employeeName,
+    employeeEmail: evaluation.employeeEmail,
+    departmentName: evaluation.departmentName,
+    departmentId: evaluation.departmentId,
+    position: evaluation.position,
+    appraisalPeriod: evaluation.appraisalPeriod,
+    cycleId: evaluation.cycleId,
+    templateId: evaluation.templateId,
+    workflowType: evaluation.workflowType,
+    workflowStage: evaluation.status,
+    status: evaluation.status,
+    kpiRatingsData: evaluation.kpiRatings || [],
+    coreValueRatingsData: evaluation.coreValueRatings || [],
+    signaturesData: evaluation.signatures || {},
+    developmentPlanData: evaluation.developmentPlan || {},
+    personnelActionData: evaluation.personnelAction || {},
+    evidenceFilesData: evaluation.evidenceFiles || [],
+    stepHistoryData: evaluation.stepHistory || [],
+    auditTrailData: evaluation.auditTrail || [],
+    eligibilityScore: evaluation.eligibilityScore || 0,
+    coreValuesScore: evaluation.coreValuesScore || 0,
+    finalRating: evaluation.finalRating || 0,
+    ratingClassification: evaluation.ratingClassification || 'Unsatisfactory',
+    appraiseeSummaryComment: evaluation.appraiseeSummaryComment,
+    supervisorSummaryComment: evaluation.supervisorSummaryComment,
+    presidentSummaryComment: evaluation.presidentSummaryComment,
+    podValidationComment: evaluation.podValidationComment,
+    submittedByName: actor.name,
+    submittedByRole: actor.role,
+    submittedById: actor.id,
+    createdAt: new Date().toISOString(),
+    archivedAt: new Date().toISOString()
+  };
+};
+
+export const saveScorecardArchive = (archive: EvaluationScorecardArchive) => {
+  const archives = getStoredScorecardArchives();
+  const index = archives.findIndex((a) => a.id === archive.id);
+  let updatedList = [...archives];
+  if (index >= 0) {
+    updatedList[index] = archive;
+  } else {
+    updatedList.unshift(archive);
+  }
+  try {
+    localStorage.setItem(SCORECARD_ARCHIVES_KEY, JSON.stringify(updatedList));
+  } catch (e) {
+    console.warn('LocalStorage saveScorecardArchive quota warning:', e);
+  }
+};
+
+export const getStoredScorecardArchives = (): EvaluationScorecardArchive[] => {
+  const data = localStorage.getItem(SCORECARD_ARCHIVES_KEY);
+  if (data) {
+    try {
+      const archives: EvaluationScorecardArchive[] = JSON.parse(data);
+      if (archives && archives.length > 0) {
+        return archives;
       }
     } catch {}
   }
