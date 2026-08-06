@@ -284,8 +284,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar Panel */}
       <aside
-        className={`
-          fixed top-16 left-4 bottom-0 z-40 w-64
+        className={`no-print fixed top-16 left-4 bottom-0 z-40 w-64
           bg-gradient-to-b from-[#FFFAF6] via-[#FFF8F3] to-[#FFF6EF]
           dark:from-slate-900 dark:via-slate-900 dark:to-slate-900
           border-r border-[#EFE4D6] dark:border-slate-800

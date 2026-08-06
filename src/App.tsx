@@ -917,11 +917,11 @@ export const App: React.FC = () => {
   const pendingAccountCount = users.filter(isPendingUser).length;
 
   return (
-    <div className="relative h-screen overflow-hidden bg-gradient-to-br from-[#FFF8F2] via-[#FFF4EA] via-60% to-[#F8FAFC] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
+    <div id="app-container" className="relative h-screen overflow-hidden bg-gradient-to-br from-[#FFF8F2] via-[#FFF4EA] via-60% to-[#F8FAFC] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
       {/* Soft Translucent Top-Right Ambient Glow */}
-      <div className="fixed top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#F28C28]/12 via-amber-200/5 to-transparent rounded-full blur-3xl pointer-events-none -mr-32 -mt-32 z-0" />
+      <div className="no-print fixed top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#F28C28]/12 via-amber-200/5 to-transparent rounded-full blur-3xl pointer-events-none -mr-32 -mt-32 z-0" />
       {/* Subtle Dotted Pattern Overlay */}
-      <div className="fixed top-12 right-16 w-80 h-80 bg-[radial-gradient(#F28C28_1px,transparent_1px)] [background-size:18px_18px] opacity-10 pointer-events-none hidden lg:block z-0" />
+      <div className="no-print fixed top-12 right-16 w-80 h-80 bg-[radial-gradient(#F28C28_1px,transparent_1px)] [background-size:18px_18px] opacity-10 pointer-events-none hidden lg:block z-0" />
       
       {/* Login & Create Account Modal Gating */}
       <LoginModal
@@ -958,7 +958,7 @@ export const App: React.FC = () => {
           />
         </div>
 
-        <div className="no-print flex flex-1 overflow-hidden min-h-0">
+        <div className="flex flex-1 overflow-hidden min-h-0">
           <Sidebar
             currentRole={currentUser.role}
             activeTab={activeTab}
@@ -982,47 +982,49 @@ export const App: React.FC = () => {
       </div>
 
       {/* Organization Announcement Modal */}
-      <AnnouncementModal
-        isOpen={showAnnouncementModal}
-        onClose={() => setShowAnnouncementModal(false)}
-        senderName={currentUser.name}
-        onAnnouncementCreated={() => {
-          setNotifications(getRoleBasedNotifications(currentUser));
-        }}
-      />
-
-      {/* Forced Password Change Modal for Default Admin / Flagged Accounts */}
-      {isAuthenticated && currentUser.requiresPasswordChange && (
-        <ChangePasswordModal
-          isOpen={true}
-          user={currentUser}
-          isForced={true}
-          onPasswordChanged={handleUpdateCurrentUser}
+      <div className="no-print">
+        <AnnouncementModal
+          isOpen={showAnnouncementModal}
+          onClose={() => setShowAnnouncementModal(false)}
+          senderName={currentUser.name}
+          onAnnouncementCreated={() => {
+            setNotifications(getRoleBasedNotifications(currentUser));
+          }}
         />
-      )}
 
-      {/* Inactive Account Modal */}
-      {inactiveAccountModal.open && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-                <ShieldAlert className="w-5 h-5" />
+        {/* Forced Password Change Modal for Default Admin / Flagged Accounts */}
+        {isAuthenticated && currentUser.requiresPasswordChange && (
+          <ChangePasswordModal
+            isOpen={true}
+            user={currentUser}
+            isForced={true}
+            onPasswordChanged={handleUpdateCurrentUser}
+          />
+        )}
+
+        {/* Inactive Account Modal */}
+        {inactiveAccountModal.open && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">Account On Hold</h3>
               </div>
-              <h3 className="text-lg font-black text-slate-900 dark:text-white">Account On Hold</h3>
-            </div>
-            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{inactiveAccountModal.message}</p>
-            <div className="flex justify-end">
-              <button
-                onClick={handleInactiveAccountOk}
-                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-md transition-colors"
-              >
-                OK
-              </button>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{inactiveAccountModal.message}</p>
+              <div className="flex justify-end">
+                <button
+                  onClick={handleInactiveAccountOk}
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-md transition-colors"
+                >
+                  OK
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

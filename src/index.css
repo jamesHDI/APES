@@ -309,6 +309,10 @@
    PRINT STYLES
 ============================================= */
 @media print {
+  @page {
+    margin: 1cm;
+  }
+
   body {
     background-color: white !important;
     color: black !important;
@@ -324,10 +328,23 @@
     break-after: page;
   }
 
-  /* Ensure layout containers don't clip printable content */
-  #root, #app, main, .flex-1, aside, nav {
+  /* App shell must not constrain print height/overflow */
+  #app-container, #root, #app, main, .flex-1, aside, nav {
     overflow: visible !important;
     height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Remove outer page padding so scorecard controls its own print margins */
+  main > div {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  /* Hide fixed decorative background elements */
+  .fixed.z-0 {
+    display: none !important;
   }
 
   /* Scorecard print sizing */

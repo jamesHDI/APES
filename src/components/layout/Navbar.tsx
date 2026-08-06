@@ -123,16 +123,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
               </div>
               <div className="hidden sm:block">
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">
-                    PERFORMANCE EVALUATION SYSTEM
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#FFF4EA] dark:bg-brand-950 text-[#E96B1A] dark:text-brand-300 border border-[#F28C28]/30 dark:border-brand-800">
-                    APES v3.0
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#F28C28] dark:text-brand-400 font-bold tracking-widest uppercase mt-0.5 hidden md:block">
-                  HDI Hive
+                <p className="text-[11px] text-[#F28C28] dark:text-brand-400 font-bold tracking-widest uppercase mb-0.5">
+                  HDI HIVE
+                </p>
+                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                  APES 3.0
+                </p>
+                <p className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">
+                  AUTOMATED PERFORMANCE EVALUATION SYSTEM
                 </p>
               </div>
             </div>
