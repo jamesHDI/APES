@@ -228,6 +228,45 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 14. EVALUATION HISTORY TABLE (IMMUTABLE AUDIT TRAIL SNAPSHOTS)
+CREATE TABLE IF NOT EXISTS public.evaluation_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    evaluation_id UUID REFERENCES public.evaluations(id) ON DELETE CASCADE,
+    employee_id UUID REFERENCES public.employees(id) ON DELETE CASCADE,
+    employee_name VARCHAR(150) NOT NULL,
+    department_name VARCHAR(100) NOT NULL,
+    position VARCHAR(100) NOT NULL,
+    appraisal_period VARCHAR(100) NOT NULL,
+    cycle_id UUID,
+    template_id UUID,
+    workflow_type VARCHAR(50) NOT NULL,
+    workflow_stage VARCHAR(50) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    kpi_ratings_data JSONB DEFAULT '[]'::jsonb,
+    core_value_ratings_data JSONB DEFAULT '[]'::jsonb,
+    signatures_data JSONB DEFAULT '{}'::jsonb,
+    development_plan_data JSONB DEFAULT '{}'::jsonb,
+    personnel_action_data JSONB DEFAULT '{}'::jsonb,
+    eligibility_score NUMERIC(5,2) DEFAULT 0.00,
+    core_values_score NUMERIC(5,2) DEFAULT 0.00,
+    final_rating NUMERIC(5,2) DEFAULT 0.00,
+    rating_classification VARCHAR(100) DEFAULT 'Unsatisfactory',
+    submitted_by_name VARCHAR(150) NOT NULL,
+    submitted_by_role VARCHAR(50) NOT NULL,
+    submitted_by_id VARCHAR(100),
+    appraisee_summary_comment TEXT,
+    supervisor_summary_comment TEXT,
+    president_summary_comment TEXT,
+    pod_validation_comment TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.evaluation_history ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public evaluation_history insert" ON public.evaluation_history;
+DROP POLICY IF EXISTS "Allow public evaluation_history select" ON public.evaluation_history;
+CREATE POLICY "Allow public evaluation_history insert" ON public.evaluation_history FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public evaluation_history select" ON public.evaluation_history FOR SELECT USING (true);
+
 -- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ==============================================================================
@@ -275,6 +314,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluations;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.departments;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.audit_logs;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluation_history;
 
 -- STORAGE BUCKETS SETUP
 INSERT INTO storage.buckets (id, name, public) VALUES ('apes-signatures', 'apes-signatures', true) ON CONFLICT DO NOTHING;

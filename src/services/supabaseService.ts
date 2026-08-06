@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './supabaseClient';
-import { User, Department, Evaluation, Notification } from '../types';
+import { User, Department, Evaluation, Notification, EvaluationHistory } from '../types';
 
 // Helper: Ensure valid UUID format for PostgreSQL UUID columns
 export const isValidUuid = (str?: string): boolean => {
@@ -744,6 +744,55 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
     return !error;
   } catch (err) {
     console.warn('Error saving evaluation to Supabase:', err);
+    return false;
+  }
+};
+
+export const saveEvaluationHistoryToSupabase = async (history: EvaluationHistory): Promise<boolean> => {
+  if (!isSupabaseConfigured || !supabase) return false;
+
+  try {
+    const payload = {
+      id: history.id,
+      evaluation_id: history.evaluationId,
+      employee_id: history.employeeId,
+      employee_name: history.employeeName,
+      department_name: history.departmentName,
+      position: history.position,
+      appraisal_period: history.appraisalPeriod,
+      cycle_id: history.cycleId || null,
+      template_id: history.templateId || null,
+      workflow_type: history.workflowType,
+      workflow_stage: history.workflowStage,
+      status: history.status,
+      kpi_ratings_data: history.kpiRatings || [],
+      core_value_ratings_data: history.coreValueRatings || [],
+      signatures_data: history.signatures || {},
+      development_plan_data: history.developmentPlan || {},
+      personnel_action_data: history.personnelAction || {},
+      eligibility_score: history.eligibilityScore,
+      core_values_score: history.coreValuesScore,
+      final_rating: history.finalRating,
+      rating_classification: history.ratingClassification,
+      submitted_by_name: history.submittedByName,
+      submitted_by_role: history.submittedByRole,
+      submitted_by_id: history.submittedById || null,
+      appraisee_summary_comment: history.appraiseeSummaryComment || null,
+      supervisor_summary_comment: history.supervisorSummaryComment || null,
+      president_summary_comment: history.presidentSummaryComment || null,
+      pod_validation_comment: history.podValidationComment || null,
+      created_at: history.createdAt
+    };
+
+    const { error } = await supabase.from('evaluation_history').insert(payload, { onConflict: 'id' });
+    if (error) {
+      console.error('[Evaluation History] Supabase insert error:', error.message, error.details);
+    } else {
+      console.log(`[APES Sync - History] Saved history ${history.id} for evaluation ${history.evaluationId} (${history.employeeName}).`);
+    }
+    return !error;
+  } catch (err) {
+    console.warn('Error saving evaluation history to Supabase:', err);
     return false;
   }
 };

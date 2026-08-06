@@ -292,6 +292,38 @@ export interface EvaluationAuditTrailEntry {
   ipAddress?: string;
 }
 
+export interface EvaluationHistory {
+  id: string;
+  evaluationId: string;
+  employeeId: string;
+  employeeName: string;
+  departmentName: string;
+  position: string;
+  appraisalPeriod: string;
+  cycleId?: string;
+  templateId?: string;
+  workflowType: string;
+  workflowStage: string;
+  status: string;
+  kpiRatings: any[];
+  coreValueRatings: any[];
+  signatures: Record<string, any>;
+  developmentPlan: Record<string, any>;
+  personnelAction: Record<string, any>;
+  eligibilityScore: number;
+  coreValuesScore: number;
+  finalRating: number;
+  ratingClassification: string;
+  submittedByName: string;
+  submittedByRole: string;
+  submittedById?: string;
+  appraiseeSummaryComment?: string;
+  supervisorSummaryComment?: string;
+  presidentSummaryComment?: string;
+  podValidationComment?: string;
+  createdAt: string;
+}
+
 export interface Evaluation {
   id: string;
   cycleId: string;

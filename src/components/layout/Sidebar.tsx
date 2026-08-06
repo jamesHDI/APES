@@ -85,6 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ...common,
         { id: 'team_reviews', label: 'Team Reviews', icon: CheckSquare, badge: pendingCount > 0 ? pendingCount : undefined },
         { id: 'reports', label: 'Reports', icon: BarChart3 },
+        { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'my_profile', label: 'My Profile', icon: UserCircle },
       ];
     } else if (currentRole === 'dept_head') {
@@ -92,6 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ...common,
         { id: 'dept_actions', label: 'Personnel Actions', icon: FileCheck },
         { id: 'reports', label: 'Reports', icon: BarChart3 },
+        { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'my_profile', label: 'My Profile', icon: UserCircle },
       ];
     } else if (currentRole === 'president') {
@@ -99,6 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ...common,
         { id: 'dept_head_reviews', label: 'Dept Head Reviews', icon: Crown },
         { id: 'reports', label: 'Executive Reports', icon: BarChart3 },
+        { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'my_profile', label: 'My Profile', icon: UserCircle },
       ];
     } else if (currentRole === 'pod') {

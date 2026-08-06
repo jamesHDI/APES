@@ -1,9 +1,10 @@
-import { User, Department, EvaluationTemplate, EvaluationCycle, EvaluationDeployment, Evaluation, AuditLog, Role } from '../types';
+import { User, Department, EvaluationTemplate, EvaluationCycle, EvaluationDeployment, Evaluation, AuditLog, Role, EvaluationHistory } from '../types';
 import { MASTER_SALES_EVALUATION_TEMPLATE } from '../constants/masterSalesTemplate';
 import { 
   saveEmployeeToSupabase, 
   saveDepartmentToSupabase, 
-  saveEvaluationToSupabase 
+  saveEvaluationToSupabase,
+  saveEvaluationHistoryToSupabase
 } from './supabaseService';
 
 const USERS_KEY = 'apes_users_v3';
@@ -14,6 +15,7 @@ const CYCLES_KEY = 'apes_cycles_v3';
 const DEPLOYMENTS_KEY = 'apes_deployments_v3';
 const EVALUATIONS_KEY = 'apes_evaluations_v3';
 const AUDIT_LOGS_KEY = 'apes_audit_logs_v3';
+const EVALUATION_HISTORY_KEY = 'apes_evaluation_history_v3';
 
 // Initial Pre-seeded Enterprise Data
 export const SEED_USERS: User[] = [
@@ -431,7 +433,7 @@ export const saveEvaluations = (evaluations: Evaluation[]) => {
   }
 };
 
-export const saveSingleEvaluation = async (evaluation: Evaluation) => {
+export const saveSingleEvaluation = async (evaluation: Evaluation, historyActor?: { name: string; role: string; id?: string }) => {
   const evaluations = getStoredEvaluations();
   const index = evaluations.findIndex((e) => e.id === evaluation.id);
   let updatedList = [...evaluations];
@@ -442,6 +444,17 @@ export const saveSingleEvaluation = async (evaluation: Evaluation) => {
   }
   saveEvaluations(updatedList);
   await saveEvaluationToSupabase(evaluation);
+
+  const previousEval = index >= 0 ? evaluations[index] : null;
+  if (!previousEval || previousEval.status !== evaluation.status) {
+    if (historyActor) {
+      const snapshot = buildEvaluationHistorySnapshot(evaluation, historyActor);
+      await saveEvaluationHistoryToSupabase(snapshot);
+      const history = getStoredEvaluationHistory();
+      history.unshift(snapshot);
+      saveEvaluationHistory(history);
+    }
+  }
 };
 
 export const assignNewEvaluationToEmployee = async (
@@ -604,6 +617,61 @@ export const createDraftEvaluationInMemory = (
 export const getStoredAuditLogs = (): AuditLog[] => {
   const data = localStorage.getItem(AUDIT_LOGS_KEY);
   if (data) return JSON.parse(data);
+  return [];
+};
+
+const buildEvaluationHistorySnapshot = (evaluation: Evaluation, actor: { name: string; role: string; id?: string }): EvaluationHistory => {
+  return {
+    id: `hist_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    evaluationId: evaluation.id,
+    employeeId: evaluation.employeeId,
+    employeeName: evaluation.employeeName,
+    departmentName: evaluation.departmentName,
+    position: evaluation.position,
+    appraisalPeriod: evaluation.appraisalPeriod,
+    cycleId: evaluation.cycleId,
+    templateId: evaluation.templateId,
+    workflowType: evaluation.workflowType,
+    workflowStage: evaluation.status,
+    status: evaluation.status,
+    kpiRatings: evaluation.kpiRatings || [],
+    coreValueRatings: evaluation.coreValueRatings || [],
+    signatures: evaluation.signatures || {},
+    developmentPlan: evaluation.developmentPlan || {},
+    personnelAction: evaluation.personnelAction || {},
+    eligibilityScore: evaluation.eligibilityScore || 0,
+    coreValuesScore: evaluation.coreValuesScore || 0,
+    finalRating: evaluation.finalRating || 0,
+    ratingClassification: evaluation.ratingClassification || 'Unsatisfactory',
+    submittedByName: actor.name,
+    submittedByRole: actor.role,
+    submittedById: actor.id,
+    appraiseeSummaryComment: evaluation.appraiseeSummaryComment,
+    supervisorSummaryComment: evaluation.supervisorSummaryComment,
+    presidentSummaryComment: evaluation.presidentSummaryComment,
+    podValidationComment: evaluation.podValidationComment,
+    createdAt: new Date().toISOString()
+  };
+};
+
+export const saveEvaluationHistory = (history: EvaluationHistory[]) => {
+  try {
+    localStorage.setItem(EVALUATION_HISTORY_KEY, JSON.stringify(history));
+  } catch (e) {
+    console.warn('LocalStorage saveEvaluationHistory quota warning:', e);
+  }
+};
+
+export const getStoredEvaluationHistory = (): EvaluationHistory[] => {
+  const data = localStorage.getItem(EVALUATION_HISTORY_KEY);
+  if (data) {
+    try {
+      const history: EvaluationHistory[] = JSON.parse(data);
+      if (history && history.length > 0) {
+        return history;
+      }
+    } catch {}
+  }
   return [];
 };
 

@@ -18,6 +18,7 @@ import {
   assignNewEvaluationToEmployee,
   createDraftEvaluationInMemory,
   deduplicateEvaluations,
+  getStoredEvaluationHistory,
   getStoredAuditLogs,
   resetToDefaultSeedData,
   SEED_USERS
@@ -97,6 +98,7 @@ export const App: React.FC = () => {
   });
   const [viewMode, setViewMode] = useState<'normal' | 'printable'>('normal');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [evaluationHistory, setEvaluationHistory] = useState<any[]>([]);
 
   const lastAvatarUpdateRef = useRef<{ url: string; timestamp: number } | null>(null);
 
@@ -174,6 +176,11 @@ export const App: React.FC = () => {
       isMounted = false;
       clearTimeout(timeoutGuard);
     };
+  }, []);
+
+  // 1.5. Load evaluation history
+  useEffect(() => {
+    setEvaluationHistory(getStoredEvaluationHistory());
   }, []);
 
   // 2. Real-time Database & Notification Polling (Every 3s)
@@ -488,7 +495,7 @@ export const App: React.FC = () => {
   };
 
   const handleSaveEvaluation = async (updatedEval: Evaluation) => {
-    await saveSingleEvaluation(updatedEval);
+    await saveSingleEvaluation(updatedEval, currentUser ? { name: currentUser.name, role: currentUser.role, id: currentUser.id } : undefined);
     const updatedList = evaluations.map((e) => e.id === updatedEval.id ? updatedEval : e);
     if (!updatedList.some((e) => e.id === updatedEval.id)) {
       updatedList.unshift(updatedEval);
@@ -736,7 +743,7 @@ export const App: React.FC = () => {
       return (
         <EvaluationHistoryView
           currentUser={currentUser}
-          evaluations={evaluations}
+          historyRecords={evaluationHistory}
           onOpenEvaluation={(id) => {
             setSelectedEvalId(id);
             setActiveTab('evaluations');
