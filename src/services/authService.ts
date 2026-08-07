@@ -280,25 +280,12 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
         message: err.message,
         details: err.details,
         hint: err.hint,
-        email: normalizedEmail
+        email: normalizedEmail,
+        rawError: err
       });
 
-      // Check if this is a key/permission error - allow fallback to local storage
-      const isPermissionError = err.code === '15' || 
-                                err.message?.includes('key.usages') || 
-                                err.message?.includes('permission') ||
-                                err.message?.includes('JWT') ||
-                                err.message?.includes('not configured');
-
-      if (isPermissionError) {
-        console.warn('[Registration] Supabase permission error, falling back to local storage only.');
-        supabaseSaveFailed = true;
-      } else {
-        return { 
-          user: null, 
-          error: `Database Insert Rejected: ${fullErrText}` 
-        };
-      }
+      // Always fall back to local storage but show the actual error
+      supabaseSaveFailed = true;
     }
   }
 
@@ -323,9 +310,14 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
 
   if (supabaseSaveFailed) {
     const err = lastSupabaseError || {};
+    const rawMessage = err.message || err.raw?.message || 'Unknown error';
+    const rawCode = err.code || err.raw?.code || 'N/A';
+    const rawDetails = err.details || err.raw?.details || '';
+    const rawHint = err.hint || err.raw?.hint || '';
+    
     return { 
       user: newUser, 
-      error: `Account registered locally, but cloud sync failed [Error ${err.code || 'N/A'}]: ${err.message || 'Unknown error'}. Please contact your administrator to verify the Supabase database connection.` 
+      error: `Cloud sync failed [Code ${rawCode}]: ${rawMessage}${rawDetails ? ` | Details: ${rawDetails}` : ''}${rawHint ? ` | Hint: ${rawHint}` : ''}. Account saved locally in this browser only.` 
     };
   }
 
