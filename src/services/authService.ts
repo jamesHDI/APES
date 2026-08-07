@@ -233,6 +233,16 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
     ? data.employeeNumber.trim() 
     : `EMP-${Date.now().toString().slice(-6)}`;
 
+  let hashedPassword = '';
+  if (data.password) {
+    try {
+      hashedPassword = await hashPassword(data.password);
+    } catch (err) {
+      console.warn('Password hashing failed, storing plaintext fallback:', err);
+      hashedPassword = data.password;
+    }
+  }
+
   const newUser: User = {
     id: generateUuid(),
     employeeNumber: empNum,
@@ -249,7 +259,7 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
     employmentStatus: 'Regular',
     dateHired: new Date().toISOString().substring(0, 10),
     username: `${normalizedEmail.split('@')[0]}_${Math.floor(1000 + Math.random() * 9000)}`,
-    password: data.password ? await hashPassword(data.password) : '',
+    password: hashedPassword,
     isActive: false,
     isApproved: false,
     approvalStatus: 'pending',

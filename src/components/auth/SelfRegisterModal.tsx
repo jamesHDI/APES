@@ -31,6 +31,7 @@ export const SelfRegisterModal: React.FC<SelfRegisterModalProps> = ({
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
@@ -38,53 +39,64 @@ export const SelfRegisterModal: React.FC<SelfRegisterModalProps> = ({
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
+    setIsSubmitting(true);
 
-    if (!formData.firstName || !formData.lastName || !formData.email) {
-      setErrorMsg('Please enter First Name, Last Name, and Email.');
-      return;
+    try {
+      if (!formData.firstName || !formData.lastName || !formData.email) {
+        setErrorMsg('Please enter First Name, Last Name, and Email.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!formData.departmentId) {
+        setErrorMsg('Department selection is required.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!formData.position || formData.position.trim().length === 0) {
+        setErrorMsg('Position title is required.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (formData.password !== formData.confirmPassword) {
+        setErrorMsg('Passwords do not match.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const dept = departments.find(d => d.id === formData.departmentId);
+
+      const result = await registerSelfUser({
+        employeeNumber: formData.employeeNumber || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+        firstName: formData.firstName,
+        middleName: formData.middleName,
+        lastName: formData.lastName,
+        email: formData.email,
+        contactNumber: formData.contactNumber,
+        departmentId: formData.departmentId,
+        departmentName: dept?.name || 'Sales',
+        position: formData.position,
+        password: formData.password,
+      });
+
+      if (result.error || !result.user) {
+        setErrorMsg(result.error || 'Registration failed.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      setSuccessMsg('Account registered successfully! Your profile is pending HR approval and activation before you can log in.');
+      onRegisterSuccess(result.user);
+
+      setTimeout(() => {
+        onClose();
+      }, 3500);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'An unexpected error occurred during registration. Please try again.');
+      setIsSubmitting(false);
     }
-
-    if (!formData.departmentId) {
-      setErrorMsg('Department selection is required.');
-      return;
-    }
-
-    if (!formData.position || formData.position.trim().length === 0) {
-      setErrorMsg('Position title is required.');
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      setErrorMsg('Passwords do not match.');
-      return;
-    }
-
-    const dept = departments.find(d => d.id === formData.departmentId);
-
-    const result = await registerSelfUser({
-      employeeNumber: formData.employeeNumber || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-      firstName: formData.firstName,
-      middleName: formData.middleName,
-      lastName: formData.lastName,
-      email: formData.email,
-      contactNumber: formData.contactNumber,
-      departmentId: formData.departmentId,
-      departmentName: dept?.name || 'Sales',
-      position: formData.position,
-      password: formData.password,
-    });
-
-    if (result.error || !result.user) {
-      setErrorMsg(result.error || 'Registration failed.');
-      return;
-    }
-
-    setSuccessMsg('Account registered successfully! Your profile is pending HR approval and activation before you can log in.');
-    onRegisterSuccess(result.user);
-
-    setTimeout(() => {
-      onClose();
-    }, 3500);
   };
 
   return (
@@ -258,8 +270,22 @@ export const SelfRegisterModal: React.FC<SelfRegisterModalProps> = ({
               <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl font-bold text-slate-500">
                 Cancel
               </button>
-              <button type="submit" className="px-5 py-2 rounded-xl bg-hdi-red text-white font-extrabold shadow-md">
-                Register & Submit for HR Approval
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="px-5 py-2 rounded-xl bg-hdi-red text-white font-extrabold shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    Registering...
+                  </>
+                ) : (
+                  'Register & Submit for HR Approval'
+                )}
               </button>
             </div>
 
