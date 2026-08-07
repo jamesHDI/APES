@@ -227,12 +227,12 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
             position: formData.position,
             role: formData.role,
             employmentStatus: formData.employmentStatus,
-            password: formData.passwordInput || u.password || 'password123',
+            password: formData.passwordInput || u.password || '',
             requiresPasswordChange: formData.forcePasswordChange,
             isDepartmentHead: isDeptHeadPos,
-            isActive: true,
-            isApproved: true,
-            approvalStatus: 'approved',
+            isActive: u.isActive,
+            isApproved: u.isApproved,
+            approvalStatus: u.approvalStatus,
           };
           savedTargetUser = userObj;
           return userObj;

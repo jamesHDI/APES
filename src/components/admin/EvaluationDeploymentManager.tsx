@@ -65,8 +65,8 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
 
     // Determine target employees
     const isEligibleUser = (u: User) => {
-      if (u.isActive === false) return false;
-      if (u.isApproved === false || u.approvalStatus === 'pending' || u.approvalStatus === 'rejected') return false;
+      if (u.isActive !== true) return false;
+      if (u.isApproved !== true || u.approvalStatus === 'pending' || u.approvalStatus === 'rejected') return false;
       return true;
     };
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Evaluation, Department, EvaluationTemplate } from '../../types';
 import { getCurrentReviewerInfo, isEvaluationCompleted } from '../../utils/workflowUtils';
+import { isSameDepartment } from '../dashboards/DeptHeadDashboard';
 import { assignNewEvaluationToEmployee } from '../../services/storage';
 import { triggerWorkflowNotification } from '../../services/notificationService';
 import { StatusBadge } from '../common/StatusBadge';
@@ -40,6 +41,15 @@ export const WorkflowMonitoring: React.FC<WorkflowMonitoringProps> = ({
   const [search, setSearch] = useState('');
   const [selectedDept, setSelectedDept] = useState<string>('all');
   const [selectedStage, setSelectedStage] = useState<string>('all');
+  
+  const getEmployeeCount = (deptId: string, deptName?: string): number => {
+    return users.filter(u => 
+      u.isActive !== false && 
+      u.isApproved !== false && 
+      u.approvalStatus !== 'pending' &&
+      isSameDepartment(u.departmentName || u.departmentId, deptName || deptId)
+    ).length;
+  };
   
   // Assign Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -423,7 +433,7 @@ export const WorkflowMonitoring: React.FC<WorkflowMonitoringProps> = ({
                   >
                     {departments.map((d) => (
                       <option key={d.id} value={d.id}>
-                        {d.name} ({d.employeeCount || 0} employees)
+                        {d.name} ({getEmployeeCount(d.id, d.name)} employees)
                       </option>
                     ))}
                   </select>

@@ -123,7 +123,7 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     if (!currentUser || !isAuthenticated) return;
-    if (currentUser.isActive === false) {
+    if (currentUser.isActive !== true || currentUser.isApproved !== true || currentUser.approvalStatus === 'pending' || currentUser.approvalStatus === 'rejected') {
       setInactiveAccountModal({
         open: true,
         message: 'Your account has been placed on hold by the System Administrator or People Operations. Please contact HR/POD for assistance.'
@@ -162,7 +162,7 @@ export const App: React.FC = () => {
             }
           }
 
-          if (storedUser && storedUser.isActive !== false && storedUser.isApproved !== false && storedUser.approvalStatus !== 'pending') {
+          if (storedUser && storedUser.isActive === true && storedUser.isApproved === true && storedUser.approvalStatus === 'approved') {
             if (isMounted) {
               setCurrentUser(storedUser);
               setIsAuthenticated(true);
@@ -373,7 +373,7 @@ export const App: React.FC = () => {
     if (checkedAccountStatusRef.current === statusKey) return;
     checkedAccountStatusRef.current = statusKey;
 
-    if (currentUser.isActive === false || currentUser.isApproved === false || currentUser.approvalStatus === 'pending' || currentUser.approvalStatus === 'rejected') {
+    if (currentUser.isActive !== true || currentUser.isApproved !== true || currentUser.approvalStatus === 'pending' || currentUser.approvalStatus === 'rejected') {
       handleLogout();
     }
   }, [currentUser, isAuthenticated, handleLogout]);
@@ -478,6 +478,8 @@ export const App: React.FC = () => {
         if (freshUser) {
           const mergedFreshUser: User = {
             ...freshUser,
+            password: updatedUser.password || freshUser.password,
+            requiresPasswordChange: updatedUser.requiresPasswordChange ?? freshUser.requiresPasswordChange,
             avatarUrl: updatedUser.avatarUrl || freshUser.avatarUrl,
           };
           setCurrentUser(mergedFreshUser);
@@ -855,6 +857,7 @@ export const App: React.FC = () => {
             evaluations={evaluations}
             cycles={cycles}
             departments={departments}
+            users={users}
             onOpenEvaluation={(id) => {
               setSelectedEvalId(id);
               setActiveTab('evaluations');

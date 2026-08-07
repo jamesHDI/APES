@@ -3,6 +3,7 @@ import { User, Role } from '../types';
 import { getStoredUsers, saveUsers, getStoredCurrentUser, setCurrentUserStore, clearCurrentUserStore } from './storage';
 import { triggerRegistrationNotification } from './notificationService';
 import { ensureUuid, generateUuid, saveEmployeeToSupabase, saveEmployeeToSupabaseDetailed, fetchEmployeesFromSupabase, findEmployeeInSupabase } from './supabaseService';
+import { hashPassword, verifyPassword, isHashedPassword } from '../utils/crypto';
 
 export interface LoginCredentials {
   identifier: string; // Email or Employee ID
@@ -57,6 +58,8 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
   let isPwValid = false;
   if (!storedPw) {
     isPwValid = true;
+  } else if (isHashedPassword(storedPw)) {
+    isPwValid = await verifyPassword(inputPw, storedPw);
   } else if (inputPw === storedPw || inputPw.toLowerCase() === storedPw.toLowerCase()) {
     isPwValid = true;
   }
@@ -80,7 +83,7 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
     };
   }
 
-  if (matchedUser.isActive === false) {
+  if (matchedUser.isActive !== true) {
     return { user: null, error: 'Your account has been placed on hold. Please contact the People Operations Department for assistance.' };
   }
 
@@ -132,6 +135,7 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
 export const changeUserPassword = async (userIdOrEmail: string, newPassword: string): Promise<boolean> => {
   const cleanId = (userIdOrEmail || '').trim().toLowerCase();
   const users = getStoredUsers();
+  const hashedPassword = await hashPassword(newPassword);
   
   let targetUser: User | null = null;
   const idx = users.findIndex(
@@ -141,14 +145,14 @@ export const changeUserPassword = async (userIdOrEmail: string, newPassword: str
   );
 
   if (idx >= 0) {
-    targetUser = { ...users[idx], password: newPassword, requiresPasswordChange: false };
+    targetUser = { ...users[idx], password: hashedPassword, requiresPasswordChange: false };
     users[idx] = targetUser as User;
   }
   
   if (!targetUser) {
     const sbUser = await findEmployeeInSupabase(cleanId);
     if (sbUser) {
-      targetUser = { ...sbUser, password: newPassword, requiresPasswordChange: false };
+      targetUser = { ...sbUser, password: hashedPassword, requiresPasswordChange: false };
     }
   }
 
@@ -165,7 +169,7 @@ export const changeUserPassword = async (userIdOrEmail: string, newPassword: str
       departmentId: 'dept_adm',
       departmentName: 'Admin',
       position: 'System Administrator',
-      password: newPassword,
+      password: hashedPassword,
       requiresPasswordChange: false,
       isActive: true,
       isApproved: true,
@@ -184,7 +188,7 @@ export const changeUserPassword = async (userIdOrEmail: string, newPassword: str
       const { error: directErr } = await supabase
         .from('employees')
         .update({
-          password: newPassword,
+          password: hashedPassword,
           requires_password_change: false,
           updated_at: new Date().toISOString()
         })
@@ -245,6 +249,7 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
     employmentStatus: 'Regular',
     dateHired: new Date().toISOString().substring(0, 10),
     username: `${normalizedEmail.split('@')[0]}_${Math.floor(1000 + Math.random() * 9000)}`,
+    password: data.password ? await hashPassword(data.password) : '',
     isActive: false,
     isApproved: false,
     approvalStatus: 'pending',

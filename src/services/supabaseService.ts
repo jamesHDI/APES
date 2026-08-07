@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './supabaseClient';
 import { User, Department, Evaluation, Notification, EvaluationHistory, EvaluationScorecardArchive } from '../types';
+import { hashPassword, isHashedPassword } from '../utils/crypto';
 
 // Helper: Ensure valid UUID format for PostgreSQL UUID columns
 export const isValidUuid = (str?: string): boolean => {
@@ -71,7 +72,7 @@ const mapRowToUser = (row: any): User => ({
   departmentHeadName: row.department_head_name,
   defaultTemplateId: row.default_template_id,
   username: row.username,
-  password: row.password || (row.email === 'Admin.Systemad@hdiadventures.com' ? 'ADMIN' : 'password'),
+  password: row.password || '',
   requiresPasswordChange: row.requires_password_change ?? false,
   avatarUrl: row.avatar_url || '',
   isActive: row.is_active,
@@ -308,6 +309,11 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
 
     const targetId = existingId || mappedUuid;
 
+    let passwordToStore = user.password || '';
+    if (passwordToStore && !isHashedPassword(passwordToStore)) {
+      passwordToStore = await hashPassword(passwordToStore);
+    }
+
     const payload: any = {
       id: targetId,
       employee_number: user.employeeNumber || `EMP-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
@@ -326,7 +332,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       employment_status: user.employmentStatus || 'Regular',
       date_hired: user.dateHired || new Date().toISOString().substring(0, 10),
       username: user.username || `${cleanEmail.split('@')[0]}_${Date.now().toString().slice(-4)}_${Math.floor(1000 + Math.random() * 9000)}`,
-      password: user.password || '',
+      password: passwordToStore,
       requires_password_change: user.requiresPasswordChange ?? false,
       avatar_url: user.avatarUrl || '',
       is_active: user.isActive ?? true,

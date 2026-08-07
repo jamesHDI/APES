@@ -12,12 +12,14 @@ import {
   Search,
 } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
+import { isSameDepartment } from '../dashboards/DeptHeadDashboard';
 
 interface HRDashboardProps {
   currentUser: User;
   evaluations: Evaluation[];
   cycles: EvaluationCycle[];
   departments: Department[];
+  users: User[];
   onOpenEvaluation: (evalId: string) => void;
   onOpenTemplateBuilder: () => void;
   onOpenReports: () => void;
@@ -36,6 +38,7 @@ export const HRDashboard: React.FC<HRDashboardProps> = ({
   evaluations,
   cycles,
   departments,
+  users,
   onOpenEvaluation,
   onOpenTemplateBuilder,
   onOpenReports,
@@ -49,6 +52,15 @@ export const HRDashboard: React.FC<HRDashboardProps> = ({
   const pendingCount = evaluations.length - completedCount;
   const totalAssigned = activeCycle?.totalAssigned ?? 118;
   const completed = activeCycle?.completedCount ?? 94;
+
+  const getEmployeeCount = (dept: Department): number => {
+    return users.filter(u => 
+      u.isActive !== false && 
+      u.isApproved !== false && 
+      u.approvalStatus !== 'pending' &&
+      isSameDepartment(u.departmentName || u.departmentId, dept.name || dept.id)
+    ).length;
+  };
 
   const filteredDepts = deptFilter === 'all'
     ? departments
@@ -172,7 +184,7 @@ export const HRDashboard: React.FC<HRDashboardProps> = ({
                   />
                 </div>
                 <p className="text-xs text-slate-400">
-                  Head: {dept.headName} &nbsp;·&nbsp; {dept.employeeCount} staff
+                  Head: {dept.headName} &nbsp;·&nbsp; {getEmployeeCount(dept)} staff
                 </p>
               </div>
             );
