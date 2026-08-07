@@ -8,6 +8,7 @@ interface EvidenceUploadModalProps {
   onUploadFile: (file: EvidenceFile) => void;
   onRemoveFile: (fileId: string) => void;
   existingFiles: EvidenceFile[];
+  onUploadFileToStorage?: (file: File) => Promise<string | null>;
 }
 
 export const EvidenceUploadModal: React.FC<EvidenceUploadModalProps> = ({
@@ -16,6 +17,7 @@ export const EvidenceUploadModal: React.FC<EvidenceUploadModalProps> = ({
   onUploadFile,
   onRemoveFile,
   existingFiles,
+  onUploadFileToStorage,
 }) => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -47,8 +49,16 @@ export const EvidenceUploadModal: React.FC<EvidenceUploadModalProps> = ({
     }
   };
 
-  const handleConfirmUpload = () => {
+  const handleConfirmUpload = async () => {
     if (!selectedFile) return;
+
+    let fileUrl = '#';
+    if (onUploadFileToStorage) {
+      const uploadedUrl = await onUploadFileToStorage(selectedFile);
+      if (uploadedUrl) {
+        fileUrl = uploadedUrl;
+      }
+    }
 
     const newEvidence: EvidenceFile = {
       id: `ev_${Date.now()}`,
@@ -56,7 +66,7 @@ export const EvidenceUploadModal: React.FC<EvidenceUploadModalProps> = ({
       fileType: selectedFile.type || 'application/octet-stream',
       fileSize: selectedFile.size,
       uploadDate: new Date().toISOString().substring(0, 10),
-      url: '#'
+      url: fileUrl
     };
 
     onUploadFile(newEvidence);

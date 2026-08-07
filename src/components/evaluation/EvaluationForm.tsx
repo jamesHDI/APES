@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Evaluation, User, Role, DigitalSignature, EvidenceFile, PersonnelAction, ActionType } from '../../types';
 import { 
   computeKPIWeightedScore, 
-  computeEligibilityScore, 
+  computeEligibilityScore,
   computeCoreValuesAverage, 
   computeCoreValuesWeightedScore, 
   computeFinalPerformanceRating, 
@@ -10,6 +10,7 @@ import {
 } from '../../services/computationEngine';
 import { validateEvaluationForSubmission } from '../../services/validationService';
 import { triggerWorkflowNotification } from '../../services/notificationService';
+import { uploadFileToSupabaseStorage } from '../../services/supabaseService';
 import { WorkflowProgressBar } from '../workflow/WorkflowProgressBar';
 import { EvaluationProgressCard } from '../workflow/EvaluationProgressCard';
 import { EvaluationTimeline } from '../workflow/EvaluationTimeline';
@@ -1531,6 +1532,15 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         onUploadFile={handleUploadEvidence}
         onRemoveFile={handleRemoveEvidence}
         existingFiles={evalData.evidenceFiles}
+        onUploadFileToStorage={async (file) => {
+          try {
+            const url = await uploadFileToSupabaseStorage('apes-attachments', file.name, file);
+            return url;
+          } catch (err) {
+            console.warn('[Evidence Upload] Storage upload failed, keeping local metadata only:', err);
+            return null;
+          }
+        }}
       />
 
       <WorkflowAuditTrailModal

@@ -31,6 +31,7 @@ import {
   fetchNotificationsFromSupabase,
   saveEmployeeToSupabase,
   saveEmployeeToSupabaseDetailed,
+  saveDepartmentToSupabase,
   findEmployeeInSupabase,
   isValidUuid,
   ensureUuid
@@ -429,6 +430,16 @@ export const App: React.FC = () => {
     setUsers(updatedUsers);
     saveUsers(updatedUsers);
 
+    if (isSupabaseConfigured) {
+      try {
+        for (const u of updatedUsers) {
+          await saveEmployeeToSupabaseDetailed(u);
+        }
+      } catch (err) {
+        console.warn('[App] User sync to Supabase note:', err);
+      }
+    }
+
     // Sync current logged-in user if their profile was updated
     if (currentUser) {
       const matchMe = updatedUsers.find(u => u.id === currentUser.id || u.email.toLowerCase() === currentUser.email.toLowerCase());
@@ -511,9 +522,19 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleSaveDepartments = (updatedDepts: Department[]) => {
+  const handleSaveDepartments = async (updatedDepts: Department[]) => {
     setDepartments(updatedDepts);
     saveDepartments(updatedDepts);
+
+    if (isSupabaseConfigured) {
+      try {
+        for (const d of updatedDepts) {
+          await saveDepartmentToSupabase(d);
+        }
+      } catch (err) {
+        console.warn('[App] Department sync to Supabase note:', err);
+      }
+    }
   };
 
   const handleSaveEvaluation = async (updatedEval: Evaluation) => {
