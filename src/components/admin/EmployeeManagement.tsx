@@ -182,7 +182,8 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
         showToast(`${toggledUser.name} is now ${toggledUser.isActive ? 'Active' : 'Inactive'}`);
       }
     } catch (err) {
-      showToast('Failed to update account status. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update account status. Please try again.';
+      showToast(errorMessage);
       console.error('Failed to toggle user status:', err);
     }
   };

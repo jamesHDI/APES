@@ -441,7 +441,9 @@ export const App: React.FC = () => {
     }
 
     if (supabaseErrors.length > 0) {
-      console.warn('[App] Some users failed to sync to Supabase:', supabaseErrors);
+      const errorMessage = `Failed to sync ${supabaseErrors.length} user(s) to cloud database: ${supabaseErrors.join('; ')}`;
+      console.error('[App] Cloud sync errors:', errorMessage);
+      throw new Error(errorMessage);
     }
 
     // Sync current logged-in user if their profile was updated

@@ -268,10 +268,12 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
 
   // ── TRANSACTIONAL ORDERING: Step 1. Insert Employee Record into Supabase Database ──
   let supabaseSaveFailed = false;
+  let lastSupabaseError: any = null;
   if (isSupabaseConfigured && supabase) {
     const sbResult = await saveEmployeeToSupabaseDetailed(newUser);
     if (!sbResult.success) {
       const err = sbResult.error || { code: 'UNKNOWN', message: 'Database insert failed' };
+      lastSupabaseError = err;
       const fullErrText = `[Supabase Error Code ${err.code || 'N/A'}] ${err.message}${err.details ? ` | Details: ${err.details}` : ''}${err.hint ? ` | Hint: ${err.hint}` : ''}`;
       console.error('[Registration Supabase DB Error]', {
         code: err.code,
@@ -320,9 +322,10 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
   }
 
   if (supabaseSaveFailed) {
+    const err = lastSupabaseError || {};
     return { 
       user: newUser, 
-      error: 'Account registered locally, but cloud sync failed. Data is saved in this browser only. Please contact your administrator to verify the Supabase database connection.' 
+      error: `Account registered locally, but cloud sync failed [Error ${err.code || 'N/A'}]: ${err.message || 'Unknown error'}. Please contact your administrator to verify the Supabase database connection.` 
     };
   }
 
