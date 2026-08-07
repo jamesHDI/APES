@@ -2,6 +2,68 @@ import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './supa
 import { User, Department, Evaluation, Notification, EvaluationHistory, EvaluationScorecardArchive } from '../types';
 import { hashPassword, isHashedPassword } from '../utils/crypto';
 
+export const getSupabaseDiagnostics = (): { configured: boolean; url: string; keyPrefix: string; error?: string } => {
+  const metaEnv = (import.meta as any).env || {};
+  const url = (metaEnv.VITE_SUPABASE_URL || '').trim().replace(/^['"]|['"]$/g, '');
+  const key = (metaEnv.VITE_SUPABASE_ANON_KEY || '').trim().replace(/^['"]|['"]$/g, '');
+
+  if (!url || !key) {
+    return {
+      configured: false,
+      url: url || 'MISSING',
+      keyPrefix: key ? key.substring(0, 8) : 'MISSING',
+      error: 'Supabase environment variables are not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.'
+    };
+  }
+
+  if (url === 'https://your-supabase-project.supabase.co' || key === 'your-supabase-anon-key-here') {
+    return {
+      configured: false,
+      url,
+      keyPrefix: key.substring(0, 8),
+      error: 'Supabase credentials are still using placeholder values. Please replace them with your actual project credentials from the Supabase Dashboard.'
+    };
+  }
+
+  if (!url.startsWith('http')) {
+    return {
+      configured: false,
+      url,
+      keyPrefix: key.substring(0, 8),
+      error: 'Invalid Supabase URL format. It should start with https://'
+    };
+  }
+
+  return {
+    configured: true,
+    url,
+    keyPrefix: key.substring(0, 8) + '...'
+  };
+};
+
+export const testSupabaseConnection = async (): Promise<{ success: boolean; error?: string }> => {
+  if (!isSupabaseConfigured || !supabase) {
+    const diag = getSupabaseDiagnostics();
+    return { success: false, error: diag.error || 'Supabase is not configured.' };
+  }
+
+  try {
+    const { error } = await supabase.from('employees').select('count').limit(1);
+    if (error) {
+      if (error.code === '15' || error.message?.includes('key.usages')) {
+        return {
+          success: false,
+          error: 'API key permission error. Verify that VITE_SUPABASE_ANON_KEY is the correct anon/public key (not service_role) and that it has not been regenerated.'
+        };
+      }
+      return { success: false, error: error.message || 'Unknown database error' };
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Connection test failed' };
+  }
+};
+
 // Helper: Ensure valid UUID format for PostgreSQL UUID columns
 export const isValidUuid = (str?: string): boolean => {
   if (!str) return false;
@@ -224,6 +286,7 @@ export interface SupabaseSaveResult {
     message: string;
     details?: string;
     hint?: string;
+    raw?: any;
   };
 }
 
@@ -298,7 +361,10 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       } else {
         checkQuery = checkQuery.ilike('email', cleanEmail);
       }
-      const { data: existing } = await checkQuery.maybeSingle();
+      const { data: existing, error: checkErr } = await checkQuery.maybeSingle();
+      if (checkErr) {
+        console.warn('[Supabase DB Update] Existing record check failed:', checkErr);
+      }
       if (existing && existing.id) {
         existingId = existing.id;
         console.log(`[Supabase DB Update] Matched existing DB record ID: ${existingId}`);
@@ -380,13 +446,30 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
 
     if (saveErr) {
       console.error('[Supabase DB Update] UPDATE Query Failed:', saveErr);
+      const errorMessage = saveErr?.message || 'Unknown database error';
+      const errorDetails = saveErr?.details || '';
+      const errorHint = saveErr?.hint || '';
+      const errorCode = saveErr?.code || 'UNKNOWN';
+
+      let userFriendlyMessage = `Database update failed (Code: ${errorCode})`;
+      if (errorCode === '15' || errorMessage.includes('key.usages')) {
+        userFriendlyMessage = 'Database access denied: The Supabase API key does not have the required permissions. Please verify your VITE_SUPABASE_ANON_KEY in the .env file.';
+      } else if (errorMessage.includes('JWT')) {
+        userFriendlyMessage = 'Authentication token expired. Please refresh and try again.';
+      } else if (errorMessage.includes('permission') || errorMessage.includes('denied')) {
+        userFriendlyMessage = 'Permission denied. Please check Row Level Security (RLS) policies in Supabase.';
+      } else if (errorMessage.includes('duplicate key') || errorMessage.includes('already exists')) {
+        userFriendlyMessage = 'A record with this information already exists.';
+      }
+
       return {
         success: false,
         error: {
-          code: saveErr.code,
-          message: saveErr.message,
-          details: saveErr.details,
-          hint: saveErr.hint
+          code: errorCode,
+          message: userFriendlyMessage,
+          details: errorDetails,
+          hint: errorHint,
+          raw: saveErr
         }
       };
     }

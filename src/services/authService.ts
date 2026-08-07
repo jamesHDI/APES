@@ -267,6 +267,7 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
   };
 
   // ── TRANSACTIONAL ORDERING: Step 1. Insert Employee Record into Supabase Database ──
+  let supabaseSaveFailed = false;
   if (isSupabaseConfigured && supabase) {
     const sbResult = await saveEmployeeToSupabaseDetailed(newUser);
     if (!sbResult.success) {
@@ -279,10 +280,23 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
         hint: err.hint,
         email: normalizedEmail
       });
-      return { 
-        user: null, 
-        error: `Database Insert Rejected: ${fullErrText}` 
-      };
+
+      // Check if this is a key/permission error - allow fallback to local storage
+      const isPermissionError = err.code === '15' || 
+                                err.message?.includes('key.usages') || 
+                                err.message?.includes('permission') ||
+                                err.message?.includes('JWT') ||
+                                err.message?.includes('not configured');
+
+      if (isPermissionError) {
+        console.warn('[Registration] Supabase permission error, falling back to local storage only.');
+        supabaseSaveFailed = true;
+      } else {
+        return { 
+          user: null, 
+          error: `Database Insert Rejected: ${fullErrText}` 
+        };
+      }
     }
   }
 
@@ -303,6 +317,13 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
     } catch (err) {
       console.warn('Supabase signUp warning:', err);
     }
+  }
+
+  if (supabaseSaveFailed) {
+    return { 
+      user: newUser, 
+      error: 'Account registered locally, but cloud sync failed. Data is saved in this browser only. Please contact your administrator to verify the Supabase database connection.' 
+    };
   }
 
   return { user: newUser };

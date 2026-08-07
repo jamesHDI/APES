@@ -427,13 +427,21 @@ export const App: React.FC = () => {
     setUsers(updatedUsers);
     saveUsers(updatedUsers);
 
+    let supabaseErrors: string[] = [];
     if (isSupabaseConfigured) {
       for (const u of updatedUsers) {
         const result = await saveEmployeeToSupabaseDetailed(u);
         if (!result.success) {
-          throw new Error(result.error?.message || 'Failed to sync user to database');
+          const err = (result.error || {}) as Record<string, any>;
+          const errorMsg = err.message || err.code || 'Unknown error';
+          supabaseErrors.push(`${u.email}: ${errorMsg}`);
+          console.warn(`[App] Failed to sync user ${u.email} to Supabase:`, err);
         }
       }
+    }
+
+    if (supabaseErrors.length > 0) {
+      console.warn('[App] Some users failed to sync to Supabase:', supabaseErrors);
     }
 
     // Sync current logged-in user if their profile was updated
