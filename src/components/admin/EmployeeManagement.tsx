@@ -170,13 +170,21 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     const updated = userList.map((u) => {
       if (u.id === userId) {
         const nextStatus = !u.isActive;
-        showToast(`${u.name} is now ${nextStatus ? 'Active' : 'Inactive'}`);
         return { ...u, isActive: nextStatus };
       }
       return u;
     });
     setUserList(updated);
-    await onSaveUsers(updated);
+    try {
+      await onSaveUsers(updated);
+      const toggledUser = updated.find(u => u.id === userId);
+      if (toggledUser) {
+        showToast(`${toggledUser.name} is now ${toggledUser.isActive ? 'Active' : 'Inactive'}`);
+      }
+    } catch (err) {
+      showToast('Failed to update account status. Please try again.');
+      console.error('Failed to toggle user status:', err);
+    }
   };
 
   const handleDeleteUser = async (user: User) => {
@@ -188,9 +196,14 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     if (confirm(`Are you sure you want to delete employee record for ${user.name} (${user.email})?`)) {
       const updated = userList.filter(u => u.id !== user.id);
       setUserList(updated);
-      await onSaveUsers(updated);
-      deleteEmployeeFromSupabase(user.id);
-      showToast(`Deleted account for ${user.name}`);
+      try {
+        await onSaveUsers(updated);
+        await deleteEmployeeFromSupabase(user.id);
+        showToast(`Deleted account for ${user.name}`);
+      } catch (err) {
+        showToast('Failed to delete account. Please try again.');
+        console.error('Failed to delete user:', err);
+      }
     }
   };
 
@@ -240,11 +253,16 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
         return u;
       });
       setUserList(updated);
-      await onSaveUsers(updated);
-      if (savedTargetUser) {
-        await saveEmployeeToSupabase(savedTargetUser);
+      try {
+        await onSaveUsers(updated);
+        if (savedTargetUser) {
+          await saveEmployeeToSupabase(savedTargetUser);
+        }
+        showToast(`Updated personnel profile for ${fullName}`);
+      } catch (err) {
+        showToast('Failed to update profile. Please try again.');
+        console.error('Failed to save employee:', err);
       }
-      showToast(`Updated personnel profile for ${fullName}`);
     }
 
     setShowAddModal(false);

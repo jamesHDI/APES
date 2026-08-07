@@ -379,21 +379,19 @@ export const App: React.FC = () => {
     }
   }, [currentUser, isAuthenticated, handleLogout]);
 
-  const handleRegisterNewUser = (newUser: User) => {
+  const handleRegisterNewUser = async (newUser: User) => {
     const updated = [newUser, ...users];
     setUsers(updated);
-    saveUsers(updated);
-    saveEmployeeToSupabase(newUser);
+    await handleSaveUsers(updated);
   };
 
-  const handleApproveUser = (approvedUser: User) => {
+  const handleApproveUser = async (approvedUser: User) => {
     const updated = users.map(u => u.id === approvedUser.id ? approvedUser : u);
     setUsers(updated);
-    saveUsers(updated);
-    saveEmployeeToSupabase(approvedUser);
+    await handleSaveUsers(updated);
   };
 
-  const handleRejectUser = (userId: string, remarks: string) => {
+  const handleRejectUser = async (userId: string, remarks: string) => {
     const updated = users.map(u => {
       if (u.id === userId) {
         const rejected: User = {
@@ -403,13 +401,12 @@ export const App: React.FC = () => {
           approvalStatus: 'rejected' as const,
           hrRejectionRemarks: remarks
         };
-        saveEmployeeToSupabase(rejected);
         return rejected;
       }
       return u;
     });
     setUsers(updated);
-    saveUsers(updated);
+    await handleSaveUsers(updated);
   };
 
   const handleMarkNotificationRead = async (notifId: string) => {
@@ -431,12 +428,11 @@ export const App: React.FC = () => {
     saveUsers(updatedUsers);
 
     if (isSupabaseConfigured) {
-      try {
-        for (const u of updatedUsers) {
-          await saveEmployeeToSupabaseDetailed(u);
+      for (const u of updatedUsers) {
+        const result = await saveEmployeeToSupabaseDetailed(u);
+        if (!result.success) {
+          throw new Error(result.error?.message || 'Failed to sync user to database');
         }
-      } catch (err) {
-        console.warn('[App] User sync to Supabase note:', err);
       }
     }
 
@@ -464,7 +460,6 @@ export const App: React.FC = () => {
           departmentId: matchedUser.departmentId || ev.departmentId,
           updatedAt: new Date().toISOString()
         };
-        saveSingleEvaluation(updatedEv);
         return updatedEv;
       }
       return ev;
@@ -472,7 +467,10 @@ export const App: React.FC = () => {
 
     if (evalsChanged) {
       setEvaluations(syncedEvals);
+      saveEvaluations(syncedEvals);
     }
+
+    triggerRealtimeBroadcast('data_changed', { type: 'employee' });
   };
 
   const handleUpdateCurrentUser = async (updatedUser: User) => {
