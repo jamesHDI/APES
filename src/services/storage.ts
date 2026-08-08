@@ -7,7 +7,9 @@ import {
   saveEvaluationHistoryToSupabase,
   saveScorecardArchiveToSupabase,
   generateScorecardPdfBlob,
-  uploadScorecardPdfToSupabase
+  uploadScorecardPdfToSupabase,
+  uploadEvidenceFilesToSupabase,
+  uploadSignaturesToSupabase
 } from './supabaseService';
 
 const USERS_KEY = 'apes_users_v3';
@@ -483,6 +485,143 @@ export const saveSingleEvaluation = async (evaluation: Evaluation, historyActor?
     }
   }
 };
+
+export interface ArchiveTransactionResult {
+  success: boolean;
+  failedStep?: string;
+  error?: string;
+  stepResults: {
+    dataValidated: boolean;
+    pdfGenerated: boolean;
+    pdfUploaded: boolean;
+    evidenceUploaded: boolean;
+    signaturesUploaded: boolean;
+    historySaved: boolean;
+    archiveSaved: boolean;
+    evaluationSaved: boolean;
+  };
+  archivedEvaluation?: Evaluation;
+}
+
+export const archiveEvaluationTransaction = async (
+  evaluation: Evaluation,
+  actor: { name: string; role: string; id?: string }
+): Promise<ArchiveTransactionResult> => {
+  const stepResults = {
+    dataValidated: false,
+    pdfGenerated: false,
+    pdfUploaded: false,
+    evidenceUploaded: false,
+    signaturesUploaded: false,
+    historySaved: false,
+    archiveSaved: false,
+    evaluationSaved: false
+  };
+
+  if (!evaluation || !evaluation.id || !evaluation.employeeName) {
+    return {
+      success: false,
+      failedStep: 'Validation failed: Invalid or incomplete evaluation record',
+      error: 'Evaluation record is missing required fields (id or employeeName).',
+      stepResults
+    };
+  }
+  stepResults.dataValidated = true;
+
+  try {
+    // 1. Upload Evidence Files to Supabase Storage
+    const updatedEvidenceFiles = await uploadEvidenceFilesToSupabase(evaluation);
+    stepResults.evidenceUploaded = true;
+
+    // 2. Upload Signatures to Supabase Storage
+    const updatedSignatures = await uploadSignaturesToSupabase(evaluation);
+    stepResults.signaturesUploaded = true;
+
+    const evalWithFiles: Evaluation = {
+      ...evaluation,
+      evidenceFiles: updatedEvidenceFiles,
+      signatures: updatedSignatures
+    };
+
+    // 3. Generate Official Scoreboard PDF Blob
+    const pdfBlob = await generateScorecardPdfBlob(evalWithFiles);
+    let uploadResult: { pdfUrl: string; storagePath: string; fileName: string; fileSize: number; uploadedAt: string } | null = null;
+
+    if (pdfBlob) {
+      stepResults.pdfGenerated = true;
+      // 4. Upload Official Scoreboard PDF to Supabase Storage
+      uploadResult = await uploadScorecardPdfToSupabase(evalWithFiles, pdfBlob);
+      if (uploadResult) {
+        stepResults.pdfUploaded = true;
+      } else {
+        console.warn('[Archive Transaction] Scorecard PDF upload to storage returned null, proceeding with fallback URL...');
+      }
+    } else {
+      console.warn('[Archive Transaction] Scorecard PDF blob generation returned null...');
+    }
+
+    const archivedEvalRecord: Evaluation = {
+      ...evalWithFiles,
+      status: 'archived' as const,
+      updatedAt: new Date().toISOString()
+    };
+
+    // 5. Save History Snapshot to DB & LocalStorage (uses actual evaluated employee info)
+    const historySnapshot = buildEvaluationHistorySnapshot(archivedEvalRecord, actor);
+    const historyOk = await saveEvaluationHistoryToSupabase(historySnapshot);
+    const currentHistory = getStoredEvaluationHistory();
+    const existingHistIdx = currentHistory.findIndex(h => h.evaluationId === evaluation.id && h.status === 'archived');
+    if (existingHistIdx >= 0) {
+      currentHistory[existingHistIdx] = historySnapshot;
+    } else {
+      currentHistory.unshift(historySnapshot);
+    }
+    saveEvaluationHistory(currentHistory);
+    stepResults.historySaved = true;
+
+    // 6. Save Scorecard Archive Record to DB & LocalStorage
+    const scorecardArchive = buildScorecardArchive(archivedEvalRecord, actor);
+    if (uploadResult) {
+      scorecardArchive.pdfUrl = uploadResult.pdfUrl;
+      scorecardArchive.storagePath = uploadResult.storagePath;
+      scorecardArchive.fileName = uploadResult.fileName;
+      scorecardArchive.fileSize = uploadResult.fileSize;
+      scorecardArchive.uploadedAt = uploadResult.uploadedAt;
+    }
+
+    const archiveOk = await saveScorecardArchiveToSupabase(scorecardArchive);
+    saveScorecardArchive(scorecardArchive);
+    stepResults.archiveSaved = true;
+
+    // 7. Save Main Evaluation Record with status 'archived'
+    await saveEvaluationToSupabase(archivedEvalRecord);
+    const evaluations = getStoredEvaluations();
+    const index = evaluations.findIndex((e) => e.id === evaluation.id);
+    let updatedList = [...evaluations];
+    if (index >= 0) {
+      updatedList[index] = archivedEvalRecord;
+    } else {
+      updatedList.unshift(archivedEvalRecord);
+    }
+    saveEvaluations(updatedList);
+    stepResults.evaluationSaved = true;
+
+    return {
+      success: true,
+      stepResults,
+      archivedEvaluation: archivedEvalRecord
+    };
+  } catch (err: any) {
+    console.error('[Archive Transaction] Unexpected error during archiving:', err);
+    return {
+      success: false,
+      failedStep: 'Archive transaction failed due to unexpected error',
+      error: err?.message || String(err),
+      stepResults
+    };
+  }
+};
+
 
 export const assignNewEvaluationToEmployee = async (
   employee: User,

@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './supabaseClient';
-import { User, Department, Evaluation, Notification, EvaluationHistory, EvaluationScorecardArchive } from '../types';
+import { User, Department, Evaluation, Notification, EvaluationHistory, EvaluationScorecardArchive, EvidenceFile } from '../types';
 import { hashPassword, isHashedPassword } from '../utils/crypto';
 
 export const logEmployeesSchema = async (): Promise<void> => {
@@ -919,15 +919,15 @@ export const saveEvaluationHistoryToSupabase = async (history: EvaluationHistory
 
   try {
     const payload = {
-      id: history.id,
-      evaluation_id: history.evaluationId,
-      employee_id: history.employeeId,
+      id: ensureUuid(history.id),
+      evaluation_id: ensureUuid(history.evaluationId),
+      employee_id: ensureUuid(history.employeeId),
       employee_name: history.employeeName,
       department_name: history.departmentName,
       position: history.position,
       appraisal_period: history.appraisalPeriod,
-      cycle_id: history.cycleId || null,
-      template_id: history.templateId || null,
+      cycle_id: isValidUuid(history.cycleId) ? history.cycleId : null,
+      template_id: isValidUuid(history.templateId) ? history.templateId : null,
       workflow_type: history.workflowType,
       workflow_stage: history.workflowStage,
       status: history.status,
@@ -950,9 +950,9 @@ export const saveEvaluationHistoryToSupabase = async (history: EvaluationHistory
       created_at: history.createdAt
     };
 
-    const { error } = await supabase.from('evaluation_history').insert(payload, { onConflict: 'id' });
+    const { error } = await supabase.from('evaluation_history').upsert(payload, { onConflict: 'id' });
     if (error) {
-      console.error('[Evaluation History] Supabase insert error:', error.message, error.details);
+      console.error('[Evaluation History] Supabase upsert error:', error.message, error.details);
     } else {
       console.log(`[APES Sync - History] Saved history ${history.id} for evaluation ${history.evaluationId} (${history.employeeName}).`);
     }
@@ -968,17 +968,17 @@ export const saveScorecardArchiveToSupabase = async (archive: EvaluationScorecar
 
   try {
     const payload = {
-      id: archive.id,
-      evaluation_id: archive.evaluationId,
-      employee_id: archive.employeeId,
+      id: ensureUuid(archive.id),
+      evaluation_id: ensureUuid(archive.evaluationId),
+      employee_id: ensureUuid(archive.employeeId),
       employee_name: archive.employeeName,
       employee_email: archive.employeeEmail || null,
       department_name: archive.departmentName,
-      department_id: archive.departmentId || null,
+      department_id: isValidUuid(archive.departmentId) ? archive.departmentId : null,
       position: archive.position,
       appraisal_period: archive.appraisalPeriod,
-      cycle_id: archive.cycleId || null,
-      template_id: archive.templateId || null,
+      cycle_id: isValidUuid(archive.cycleId) ? archive.cycleId : null,
+      template_id: isValidUuid(archive.templateId) ? archive.templateId : null,
       workflow_type: archive.workflowType,
       workflow_stage: archive.workflowStage,
       status: archive.status,
@@ -1010,9 +1010,15 @@ export const saveScorecardArchiveToSupabase = async (archive: EvaluationScorecar
       uploaded_at: archive.uploadedAt || null
     };
 
-    const { error } = await supabase.from('evaluation_scorecard_archives').insert(payload, { onConflict: 'id' });
+    let { error } = await supabase.from('evaluation_scorecard_archives').upsert(payload, { onConflict: 'id' });
+    if (error && (error.message.includes('relation') || error.code === '42P01')) {
+      console.warn('[Scorecard Archive] Trying fallback table name evaluation_scoreboard_archived...');
+      const fallbackRes = await supabase.from('evaluation_scoreboard_archived').upsert(payload, { onConflict: 'id' });
+      error = fallbackRes.error;
+    }
+
     if (error) {
-      console.error('[Scorecard Archive] Supabase insert error:', error.message, error.details);
+      console.error('[Scorecard Archive] Supabase upsert error:', error.message, error.details);
     } else {
       console.log(`[APES Sync - Archive] Saved scorecard archive ${archive.id} for evaluation ${archive.evaluationId} (${archive.employeeName}).`);
     }
@@ -1020,6 +1026,122 @@ export const saveScorecardArchiveToSupabase = async (archive: EvaluationScorecar
   } catch (err) {
     console.warn('Error saving scorecard archive to Supabase:', err);
     return false;
+  }
+};
+
+export const fetchEvaluationHistoryFromSupabase = async (): Promise<EvaluationHistory[] | null> => {
+  if (!isSupabaseConfigured || !supabase) return null;
+
+  try {
+    const { data, error } = await supabase.from('evaluation_history').select('*').order('created_at', { ascending: false });
+    if (error || !data) {
+      console.warn('[Supabase Sync] Fetch evaluation_history warning:', error?.message);
+      return null;
+    }
+
+    const mapped: EvaluationHistory[] = data.map((h: any) => ({
+      id: h.id,
+      evaluationId: h.evaluation_id,
+      employeeId: h.employee_id,
+      employeeName: h.employee_name,
+      departmentName: h.department_name,
+      position: h.position,
+      appraisalPeriod: h.appraisal_period,
+      cycleId: h.cycle_id,
+      templateId: h.template_id,
+      workflowType: h.workflow_type,
+      workflowStage: h.workflow_stage,
+      status: h.status,
+      kpiRatings: Array.isArray(h.kpi_ratings_data) ? h.kpi_ratings_data : [],
+      coreValueRatings: Array.isArray(h.core_value_ratings_data) ? h.core_value_ratings_data : [],
+      signatures: h.signatures_data || {},
+      developmentPlan: h.development_plan_data || {},
+      personnelAction: h.personnel_action_data || {},
+      eligibilityScore: Number(h.eligibility_score || 0),
+      coreValuesScore: Number(h.core_values_score || 0),
+      finalRating: Number(h.final_rating || 0),
+      ratingClassification: h.rating_classification,
+      submittedByName: h.submitted_by_name,
+      submittedByRole: h.submitted_by_role,
+      submittedById: h.submitted_by_id,
+      appraiseeSummaryComment: h.appraisee_summary_comment,
+      supervisorSummaryComment: h.supervisor_summary_comment,
+      presidentSummaryComment: h.president_summary_comment,
+      podValidationComment: h.pod_validation_comment,
+      createdAt: h.created_at
+    }));
+
+    return mapped;
+  } catch (err) {
+    console.warn('Error fetching evaluation history from Supabase:', err);
+    return null;
+  }
+};
+
+export const fetchScorecardArchivesFromSupabase = async (): Promise<EvaluationScorecardArchive[] | null> => {
+  if (!isSupabaseConfigured || !supabase) return null;
+
+  try {
+    let { data, error } = await supabase.from('evaluation_scorecard_archives').select('*').order('archived_at', { ascending: false });
+    
+    if (error && (error.message.includes('relation') || error.code === '42P01')) {
+      const fallbackRes = await supabase.from('evaluation_scoreboard_archived').select('*').order('archived_at', { ascending: false });
+      data = fallbackRes.data;
+      error = fallbackRes.error;
+    }
+
+    if (error || !data) {
+      console.warn('[Supabase Sync] Fetch evaluation_scorecard_archives warning:', error?.message);
+      return null;
+    }
+
+    const mapped: EvaluationScorecardArchive[] = data.map((a: any) => ({
+      id: a.id,
+      evaluationId: a.evaluation_id,
+      employeeId: a.employee_id,
+      employeeName: a.employee_name,
+      employeeEmail: a.employee_email,
+      departmentName: a.department_name,
+      departmentId: a.department_id,
+      position: a.position,
+      appraisalPeriod: a.appraisal_period,
+      cycleId: a.cycle_id,
+      templateId: a.template_id,
+      workflowType: a.workflow_type,
+      workflowStage: a.workflow_stage,
+      status: a.status,
+      kpiRatingsData: Array.isArray(a.kpi_ratings_data) ? a.kpi_ratings_data : [],
+      coreValueRatingsData: Array.isArray(a.core_value_ratings_data) ? a.core_value_ratings_data : [],
+      signaturesData: a.signatures_data || {},
+      developmentPlanData: a.development_plan_data || {},
+      personnelActionData: a.personnel_action_data || {},
+      evidenceFilesData: Array.isArray(a.evidence_files_data) ? a.evidence_files_data : [],
+      stepHistoryData: Array.isArray(a.step_history_data) ? a.step_history_data : [],
+      auditTrailData: Array.isArray(a.audit_trail_data) ? a.audit_trail_data : [],
+      eligibilityScore: Number(a.eligibility_score || 0),
+      coreValuesScore: Number(a.core_values_score || 0),
+      finalRating: Number(a.final_rating || 0),
+      ratingClassification: a.rating_classification,
+      appraiseeSummaryComment: a.appraisee_summary_comment,
+      supervisorSummaryComment: a.supervisor_summary_comment,
+      presidentSummaryComment: a.president_summary_comment,
+      podValidationComment: a.pod_validation_comment,
+      submittedByName: a.submitted_by_name,
+      submittedByRole: a.submitted_by_role,
+      submittedById: a.submitted_by_id,
+      createdAt: a.created_at,
+      archivedAt: a.archived_at,
+      pdfUrl: a.pdf_url,
+      storagePath: a.storage_path,
+      fileName: a.file_name,
+      fileSize: Number(a.file_size || 0),
+      uploadedAt: a.uploaded_at
+    }));
+
+    return mapped;
+  } catch (err) {
+    console.warn('Error fetching scorecard archives from Supabase:', err);
+    return null;
   }
 };
 
@@ -1036,7 +1158,16 @@ export const uploadFileToSupabaseStorage = async (
 
   try {
     const filePath = `${Date.now()}_${fileName}`;
-    const { error } = await supabase.storage.from(bucket).upload(filePath, fileBlob);
+    let { error } = await supabase.storage.from(bucket).upload(filePath, fileBlob, { upsert: true });
+
+    if (error && bucket === 'apes-signatures') {
+      // Fallback to apes-attachments if apes-signatures bucket doesn't exist
+      const fallbackRes = await supabase.storage.from('apes-attachments').upload(`signatures/${filePath}`, fileBlob, { upsert: true });
+      if (!fallbackRes.error) {
+        const { data: fallbackUrl } = supabase.storage.from('apes-attachments').getPublicUrl(`signatures/${filePath}`);
+        return fallbackUrl?.publicUrl || null;
+      }
+    }
 
     if (error) return null;
 
@@ -1388,12 +1519,12 @@ export const uploadScorecardPdfToSupabase = async (
   if (!isSupabaseConfigured || !supabase) return null;
 
   try {
-    const sanitizedPeriod = evaluation.appraisalPeriod.replace(/[^a-zA-Z0-9]/g, '-');
-    const sanitizedName = evaluation.employeeName.replace(/[^a-zA-Z0-9]/g, '-');
-    const fileName = `scorecard-${sanitizedName}-${sanitizedPeriod}-${evaluation.id}.pdf`;
-    const storagePath = `evaluation-scoreboards/${evaluation.employeeId}/${fileName}`;
+    const targetEmpId = isValidUuid(evaluation.employeeId) ? evaluation.employeeId : ensureUuid(evaluation.employeeId);
+    const targetEvalId = isValidUuid(evaluation.id) ? evaluation.id : ensureUuid(evaluation.id);
+    const fileName = `official-scoreboard.pdf`;
+    const storagePath = `evaluation-scoreboards/${targetEmpId}/${targetEvalId}/${fileName}`;
 
-    const { error } = await supabase.storage
+    let { error } = await supabase.storage
       .from('apes-attachments')
       .upload(storagePath, fileBlob, {
         contentType: 'application/pdf',
@@ -1419,3 +1550,98 @@ export const uploadScorecardPdfToSupabase = async (
     return null;
   }
 };
+
+export const uploadEvidenceFilesToSupabase = async (
+  evaluation: Evaluation
+): Promise<EvidenceFile[]> => {
+  if (!isSupabaseConfigured || !supabase || !evaluation.evidenceFiles || evaluation.evidenceFiles.length === 0) {
+    return evaluation.evidenceFiles || [];
+  }
+
+  const targetEmpId = isValidUuid(evaluation.employeeId) ? evaluation.employeeId : ensureUuid(evaluation.employeeId);
+  const targetEvalId = isValidUuid(evaluation.id) ? evaluation.id : ensureUuid(evaluation.id);
+
+  const updatedEvidence = await Promise.all(
+    evaluation.evidenceFiles.map(async (file: EvidenceFile) => {
+      if (file.url && (file.url.startsWith('http://') || file.url.startsWith('https://')) && !file.url.startsWith('data:')) {
+        return file;
+      }
+      try {
+        const storagePath = `evaluation-evidence/${targetEmpId}/${targetEvalId}/${file.fileName}`;
+        let fileBlob: Blob | null = null;
+
+        if (file.url && file.url.startsWith('data:')) {
+          const res = await fetch(file.url);
+          fileBlob = await res.blob();
+        }
+
+        if (fileBlob) {
+          const { error } = await supabase.storage.from('apes-attachments').upload(storagePath, fileBlob, { upsert: true });
+          if (!error) {
+            const { data } = supabase.storage.from('apes-attachments').getPublicUrl(storagePath);
+            return {
+              ...file,
+              url: data?.publicUrl || file.url
+            };
+          }
+        }
+      } catch (err) {
+        console.warn(`[Evidence Upload] Skipped uploading evidence file ${file.fileName}:`, err);
+      }
+      return file;
+    })
+  );
+
+  return updatedEvidence;
+};
+
+export const uploadSignaturesToSupabase = async (
+  evaluation: Evaluation
+): Promise<Record<string, any>> => {
+  if (!isSupabaseConfigured || !supabase || !evaluation.signatures) {
+    return evaluation.signatures || {};
+  }
+
+  const targetEmpId = isValidUuid(evaluation.employeeId) ? evaluation.employeeId : ensureUuid(evaluation.employeeId);
+  const targetEvalId = isValidUuid(evaluation.id) ? evaluation.id : ensureUuid(evaluation.id);
+
+  const sigMap = evaluation.signatures as Record<string, any>;
+  const roles = Object.keys(sigMap);
+  const updatedSignatures: Record<string, any> = { ...sigMap };
+
+  for (const role of roles) {
+    const sig = sigMap[role];
+    if (!sig || !sig.signatureDataUrl) continue;
+
+    if (sig.signatureDataUrl.startsWith('https://') || sig.signatureDataUrl.startsWith('http://')) {
+      continue;
+    }
+
+    try {
+      const storagePath = `evaluation-signatures/${targetEmpId}/${targetEvalId}/${role}-signature.png`;
+      const res = await fetch(sig.signatureDataUrl);
+      const blob = await res.blob();
+
+      const bucket = 'apes-signatures';
+      let { error } = await supabase.storage.from(bucket).upload(storagePath, blob, { contentType: 'image/png', upsert: true });
+
+      if (error) {
+        // Fallback to apes-attachments bucket
+        const fallbackRes = await supabase.storage.from('apes-attachments').upload(storagePath, blob, { contentType: 'image/png', upsert: true });
+        if (!fallbackRes.error) {
+          const { data } = supabase.storage.from('apes-attachments').getPublicUrl(storagePath);
+          updatedSignatures[role] = { ...sig, signatureDataUrl: data?.publicUrl || sig.signatureDataUrl, storagePath };
+          continue;
+        }
+      } else {
+        const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+        updatedSignatures[role] = { ...sig, signatureDataUrl: data?.publicUrl || sig.signatureDataUrl, storagePath };
+      }
+    } catch (err) {
+      console.warn(`[Signature Upload] Skipped uploading signature for ${role}:`, err);
+    }
+  }
+
+  return updatedSignatures;
+};
+

@@ -11,6 +11,7 @@ import {
 import { validateEvaluationForSubmission } from '../../services/validationService';
 import { triggerWorkflowNotification } from '../../services/notificationService';
 import { uploadFileToSupabaseStorage } from '../../services/supabaseService';
+import { archiveEvaluationTransaction, ArchiveTransactionResult } from '../../services/storage';
 import { WorkflowProgressBar } from '../workflow/WorkflowProgressBar';
 import { EvaluationProgressCard } from '../workflow/EvaluationProgressCard';
 import { EvaluationTimeline } from '../workflow/EvaluationTimeline';
@@ -62,6 +63,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [confirmAction, setConfirmAction] = useState<null | 'employee' | 'supervisor' | 'president' | 'pod'>(null);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [archiveFailure, setArchiveFailure] = useState<ArchiveTransactionResult | null>(null);
 
   useEffect(() => {
     setEvalData(initialEvaluation);
@@ -1557,6 +1560,91 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         onClose={() => setShowReturnModal(false)}
         onConfirmReturn={handleConfirmReturn}
       />
+
+      {/* Archiving Loading Backdrop */}
+      {isArchiving && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/70 backdrop-blur-sm text-white space-y-4 animate-in fade-in duration-200">
+          <div className="w-12 h-12 border-4 border-white/20 border-t-[#F28C28] rounded-full animate-spin" />
+          <div className="text-center">
+            <h3 className="font-bold text-lg">Archiving Performance Evaluation</h3>
+            <p className="text-xs text-slate-300 mt-1 max-w-sm">
+              Generating official scoreboard PDF, uploading attachments to storage, and storing permanent history records...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Archiving Transaction Failure Modal */}
+      {archiveFailure && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 border border-red-200 dark:border-red-900">
+            <div className="flex items-center space-x-3 text-red-600 dark:text-red-400">
+              <div className="p-2.5 bg-red-100 dark:bg-red-950/60 rounded-2xl">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Evaluation Archive Transaction Failed</h3>
+                <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">{archiveFailure.failedStep}</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-red-50 dark:bg-red-950/30 rounded-xl text-xs text-red-800 dark:text-red-200 font-mono">
+              {archiveFailure.error || 'The evaluation remains available in its previous state. No evaluation data was lost.'}
+            </div>
+
+            <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Detailed Step Breakdown:</p>
+              <ul className="space-y-1.5 text-xs">
+                <li className="flex items-center justify-between">
+                  <span>Data Integrity & Validation</span>
+                  <span className={archiveFailure.stepResults.dataValidated ? "text-emerald-600 font-bold" : "text-red-500 font-bold"}>
+                    {archiveFailure.stepResults.dataValidated ? "✓ PASSED" : "✗ FAILED"}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between">
+                  <span>Evidence Files Storage</span>
+                  <span className={archiveFailure.stepResults.evidenceUploaded ? "text-emerald-600 font-bold" : "text-red-500 font-bold"}>
+                    {archiveFailure.stepResults.evidenceUploaded ? "✓ PASSED" : "✗ FAILED"}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between">
+                  <span>Digital Signatures Storage</span>
+                  <span className={archiveFailure.stepResults.signaturesUploaded ? "text-emerald-600 font-bold" : "text-red-500 font-bold"}>
+                    {archiveFailure.stepResults.signaturesUploaded ? "✓ PASSED" : "✗ FAILED"}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between">
+                  <span>Official Scoreboard PDF Storage</span>
+                  <span className={archiveFailure.stepResults.pdfUploaded ? "text-emerald-600 font-bold" : "text-amber-500 font-bold"}>
+                    {archiveFailure.stepResults.pdfUploaded ? "✓ PASSED" : "⚠ WARNING"}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between">
+                  <span>Evaluation History Snapshot (`evaluation_history`)</span>
+                  <span className={archiveFailure.stepResults.historySaved ? "text-emerald-600 font-bold" : "text-red-500 font-bold"}>
+                    {archiveFailure.stepResults.historySaved ? "✓ PASSED" : "✗ FAILED"}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between">
+                  <span>Scorecard Archive Record (`evaluation_scorecard_archives`)</span>
+                  <span className={archiveFailure.stepResults.archiveSaved ? "text-emerald-600 font-bold" : "text-red-500 font-bold"}>
+                    {archiveFailure.stepResults.archiveSaved ? "✓ PASSED" : "✗ FAILED"}
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setArchiveFailure(null)}
+                className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition-all"
+              >
+                Dismiss & Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

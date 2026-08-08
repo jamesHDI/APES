@@ -29,6 +29,8 @@ import {
   fetchDepartmentsFromSupabase, 
   fetchEvaluationsFromSupabase,
   fetchNotificationsFromSupabase,
+  fetchEvaluationHistoryFromSupabase,
+  fetchScorecardArchivesFromSupabase,
   saveEmployeeToSupabase,
   saveEmployeeToSupabaseDetailed,
   saveDepartmentToSupabase,
@@ -200,8 +202,22 @@ export const App: React.FC = () => {
 
   // 1.5. Load evaluation history and scorecard archives
   useEffect(() => {
-    setEvaluationHistory(getStoredEvaluationHistory());
-    setScorecardArchives(getStoredScorecardArchives());
+    const loadHistoryAndArchives = async () => {
+      setEvaluationHistory(getStoredEvaluationHistory());
+      setScorecardArchives(getStoredScorecardArchives());
+
+      if (isSupabaseConfigured) {
+        const sbHistory = await fetchEvaluationHistoryFromSupabase();
+        if (sbHistory && sbHistory.length > 0) {
+          setEvaluationHistory(sbHistory);
+        }
+        const sbArchives = await fetchScorecardArchivesFromSupabase();
+        if (sbArchives && sbArchives.length > 0) {
+          setScorecardArchives(sbArchives);
+        }
+      }
+    };
+    loadHistoryAndArchives();
   }, []);
 
   // 2. Real-time Database & Notification Polling (Every 3s)

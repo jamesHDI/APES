@@ -35,16 +35,18 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
   const [filterCycle, setFilterCycle] = React.useState('');
   const [viewingArchiveId, setViewingArchiveId] = React.useState<string | null>(null);
 
-  const isPrivileged = currentUser.role === 'pod' || currentUser.role === 'hr_admin';
+  const isPrivileged = currentUser.role === 'pod' || currentUser.role === 'hr_admin' || currentUser.role === 'system_admin';
   const isPresident = currentUser.role === 'president';
+  const isDeptHead = currentUser.role === 'dept_head' || Boolean(currentUser.isDepartmentHead);
 
   const filteredHistory = historyRecords.filter((h) => {
     const cleanEmail = (currentUser.email || '').trim().toLowerCase();
     const cleanName = (currentUser.name || '').trim().toLowerCase();
 
     const belongsToUser = isPrivileged || isPresident ||
+      (isDeptHead && currentUser.departmentName && h.departmentName.toLowerCase().trim() === currentUser.departmentName.toLowerCase().trim()) ||
       (h.employeeId === currentUser.id || h.employeeId === currentUser.employeeNumber) ||
-      (cleanEmail && h.employeeName.trim().toLowerCase() === cleanName);
+      (cleanName && h.employeeName.trim().toLowerCase() === cleanName);
 
     const matchesSearch = search === '' || 
       h.appraisalPeriod.toLowerCase().includes(search.toLowerCase()) ||
