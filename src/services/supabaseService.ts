@@ -380,6 +380,23 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       passwordToStore = await hashPassword(passwordToStore);
     }
 
+    const allowedRoles = ['employee', 'supervisor', 'dept_head', 'president', 'pod', 'hr_admin', 'system_admin'];
+    const resolvedRole = (user.role || 'employee').toString().trim();
+    
+    if (!allowedRoles.includes(resolvedRole)) {
+      console.error('[Supabase DB Update] Invalid role detected. User role:', user.role, 'Type:', typeof user.role);
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_ROLE',
+          message: `Invalid employee role: "${user.role}". Allowed values: ${allowedRoles.join(', ')}.`,
+          details: `Role must be one of the allowed database enum values.`
+        }
+      };
+    }
+
+    const departmentIdRaw = user.departmentId;
+    const departmentIdIsValid = isValidUuid(departmentIdRaw);
     const payload: any = {
       id: targetId,
       employee_number: user.employeeNumber || `EMP-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
@@ -391,10 +408,10 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       email: cleanEmail,
       personal_email: user.personalEmail || '',
       contact_number: user.contactNumber || '',
-      department_id: user.departmentId ? (isValidUuid(user.departmentId) ? user.departmentId : null) : null,
+      department_id: departmentIdRaw ? (departmentIdIsValid ? departmentIdRaw : null) : null,
       department_name: user.departmentName || 'General',
       position: user.position || 'Staff',
-      role: user.role || 'employee',
+      role: resolvedRole,
       employment_status: user.employmentStatus || 'Regular',
       date_hired: user.dateHired || new Date().toISOString().substring(0, 10),
       username: user.username || `${cleanEmail.split('@')[0]}_${Date.now().toString().slice(-4)}_${Math.floor(1000 + Math.random() * 9000)}`,
@@ -410,6 +427,8 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       department_head_name: user.departmentHeadName || '',
       updated_at: new Date().toISOString()
     };
+
+    console.log('[Supabase DB Update] Payload for', cleanEmail, payload);
 
     if (isValidUuid(user.immediateSuperiorId)) {
       payload.immediate_superior_id = user.immediateSuperiorId;
