@@ -918,10 +918,13 @@ export const saveEvaluationHistoryToSupabase = async (history: EvaluationHistory
   if (!isSupabaseConfigured || !supabase) return false;
 
   try {
-    const payload = {
+    const validEmpId = isValidUuid(history.employeeId) ? history.employeeId : (SEED_UUID_MAP[history.employeeId] || null);
+    const validEvalId = isValidUuid(history.evaluationId) ? history.evaluationId : ensureUuid(history.evaluationId);
+
+    const payload: Record<string, any> = {
       id: ensureUuid(history.id),
-      evaluation_id: ensureUuid(history.evaluationId),
-      employee_id: ensureUuid(history.employeeId),
+      evaluation_id: validEvalId,
+      employee_id: validEmpId,
       employee_name: history.employeeName,
       department_name: history.departmentName,
       position: history.position,
@@ -950,7 +953,17 @@ export const saveEvaluationHistoryToSupabase = async (history: EvaluationHistory
       created_at: history.createdAt
     };
 
-    const { error } = await supabase.from('evaluation_history').upsert(payload, { onConflict: 'id' });
+    let { error } = await supabase.from('evaluation_history').upsert(payload, { onConflict: 'id' });
+    if (error && (error.code === '23503' || error.message.includes('foreign key'))) {
+      console.warn('[Evaluation History] Foreign key violation on history insert, retrying with nullified FK references...', error.message);
+      payload.employee_id = null;
+      payload.evaluation_id = isValidUuid(history.evaluationId) ? history.evaluationId : null;
+      payload.cycle_id = null;
+      payload.template_id = null;
+      const retryRes = await supabase.from('evaluation_history').upsert(payload, { onConflict: 'id' });
+      error = retryRes.error;
+    }
+
     if (error) {
       console.error('[Evaluation History] Supabase upsert error:', error.message, error.details);
     } else {
@@ -967,10 +980,13 @@ export const saveScorecardArchiveToSupabase = async (archive: EvaluationScorecar
   if (!isSupabaseConfigured || !supabase) return false;
 
   try {
-    const payload = {
+    const validEmpId = isValidUuid(archive.employeeId) ? archive.employeeId : (SEED_UUID_MAP[archive.employeeId] || null);
+    const validEvalId = isValidUuid(archive.evaluationId) ? archive.evaluationId : ensureUuid(archive.evaluationId);
+
+    const payload: Record<string, any> = {
       id: ensureUuid(archive.id),
-      evaluation_id: ensureUuid(archive.evaluationId),
-      employee_id: ensureUuid(archive.employeeId),
+      evaluation_id: validEvalId,
+      employee_id: validEmpId,
       employee_name: archive.employeeName,
       employee_email: archive.employeeEmail || null,
       department_name: archive.departmentName,
@@ -1023,6 +1039,23 @@ export const saveScorecardArchiveToSupabase = async (archive: EvaluationScorecar
       let retryRes = await supabase.from('evaluation_scorecard_archives').upsert(cleanPayload, { onConflict: 'id' });
       if (retryRes.error) {
         const retryFallback = await supabase.from('evaluation_scoreboard_archived').upsert(cleanPayload, { onConflict: 'id' });
+        error = retryFallback.error;
+      } else {
+        error = null;
+      }
+    }
+
+    if (error && (error.code === '23503' || error.message.includes('foreign key'))) {
+      console.warn('[Scorecard Archive] Foreign key violation on archive insert, retrying with nullified FK references...', error.message);
+      payload.employee_id = null;
+      payload.evaluation_id = isValidUuid(archive.evaluationId) ? archive.evaluationId : null;
+      payload.cycle_id = null;
+      payload.template_id = null;
+      payload.department_id = null;
+
+      let retryRes = await supabase.from('evaluation_scorecard_archives').upsert(payload, { onConflict: 'id' });
+      if (retryRes.error) {
+        const retryFallback = await supabase.from('evaluation_scoreboard_archived').upsert(payload, { onConflict: 'id' });
         error = retryFallback.error;
       } else {
         error = null;

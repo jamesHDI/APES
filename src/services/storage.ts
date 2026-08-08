@@ -577,7 +577,7 @@ export const archiveEvaluationTransaction = async (
       currentHistory.unshift(historySnapshot);
     }
     saveEvaluationHistory(currentHistory);
-    stepResults.historySaved = true;
+    stepResults.historySaved = historyOk !== false;
 
     // 6. Save Scorecard Archive Record to DB & LocalStorage
     const scorecardArchive = buildScorecardArchive(archivedEvalRecord, actor);
@@ -591,10 +591,10 @@ export const archiveEvaluationTransaction = async (
 
     const archiveOk = await saveScorecardArchiveToSupabase(scorecardArchive);
     saveScorecardArchive(scorecardArchive);
-    stepResults.archiveSaved = true;
+    stepResults.archiveSaved = archiveOk !== false;
 
     // 7. Save Main Evaluation Record with status 'archived'
-    await saveEvaluationToSupabase(archivedEvalRecord);
+    const evalOk = await saveEvaluationToSupabase(archivedEvalRecord);
     const evaluations = getStoredEvaluations();
     const index = evaluations.findIndex((e) => e.id === evaluation.id);
     let updatedList = [...evaluations];
@@ -604,7 +604,7 @@ export const archiveEvaluationTransaction = async (
       updatedList.unshift(archivedEvalRecord);
     }
     saveEvaluations(updatedList);
-    stepResults.evaluationSaved = true;
+    stepResults.evaluationSaved = evalOk !== false;
 
     return {
       success: true,
