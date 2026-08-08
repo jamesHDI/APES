@@ -12,7 +12,7 @@ export const isSupabaseConfigured = Boolean(
   rawUrl !== 'https://your-supabase-project.supabase.co'
 );
 
-console.log(`[Supabase Init] URL configured: ${Boolean(rawUrl && rawUrl !== 'https://your-supabase-project.supabase.co')}, Key configured: ${Boolean(rawKey && rawKey !== 'your-supabase-anon-key-here')}, Cloud Sync Active: ${isSupabaseConfigured}`);
+console.log(`[Supabase Init] URL: ${rawUrl} | Key prefix: ${rawKey.substring(0, 20)}... | Cloud Sync Active: ${isSupabaseConfigured}`);
 
 let client: any = null;
 if (isSupabaseConfigured) {

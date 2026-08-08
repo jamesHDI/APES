@@ -11,7 +11,7 @@ export const getSupabaseDiagnostics = (): { configured: boolean; url: string; ke
     return {
       configured: false,
       url: url || 'MISSING',
-      keyPrefix: key ? key.substring(0, 8) : 'MISSING',
+      keyPrefix: key ? key.substring(0, 20) : 'MISSING',
       error: 'Supabase environment variables are not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.'
     };
   }
@@ -20,7 +20,7 @@ export const getSupabaseDiagnostics = (): { configured: boolean; url: string; ke
     return {
       configured: false,
       url,
-      keyPrefix: key.substring(0, 8),
+      keyPrefix: key.substring(0, 20),
       error: 'Supabase credentials are still using placeholder values. Please replace them with your actual project credentials from the Supabase Dashboard.'
     };
   }
@@ -29,7 +29,7 @@ export const getSupabaseDiagnostics = (): { configured: boolean; url: string; ke
     return {
       configured: false,
       url,
-      keyPrefix: key.substring(0, 8),
+      keyPrefix: key.substring(0, 20),
       error: 'Invalid Supabase URL format. It should start with https://'
     };
   }
@@ -37,7 +37,7 @@ export const getSupabaseDiagnostics = (): { configured: boolean; url: string; ke
   return {
     configured: true,
     url,
-    keyPrefix: key.substring(0, 8) + '...'
+    keyPrefix: key.substring(0, 20) + '...'
   };
 };
 
@@ -363,14 +363,14 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       }
       const { data: existing, error: checkErr } = await checkQuery.maybeSingle();
       if (checkErr) {
-        console.warn('[Supabase DB Update] Existing record check failed:', checkErr);
+        console.error('[Supabase DB Update] SELECT failed with full error:', JSON.stringify(checkErr, null, 2));
       }
       if (existing && existing.id) {
         existingId = existing.id;
         console.log(`[Supabase DB Update] Matched existing DB record ID: ${existingId}`);
       }
     } catch (e) {
-      console.warn('[Supabase DB Update] Existing record check note:', e);
+      console.error('[Supabase DB Update] SELECT exception:', e);
     }
 
     const targetId = existingId || mappedUuid;
@@ -444,12 +444,18 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
         .from('employees')
         .update(payload)
         .eq('id', existingId);
+      if (updateErr) {
+        console.error('[Supabase DB Update] UPDATE full error:', JSON.stringify(updateErr, null, 2));
+      }
       saveErr = updateErr;
     } else if (cleanEmail) {
       console.log(`[Supabase DB Update] Executing UPSERT query on employees table for Email: ${cleanEmail}...`);
       const { error: upsertErr } = await supabase
         .from('employees')
         .upsert(payload, { onConflict: 'email' });
+      if (upsertErr) {
+        console.error('[Supabase DB Update] UPSERT full error:', JSON.stringify(upsertErr, null, 2));
+      }
       saveErr = upsertErr;
     }
 
@@ -464,7 +470,8 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
     }
 
     if (saveErr) {
-      console.error('[Supabase DB Update] UPDATE Query Failed:', saveErr);
+      console.error('[Supabase DB Update] UPDATE Query Failed - Full PostgREST error:', JSON.stringify(saveErr, null, 2));
+      console.error('[Supabase DB Update] Payload that failed:', JSON.stringify(payload, null, 2));
       const errorMessage = saveErr?.message || 'Unknown database error';
       const errorDetails = saveErr?.details || '';
       const errorHint = saveErr?.hint || '';
