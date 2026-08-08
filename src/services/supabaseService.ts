@@ -435,14 +435,27 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
 
     const departmentIdRaw = user.departmentId;
     const departmentIdIsValid = isValidUuid(departmentIdRaw);
+    // ── Build a guaranteed non-empty `name` (NOT NULL in DB) ─────────────
+    const safeName = (
+      user.name ||
+      `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
+      user.email.split('@')[0] ||
+      'Employee'
+    ).trim();
+
+    // Guard .split() — user.name may be undefined/null in some code paths
+    const nameWords = safeName.split(' ');
+    const safeFirstName = user.firstName || nameWords[0] || 'Employee';
+    const safeLastName  = user.lastName  || nameWords.slice(1).join(' ') || 'User';
+
     const payload: any = {
       id: targetId,
       employee_number: user.employeeNumber || `EMP-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
-      first_name: user.firstName || user.name.split(' ')[0] || 'Employee',
+      first_name: safeFirstName,
       middle_name: user.middleName || '',
-      last_name: user.lastName || user.name.split(' ').slice(1).join(' ') || 'User',
+      last_name: safeLastName,
       suffix: user.suffix || '',
-      name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+      name: safeName,           // guaranteed non-empty; satisfies NOT NULL constraint
       email: cleanEmail,
       personal_email: user.personalEmail || '',
       contact_number: user.contactNumber || '',
