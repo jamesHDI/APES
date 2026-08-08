@@ -2,6 +2,44 @@ import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './supa
 import { User, Department, Evaluation, Notification, EvaluationHistory, EvaluationScorecardArchive } from '../types';
 import { hashPassword, isHashedPassword } from '../utils/crypto';
 
+export const logEmployeesSchema = async (): Promise<void> => {
+  if (!isSupabaseConfigured || !supabase) return;
+
+  try {
+    const { data: columns, error: colErr } = await supabase
+      .from('information_schema.columns')
+      .select('column_name, data_type, is_nullable, column_default')
+      .eq('table_schema', 'public')
+      .eq('table_name', 'employees')
+      .order('ordinal_position');
+
+    if (colErr) {
+      console.error('[Schema Inspect] Failed to fetch columns:', colErr);
+      return;
+    }
+
+    console.log('[Schema Inspect] employees table columns:', columns);
+
+    const { data: constraints, error: conErr } = await supabase
+      .from('information_schema.check_constraints')
+      .select('constraint_name, check_clause')
+      .eq('constraint_schema', 'public');
+
+    if (conErr) {
+      console.error('[Schema Inspect] Failed to fetch constraints:', conErr);
+      return;
+    }
+
+    const employeeConstraints = (constraints || []).filter((c: any) =>
+      (c.check_clause || '').toLowerCase().includes('employees')
+    );
+
+    console.log('[Schema Inspect] employees-related CHECK constraints:', employeeConstraints);
+  } catch (err) {
+    console.error('[Schema Inspect] Exception:', err);
+  }
+};
+
 export const getSupabaseDiagnostics = (): { configured: boolean; url: string; keyPrefix: string; error?: string } => {
   const metaEnv = (import.meta as any).env || {};
   const url = (metaEnv.VITE_SUPABASE_URL || '').trim().replace(/^['"]|['"]$/g, '');
