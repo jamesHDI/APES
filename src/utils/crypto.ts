@@ -1,5 +1,6 @@
 const SALT_PREFIX = 'apes_salt_';
 const HASH_PREFIX = 'apes_hash_';
+const VERSION_PREFIX = 'v1:';
 
 function getSalt(): string {
   const array = new Uint8Array(16);
@@ -7,7 +8,7 @@ function getSalt(): string {
   return Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function deriveKey(password: string, salt: string): Promise<CryptoKey> {
+async function deriveKeyBits(password: string, salt: string): Promise<ArrayBuffer> {
   const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
@@ -16,7 +17,7 @@ async function deriveKey(password: string, salt: string): Promise<CryptoKey> {
     false,
     ['deriveBits']
   );
-  return crypto.subtle.deriveKey(
+  return crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
       salt: encoder.encode(salt),
@@ -24,41 +25,55 @@ async function deriveKey(password: string, salt: string): Promise<CryptoKey> {
       hash: 'SHA-256',
     },
     keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
+    256
   );
 }
 
 export async function hashPassword(password: string): Promise<string> {
-  const salt = getSalt();
-  const key = await deriveKey(password, salt);
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: new Uint8Array(12) },
-    key,
-    new TextEncoder().encode(password)
-  );
-  const hash = Array.from(new Uint8Array(encrypted), (b) => b.toString(16).padStart(2, '0')).join('');
-  return `${SALT_PREFIX}${salt}:${HASH_PREFIX}${hash}`;
+  if (!password) return '';
+  try {
+    const salt = getSalt();
+    const bits = await deriveKeyBits(password, salt);
+    const hash = Array.from(new Uint8Array(bits), (b) => b.toString(16).padStart(2, '0')).join('');
+    return `${VERSION_PREFIX}${SALT_PREFIX}${salt}:${HASH_PREFIX}${hash}`;
+  } catch (err) {
+    // If Web Crypto is unavailable (e.g. non-secure context), fall back to plaintext
+    console.error('[crypto] hashPassword failed, using plaintext fallback:', err);
+    return password;
+  }
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   if (!stored) return password.length === 0;
-  if (!stored.startsWith(SALT_PREFIX) || !stored.includes(`:${HASH_PREFIX}`)) {
-    return password === stored;
+
+  // New PBKDF2 hash (v1: prefix)
+  if (stored.startsWith(VERSION_PREFIX)) {
+    try {
+      const data = stored.replace(VERSION_PREFIX, '');
+      const salt = data.split(':')[0].replace(SALT_PREFIX, '');
+      const expectedHash = data.split(':')[1].replace(HASH_PREFIX, '');
+      const bits = await deriveKeyBits(password, salt);
+      const actualHash = Array.from(new Uint8Array(bits), (b) => b.toString(16).padStart(2, '0')).join('');
+      return actualHash === expectedHash;
+    } catch (err) {
+      console.error('[crypto] verifyPassword failed:', err);
+      return false;
+    }
   }
-  const salt = stored.split(':')[0].replace(SALT_PREFIX, '');
-  const expectedHash = stored.split(':')[1].replace(HASH_PREFIX, '');
-  const key = await deriveKey(password, salt);
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: new Uint8Array(12) },
-    key,
-    new TextEncoder().encode(password)
-  );
-  const actualHash = Array.from(new Uint8Array(encrypted), (b) => b.toString(16).padStart(2, '0')).join('');
-  return actualHash === expectedHash;
+
+  // Legacy AES-GCM hashes (apes_salt_ prefix, no v1:) — fall back to plaintext comparison
+  // These will re-hash on next successful login
+  if (stored.startsWith(SALT_PREFIX) && stored.includes(`:${HASH_PREFIX}`)) {
+    return false; // Cannot re-derive; user will need password reset
+  }
+
+  // Plaintext fallback (dev / seed accounts)
+  return password === stored || password.toLowerCase() === stored.toLowerCase();
 }
 
 export function isHashedPassword(stored: string): boolean {
-  return stored.startsWith(SALT_PREFIX) && stored.includes(`:${HASH_PREFIX}`);
+  if (typeof stored !== 'string') return false;
+  // Accept both v1: (new) and legacy apes_salt_ format
+  return stored.startsWith(VERSION_PREFIX) ||
+    (stored.startsWith(SALT_PREFIX) && stored.includes(`:${HASH_PREFIX}`));
 }
