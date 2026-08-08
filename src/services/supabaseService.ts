@@ -1017,6 +1017,18 @@ export const saveScorecardArchiveToSupabase = async (archive: EvaluationScorecar
       error = fallbackRes.error;
     }
 
+    if (error && (error.message.includes('pdf_url') || error.message.includes('column') || error.code === '42703')) {
+      console.warn('[Scorecard Archive] Storage column missing in DB table, retrying payload without storage columns...');
+      const { pdf_url, storage_path, file_name, file_size, uploaded_at, ...cleanPayload } = payload;
+      let retryRes = await supabase.from('evaluation_scorecard_archives').upsert(cleanPayload, { onConflict: 'id' });
+      if (retryRes.error) {
+        const retryFallback = await supabase.from('evaluation_scoreboard_archived').upsert(cleanPayload, { onConflict: 'id' });
+        error = retryFallback.error;
+      } else {
+        error = null;
+      }
+    }
+
     if (error) {
       console.error('[Scorecard Archive] Supabase upsert error:', error.message, error.details);
     } else {
