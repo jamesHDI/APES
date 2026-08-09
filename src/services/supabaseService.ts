@@ -1006,7 +1006,13 @@ export const syncChildTablesToSupabase = async (evaluation: Evaluation): Promise
         });
 
       if (signatureRows.length > 0) {
-        const { error: sigErr } = await supabase.from('digital_signatures').upsert(signatureRows, { onConflict: 'id' });
+        let { error: sigErr } = await supabase.from('digital_signatures').upsert(signatureRows, { onConflict: 'id' });
+        if (sigErr && (sigErr.message.includes('position') || sigErr.code === '42703')) {
+          console.warn('[Child Sync] Optional columns missing in digital_signatures, retrying with core fields...');
+          const cleanSigRows = signatureRows.map(({ position, department, employee_id, ip_address, ...clean }) => clean);
+          const retrySig = await supabase.from('digital_signatures').upsert(cleanSigRows, { onConflict: 'id' });
+          sigErr = retrySig.error;
+        }
         if (sigErr) console.warn('[Child Sync] digital_signatures upsert error:', sigErr.message);
       }
     }
