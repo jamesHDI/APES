@@ -355,6 +355,25 @@ DROP POLICY IF EXISTS "Allow public departments update" ON public.departments;
 CREATE POLICY "Allow public departments select" ON public.departments FOR SELECT USING (true);
 CREATE POLICY "Allow public departments update" ON public.departments FOR UPDATE USING (true);
 
+-- 5. CHILD RELATIONAL TABLES RLS
+ALTER TABLE public.kpi_ratings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.core_value_ratings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.digital_signatures ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.evidence_files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kpis ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public kpi_ratings all" ON public.kpi_ratings;
+DROP POLICY IF EXISTS "Allow public core_value_ratings all" ON public.core_value_ratings;
+DROP POLICY IF EXISTS "Allow public digital_signatures all" ON public.digital_signatures;
+DROP POLICY IF EXISTS "Allow public evidence_files all" ON public.evidence_files;
+DROP POLICY IF EXISTS "Allow public kpis all" ON public.kpis;
+
+CREATE POLICY "Allow public kpi_ratings all" ON public.kpi_ratings FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public core_value_ratings all" ON public.core_value_ratings FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public digital_signatures all" ON public.digital_signatures FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public evidence_files all" ON public.evidence_files FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public kpis all" ON public.kpis FOR ALL USING (true) WITH CHECK (true);
+
 -- ==============================================================================
 -- SUPABASE REALTIME PUBLICATION SETUP
 -- Enables instant WebSocket broadcasting across all devices when tables change
@@ -370,6 +389,16 @@ BEGIN
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluation_scorecard_archives; EXCEPTION WHEN duplicate_object THEN NULL; END;
 END $$;
 
--- STORAGE BUCKETS SETUP
-INSERT INTO storage.buckets (id, name, public) VALUES ('apes-signatures', 'apes-signatures', true) ON CONFLICT DO NOTHING;
-INSERT INTO storage.buckets (id, name, public) VALUES ('apes-attachments', 'apes-attachments', true) ON CONFLICT DO NOTHING;
+-- STORAGE BUCKETS SETUP & STORAGE RLS POLICIES
+INSERT INTO storage.buckets (id, name, public) VALUES ('apes-signatures', 'apes-signatures', true) ON CONFLICT (id) DO UPDATE SET public = true;
+INSERT INTO storage.buckets (id, name, public) VALUES ('apes-attachments', 'apes-attachments', true) ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Allow public storage insert apes-signatures" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public storage select apes-signatures" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public storage insert apes-attachments" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public storage select apes-attachments" ON storage.objects;
+
+CREATE POLICY "Allow public storage insert apes-signatures" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'apes-signatures');
+CREATE POLICY "Allow public storage select apes-signatures" ON storage.objects FOR SELECT USING (bucket_id = 'apes-signatures');
+CREATE POLICY "Allow public storage insert apes-attachments" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'apes-attachments');
+CREATE POLICY "Allow public storage select apes-attachments" ON storage.objects FOR SELECT USING (bucket_id = 'apes-attachments');

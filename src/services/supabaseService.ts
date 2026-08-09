@@ -872,6 +872,121 @@ export const fetchEvaluationsFromSupabase = async (): Promise<Evaluation[] | nul
   }
 };
 
+// ==============================================================================
+// RELATIONAL CHILD TABLES SYNC (kpi_ratings, core_value_ratings, digital_signatures, evidence_files, kpis)
+// ==============================================================================
+
+export const syncChildTablesToSupabase = async (evaluation: Evaluation): Promise<void> => {
+  if (!isSupabaseConfigured || !supabase || !evaluation || !evaluation.id) return;
+  const evalUuid = isValidUuid(evaluation.id) ? evaluation.id : ensureUuid(evaluation.id);
+
+  try {
+    // 1. Sync KPI Ratings to public.kpi_ratings
+    if (evaluation.kpiRatings && evaluation.kpiRatings.length > 0) {
+      const kpiRatingRows = evaluation.kpiRatings.map((kpi: any) => ({
+        id: ensureUuid(kpi.kpiId || `${evaluation.id}_kpi_${kpi.name || kpi.kpiName}`),
+        evaluation_id: evalUuid,
+        kpi_id: isValidUuid(kpi.kpiId) ? kpi.kpiId : null,
+        kra_name: kpi.kraName || 'KRA',
+        kpi_name: kpi.name || kpi.kpiName || 'KPI Item',
+        weight_percent: kpi.weightPercent || 0,
+        self_rating: kpi.selfRating ?? null,
+        supervisor_rating: kpi.supervisorRating ?? null,
+        president_rating: kpi.presidentRating ?? null,
+        weighted_score: kpi.weightedScore || 0,
+        comments: kpi.comments || null
+      }));
+
+      const { error: kpiErr } = await supabase.from('kpi_ratings').upsert(kpiRatingRows, { onConflict: 'id' });
+      if (kpiErr) console.warn('[Child Sync] kpi_ratings upsert error:', kpiErr.message);
+    }
+
+    // 2. Sync Core Value Ratings to public.core_value_ratings
+    if (evaluation.coreValueRatings && evaluation.coreValueRatings.length > 0) {
+      const cvRatingRows = evaluation.coreValueRatings.map((cv: any) => ({
+        id: ensureUuid(cv.coreValueId || `${evaluation.id}_cv_${cv.name || cv.coreValueName}`),
+        evaluation_id: evalUuid,
+        core_value_name: cv.name || cv.coreValueName || 'Core Value',
+        description: cv.description || '',
+        pod_rating: cv.podRating ?? null,
+        peer_rating: cv.peerRating ?? null,
+        is_rating: cv.isRating ?? null,
+        avg_rating: cv.avgRating || 0,
+        weighted_score: cv.weightedScore || 0,
+        comments: cv.comments || ''
+      }));
+
+      const { error: cvErr } = await supabase.from('core_value_ratings').upsert(cvRatingRows, { onConflict: 'id' });
+      if (cvErr) console.warn('[Child Sync] core_value_ratings upsert error:', cvErr.message);
+    }
+
+    // 3. Sync Digital Signatures to public.digital_signatures
+    if (evaluation.signatures) {
+      const sigMap = evaluation.signatures as Record<string, any>;
+      const roles = Object.keys(sigMap);
+      const signatureRows = roles
+        .filter((role) => sigMap[role] && (sigMap[role].signatureDataUrl || sigMap[role].signerName))
+        .map((role) => {
+          const sig = sigMap[role];
+          return {
+            id: ensureUuid(`${evaluation.id}_sig_${role}`),
+            evaluation_id: evalUuid,
+            signer_role: role,
+            signer_name: sig.signerName || 'Authorized Signer',
+            position: sig.position || null,
+            department: sig.department || null,
+            employee_id: sig.employeeId || null,
+            signature_data_url: sig.signatureDataUrl || '',
+            signed_at: sig.dateSigned || new Date().toISOString(),
+            ip_address: sig.ipAddress || null
+          };
+        });
+
+      if (signatureRows.length > 0) {
+        const { error: sigErr } = await supabase.from('digital_signatures').upsert(signatureRows, { onConflict: 'id' });
+        if (sigErr) console.warn('[Child Sync] digital_signatures upsert error:', sigErr.message);
+      }
+    }
+
+    // 4. Sync Evidence Files to public.evidence_files
+    if (evaluation.evidenceFiles && evaluation.evidenceFiles.length > 0) {
+      const evidenceRows = evaluation.evidenceFiles.map((file) => ({
+        id: ensureUuid(file.id || `${evaluation.id}_file_${file.fileName}`),
+        evaluation_id: evalUuid,
+        file_name: file.fileName,
+        file_type: file.fileType || 'application/octet-stream',
+        file_size: file.fileSize || 0,
+        upload_date: file.uploadDate || new Date().toISOString(),
+        url: file.url || ''
+      }));
+
+      const { error: evErr } = await supabase.from('evidence_files').upsert(evidenceRows, { onConflict: 'id' });
+      if (evErr) console.warn('[Child Sync] evidence_files upsert error:', evErr.message);
+    }
+
+    // 5. Sync KRA/KPI Definitions to public.kpis master table
+    if (evaluation.kpiRatings && evaluation.kpiRatings.length > 0) {
+      const templateUuid = isValidUuid(evaluation.templateId) ? evaluation.templateId : null;
+      const kpiDefRows = evaluation.kpiRatings.map((kpi: any) => ({
+        id: ensureUuid(kpi.kpiId || `${evaluation.id}_kpidef_${kpi.name || kpi.kpiName}`),
+        template_id: templateUuid,
+        kra_name: kpi.kraName || 'General',
+        kpi_name: kpi.name || kpi.kpiName || 'KPI Item',
+        description: kpi.comments || null,
+        weight_percent: kpi.weightPercent || 0,
+        evidence_required: kpi.evidenceRequired || false
+      }));
+
+      const { error: kpiDefErr } = await supabase.from('kpis').upsert(kpiDefRows, { onConflict: 'id' });
+      if (kpiDefErr) console.warn('[Child Sync] kpis master table upsert warning:', kpiDefErr.message);
+    }
+
+    console.log(`[APES Sync - Relational] Synchronized child tables (kpi_ratings, core_value_ratings, digital_signatures, evidence_files, kpis) for evaluation ${evaluation.id}.`);
+  } catch (err) {
+    console.warn('[Child Sync] Exception syncing child relational tables:', err);
+  }
+};
+
 export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<boolean> => {
   if (!isSupabaseConfigured || !supabase) return false;
 
@@ -906,6 +1021,8 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
       console.error('[Evaluation Debug] Supabase evaluations upsert error:', error.message, error.details);
     } else {
       console.log(`[APES Sync - Eval] Saved evaluation ${evaluation.id} (${evaluation.employeeName}) to Supabase.`);
+      // Sync relational child tables
+      await syncChildTablesToSupabase(evaluation);
     }
     return !error;
   } catch (err) {
