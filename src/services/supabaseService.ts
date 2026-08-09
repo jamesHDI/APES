@@ -872,6 +872,69 @@ export const fetchEvaluationsFromSupabase = async (): Promise<Evaluation[] | nul
   }
 };
 
+const normalizeWorkflowType = (wt?: string): string => {
+  if (!wt) return 'WORKFLOW_REGULAR';
+  const upper = wt.toUpperCase();
+  if (upper === 'REGULAR' || upper === 'WORKFLOW_REGULAR') return 'WORKFLOW_REGULAR';
+  if (upper === 'NO_IS' || upper === 'WORKFLOW_NO_IS') return 'WORKFLOW_NO_IS';
+  if (upper === 'DEPT_HEAD' || upper === 'DEPARTMENT_HEAD' || upper === 'WORKFLOW_DEPT_HEAD') return 'WORKFLOW_DEPT_HEAD';
+  if (upper === 'WORKFLOW_A' || upper === 'TYPE_A' || upper === 'A') return 'WORKFLOW_A';
+  if (upper === 'WORKFLOW_B' || upper === 'TYPE_B' || upper === 'B') return 'WORKFLOW_B';
+  return 'WORKFLOW_REGULAR';
+};
+
+const normalizeStatus = (st?: string): string => {
+  if (!st) return 'draft';
+  const clean = st.toLowerCase();
+  const valid = [
+    'draft',
+    'employee_submitted',
+    'department_head_submitted',
+    'pending_supervisor',
+    'pending_dept_head',
+    'pending_president',
+    'pending_pod',
+    'supervisor_completed',
+    'president_completed',
+    'pod_validated',
+    'archived',
+    'reopened'
+  ];
+  return valid.includes(clean) ? clean : 'draft';
+};
+
+export const syncEvaluationTemplateToSupabase = async (evaluation: Evaluation): Promise<string | null> => {
+  if (!isSupabaseConfigured || !supabase || !evaluation) return null;
+
+  try {
+    const templateUuid = isValidUuid(evaluation.templateId)
+      ? evaluation.templateId
+      : ensureUuid(evaluation.templateId || `tmpl_${evaluation.departmentName || 'general'}`);
+
+    const templatePayload = {
+      id: templateUuid,
+      title: `${evaluation.departmentName || 'General'} Performance Evaluation Template`,
+      department_name: evaluation.departmentName || 'General Department',
+      evaluation_period: evaluation.appraisalPeriod || 'Annual 2026',
+      eligibility_weight: 85.00,
+      core_values_weight: 15.00,
+      is_active: true,
+      created_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase.from('evaluation_templates').upsert(templatePayload, { onConflict: 'id' });
+    if (error) {
+      console.warn('[Template Sync] Could not upsert evaluation_templates row:', error.message);
+    } else {
+      console.log(`[APES Sync - Template] Saved evaluation template ${templateUuid} to Supabase.`);
+    }
+    return templateUuid;
+  } catch (err) {
+    console.warn('[Template Sync] Exception saving template:', err);
+    return null;
+  }
+};
+
 // ==============================================================================
 // RELATIONAL CHILD TABLES SYNC (kpi_ratings, core_value_ratings, digital_signatures, evidence_files, kpis)
 // ==============================================================================
@@ -964,12 +1027,12 @@ export const syncChildTablesToSupabase = async (evaluation: Evaluation): Promise
       if (evErr) console.warn('[Child Sync] evidence_files upsert error:', evErr.message);
     }
 
-    // 5. Sync KRA/KPI Definitions to public.kpis master table
+    // 5. Sync KRA/KPI Definitions to public.kpis master table & evaluation_templates
     if (evaluation.kpiRatings && evaluation.kpiRatings.length > 0) {
-      const templateUuid = isValidUuid(evaluation.templateId) ? evaluation.templateId : null;
+      const templateUuid = await syncEvaluationTemplateToSupabase(evaluation);
       const kpiDefRows = evaluation.kpiRatings.map((kpi: any) => ({
         id: ensureUuid(kpi.kpiId || `${evaluation.id}_kpidef_${kpi.name || kpi.kpiName}`),
-        template_id: templateUuid,
+        template_id: isValidUuid(templateUuid || undefined) ? templateUuid : null,
         kra_name: kpi.kraName || 'General',
         kpi_name: kpi.name || kpi.kpiName || 'KPI Item',
         description: kpi.comments || null,
@@ -981,7 +1044,7 @@ export const syncChildTablesToSupabase = async (evaluation: Evaluation): Promise
       if (kpiDefErr) console.warn('[Child Sync] kpis master table upsert warning:', kpiDefErr.message);
     }
 
-    console.log(`[APES Sync - Relational] Synchronized child tables (kpi_ratings, core_value_ratings, digital_signatures, evidence_files, kpis) for evaluation ${evaluation.id}.`);
+    console.log(`[APES Sync - Relational] Synchronized child tables (kpi_ratings, core_value_ratings, digital_signatures, evidence_files, kpis, templates) for evaluation ${evaluation.id}.`);
   } catch (err) {
     console.warn('[Child Sync] Exception syncing child relational tables:', err);
   }
@@ -991,22 +1054,25 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
   if (!isSupabaseConfigured || !supabase) return false;
 
   try {
-    const payload = {
-      id: ensureUuid(evaluation.id),
+    const evalId = isValidUuid(evaluation.id) ? evaluation.id : ensureUuid(evaluation.id);
+    const empId = isValidUuid(evaluation.employeeId) ? evaluation.employeeId : (SEED_UUID_MAP[evaluation.employeeId] || null);
+
+    const payload: Record<string, any> = {
+      id: evalId,
       cycle_id: isValidUuid(evaluation.cycleId) ? evaluation.cycleId : null,
       template_id: isValidUuid(evaluation.templateId) ? evaluation.templateId : null,
-      workflow_type: evaluation.workflowType,
-      employee_id: isValidUuid(evaluation.employeeId) ? evaluation.employeeId : null,
+      workflow_type: normalizeWorkflowType(evaluation.workflowType),
+      employee_id: empId,
       employee_name: evaluation.employeeName,
       department_name: evaluation.departmentName,
       position: evaluation.position,
       appraisal_period: evaluation.appraisalPeriod,
-      appraisal_date: evaluation.appraisalDate,
-      status: evaluation.status,
-      eligibility_score: evaluation.eligibilityScore,
-      core_values_score: evaluation.coreValuesScore,
-      final_rating: evaluation.finalRating,
-      rating_classification: evaluation.ratingClassification,
+      appraisal_date: evaluation.appraisalDate || new Date().toISOString().split('T')[0],
+      status: normalizeStatus(evaluation.status),
+      eligibility_score: evaluation.eligibilityScore || 0,
+      core_values_score: evaluation.coreValuesScore || 0,
+      final_rating: evaluation.finalRating || 0,
+      rating_classification: evaluation.ratingClassification || 'Unsatisfactory',
       kpi_ratings_data: evaluation.kpiRatings || [],
       core_value_ratings_data: evaluation.coreValueRatings || [],
       signatures_data: evaluation.signatures || {},
@@ -1016,12 +1082,23 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
       updated_at: new Date().toISOString()
     };
 
-    const { error } = await supabase.from('evaluations').upsert(payload, { onConflict: 'id' });
+    let { error } = await supabase.from('evaluations').upsert(payload, { onConflict: 'id' });
+    
+    // If FK constraint on employee_id, cycle_id, or template_id fails, nullify FKs and retry
+    if (error && (error.code === '23503' || error.message.includes('foreign key'))) {
+      console.warn('[Evaluation Save] Foreign key violation, retrying with nullified FK references...', error.message);
+      payload.employee_id = null;
+      payload.cycle_id = null;
+      payload.template_id = null;
+      const retryRes = await supabase.from('evaluations').upsert(payload, { onConflict: 'id' });
+      error = retryRes.error;
+    }
+
     if (error) {
       console.error('[Evaluation Debug] Supabase evaluations upsert error:', error.message, error.details);
     } else {
       console.log(`[APES Sync - Eval] Saved evaluation ${evaluation.id} (${evaluation.employeeName}) to Supabase.`);
-      // Sync relational child tables
+      // Sync relational child tables & templates
       await syncChildTablesToSupabase(evaluation);
     }
     return !error;
