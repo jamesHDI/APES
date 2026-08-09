@@ -55,17 +55,18 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
           </div>
           
           {/* Honeycomb Connector Line */}
-          <div className="flex flex-col items-center my-2">
-            <div className="w-0.5 h-8 bg-gradient-to-b from-amber-500 to-amber-300" />
-            <div className="w-3 h-3 rotate-45 border-2 border-amber-400 bg-amber-500" />
+          <div className="flex flex-col items-center my-0">
+            <div className="w-0.5 h-6 bg-gradient-to-b from-amber-500 to-amber-400" />
+            <div className="w-3 h-3 rotate-45 border-2 border-amber-400 bg-amber-500 shadow-sm z-10" />
+            <div className="w-0.5 h-6 bg-amber-400" />
           </div>
         </div>
 
         {/* Tier 2: Department Heads (HDI Hive Grid) */}
-        <div className="space-y-5">
+        <div className="space-y-5 -mt-2">
           <div className="flex items-center justify-center space-x-2">
             <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1" />
-            <span className="font-extrabold text-xs text-amber-600 dark:text-amber-400 uppercase tracking-widest px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center space-x-1.5">
+            <span className="font-extrabold text-xs text-amber-600 dark:text-amber-400 uppercase tracking-widest px-3.5 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 flex items-center space-x-1.5 shadow-sm">
               <Hexagon className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
               <span>Department Heads Routing Nodes</span>
             </span>
@@ -82,13 +83,13 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
                   
                   {/* Department Title Header */}
                   <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-3">
-                    <span className="font-bold text-xs text-slate-900 dark:text-white flex items-center space-x-2">
-                      <Building2 className="w-4 h-4 text-amber-500" />
+                    <span className="font-bold text-sm text-slate-900 dark:text-white flex items-center space-x-2">
+                      <Building2 className="w-4.5 h-4.5 text-amber-500" />
                       <span>{dept.name}</span>
                     </span>
                     
                     {/* Hexagon Department Code Badge */}
-                    <div className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 font-black text-[10px] border border-amber-500/20">
+                    <div className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 font-black text-xs border border-amber-500/20">
                       <Hexagon className="w-3 h-3 text-amber-500 fill-amber-500/30" />
                       <span>{dept.code}</span>
                     </div>
@@ -97,8 +98,8 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
                   {/* Dept Head Card with Hexagon Node Styling */}
                   <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/60 border border-amber-300/40 dark:border-amber-800/80 text-xs flex items-center justify-between">
                     <div>
-                      <p className="font-extrabold text-slate-900 dark:text-amber-100 text-xs">{dept.headName}</p>
-                      <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold mt-0.5">Department Head</p>
+                      <p className="font-extrabold text-slate-900 dark:text-amber-100 text-sm">{dept.headName}</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-400 font-bold mt-0.5">Department Head</p>
                     </div>
                     <div className="p-1.5 rounded-xl bg-amber-500 text-white shadow-sm">
                       <UserCheck className="w-4 h-4" />
@@ -106,16 +107,16 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
                   </div>
 
                   {/* Staff List */}
-                  <div className="pl-3 border-l-2 border-amber-400/50 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned Staff ({deptStaff.length}):</p>
+                  <div className="pl-3 border-l-2 border-amber-400/60 space-y-2 text-xs text-slate-700 dark:text-slate-300">
+                    <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Assigned Staff ({deptStaff.length}):</p>
                     {deptStaff.slice(0, 3).map(s => (
-                      <div key={s.id} className="flex items-center space-x-1.5 text-[11px]">
-                        <ChevronRight className="w-3 h-3 text-amber-500" />
-                        <span className="font-medium">{s.name} <span className="text-[10px] text-slate-400">({s.position})</span></span>
+                      <div key={s.id} className="flex items-center space-x-2 text-xs">
+                        <ChevronRight className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{s.name} <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">({s.position})</span></span>
                       </div>
                     ))}
                     {deptStaff.length > 3 && (
-                      <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold pl-4">+{deptStaff.length - 3} more staff...</p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400 font-bold pl-5">+{deptStaff.length - 3} more staff...</p>
                     )}
                   </div>
 

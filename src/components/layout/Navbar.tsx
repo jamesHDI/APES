@@ -86,8 +86,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-6">
         <div className="flex items-center justify-between h-20 sm:h-24 gap-4">
 
-          {/* Left: Hamburger + Brand */}
-          <div className="flex items-center gap-3">
+          {/* Left: Hamburger + Logo */}
+          <div className="flex items-center gap-3 shrink-0">
             {/* Mobile hamburger */}
             <button
               onClick={onToggleSidebar}
@@ -97,43 +97,37 @@ export const Navbar: React.FC<NavbarProps> = ({
               {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
 
-            {/* Brand */}
-            <div className="flex items-center gap-4">
-              <div className="shrink-0 flex items-center justify-start py-1">
-                {/* Light Mode Logo */}
+            {/* Brand Logo */}
+            <div className="shrink-0 flex items-center justify-start py-1">
+              {/* Light Mode Logo */}
+              <img
+                src="/hdi-logo.png"
+                alt="HDI Hive"
+                className="h-10 sm:h-12 md:h-14 w-auto object-contain transition-all duration-200 dark:hidden"
+              />
+              {/* Dark Mode Logo: Original Red Beehive Icon + Solid White Text */}
+              <div className="hidden dark:inline-flex relative h-10 sm:h-12 md:h-14 items-center overflow-hidden">
                 <img
                   src="/hdi-logo.png"
-                  alt="HDI Hive"
-                  className="h-10 sm:h-12 md:h-14 w-auto object-contain transition-all duration-200 dark:hidden"
+                  alt="HDI Beehive Emblem"
+                  className="h-full w-auto object-contain max-w-none"
+                  style={{ clipPath: 'inset(0 68% 0 0)' }}
                 />
-                {/* Dark Mode Logo: Original Red Beehive Icon + Solid White Text */}
-                <div className="hidden dark:inline-flex relative h-10 sm:h-12 md:h-14 items-center overflow-hidden">
-                  <img
-                    src="/hdi-logo.png"
-                    alt="HDI Beehive Emblem"
-                    className="h-full w-auto object-contain max-w-none"
-                    style={{ clipPath: 'inset(0 68% 0 0)' }}
-                  />
-                  <img
-                    src="/hdi-logo.png"
-                    alt="HDI Text"
-                    className="h-full w-auto object-contain max-w-none absolute top-0 left-0 brightness-0 invert"
-                    style={{ clipPath: 'inset(0 0 0 32%)' }}
-                  />
-                </div>
-              </div>
-              <div className="hidden sm:block">
-                <p className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">
-                  AUTOMATED PERFORMANCE EVALUATION SYSTEM
-                </p>
-                <p className="text-[11px] text-[#F28C28] dark:text-brand-400 font-bold tracking-widest uppercase mt-0.5">
-                  HDI HIVE
-                </p>
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  APES 3.0
-                </p>
+                <img
+                  src="/hdi-logo.png"
+                  alt="HDI Text"
+                  className="h-full w-auto object-contain max-w-none absolute top-0 left-0 brightness-0 invert"
+                  style={{ clipPath: 'inset(0 0 0 32%)' }}
+                />
               </div>
             </div>
+          </div>
+
+          {/* Center: System Title */}
+          <div className="hidden sm:flex flex-1 justify-center items-center text-center px-4">
+            <h1 className="font-black text-sm sm:text-base md:text-lg lg:text-xl text-slate-900 dark:text-white tracking-wider uppercase text-center">
+              AUTOMATED PERFORMANCE EVALUATION SYSTEM
+            </h1>
           </div>
 
           {/* Right: Sync + Dark Mode + Notifications + User */}

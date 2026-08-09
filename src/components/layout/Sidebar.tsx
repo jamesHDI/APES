@@ -196,6 +196,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onClose();
   };
 
+  const isDeptOrEmp = currentRole === 'dept_head' || currentRole === 'employee';
+
   const renderItem = (item: NavItem) => {
     const Icon = item.icon;
     const isActive = activeTab === item.id;
@@ -208,7 +210,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div key={item.id}>
           <button
             onClick={() => toggleGroup(item.id)}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl font-semibold transition-all duration-150 ${
+              isDeptOrEmp ? 'text-[15px]' : 'text-sm'
+            } ${
               hasActiveChild
                 ? 'bg-[#FFF4EA] text-[#E96B1A]'
                 : 'text-slate-500 dark:text-slate-400 hover:bg-[#FFF8F3] dark:hover:bg-slate-800/80 hover:text-[#E96B1A]'
@@ -244,24 +248,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <button
         key={item.id}
         onClick={() => handleSelectTab(item.id)}
-        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all duration-150 ${
+        className={`w-full flex items-center justify-between rounded-xl transition-all duration-150 ${
+          isDeptOrEmp ? 'px-3.5 py-2.5 text-[15px]' : 'px-3 py-2 text-sm'
+        } ${
           isActive
             ? 'bg-gradient-to-r from-[#FFF4EA] via-[#FFF8F3] to-transparent text-[#E96B1A] font-bold border-l-[3px] border-[#F28C28] pl-[10px]'
             : 'font-semibold text-slate-500 dark:text-slate-400 hover:bg-[#FFF8F3] dark:hover:bg-slate-800/80 hover:text-[#E96B1A] dark:hover:text-brand-300'
         }`}
       >
         <div className="flex items-center gap-2.5">
-          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+          <div className={`rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+            isDeptOrEmp ? 'w-8 h-8' : 'w-7 h-7'
+          } ${
             isActive ? 'bg-[#F28C28]/15' : 'bg-slate-100/70 dark:bg-slate-800'
           }`}>
-            <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-[#F28C28]' : 'text-slate-400 dark:text-slate-500'}`} />
+            <Icon className={`${isDeptOrEmp ? 'w-4 h-4' : 'w-3.5 h-3.5'} ${isActive ? 'text-[#F28C28]' : 'text-slate-400 dark:text-slate-500'}`} />
           </div>
           <span className="whitespace-normal break-words leading-tight">{item.label}</span>
         </div>
         {item.badge !== undefined && item.badge > 0 && (
           <span
-            className={`shrink-0 min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full flex items-center justify-center ${
-              isActive ? 'bg-[#F28C28] text-white' : 'bg-[#F28C28]/15 text-[#E96B1A]'
+            className={`shrink-0 min-w-[20px] h-[20px] px-1 text-[11px] font-extrabold rounded-full flex items-center justify-center ${
+              isActive ? 'bg-[#F28C28] text-white shadow-sm' : 'bg-[#F28C28]/15 text-[#E96B1A]'
             }`}
           >
             {item.badge}
@@ -312,18 +320,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Nav Items */}
-        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-          <p className="px-3 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
+        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
+          <p className={`px-3 uppercase tracking-widest mb-2 font-black text-slate-400 dark:text-slate-500 ${
+            isDeptOrEmp ? 'text-xs' : 'text-[11px]'
+          }`}>
             Navigation
           </p>
           {navItems.map(renderItem)}
         </nav>
 
-        {/* Footer */}
-        <div className="px-4 pt-2 pb-1 border-t border-[#EFE4D6] dark:border-slate-800">
+        {/* Footer with HDI HIVE APES 3.0 */}
+        <div className="px-4 py-3 border-t border-[#EFE4D6] dark:border-slate-800 bg-[#FFF4EA]/60 dark:bg-slate-800/50">
           <div className="flex flex-col items-center text-center gap-0.5">
-            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-tight">HDI Hive · APES v3.0</p>
-            <p className="text-[9px] text-slate-400 dark:text-slate-500 leading-tight">Strictly Confidential</p>
+            <p className="text-xs font-black text-[#E96B1A] dark:text-brand-400 tracking-widest uppercase">
+              HDI HIVE
+            </p>
+            <p className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+              APES 3.0
+            </p>
+            <p className="text-[9px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+              Strictly Confidential
+            </p>
           </div>
         </div>
       </aside>

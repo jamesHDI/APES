@@ -79,8 +79,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <div className="relative z-10 space-y-6 flex flex-col items-center">
             {/* Top Welcome Title */}
             <div className="text-center w-full">
-              <h2 className="text-2xl font-black tracking-tight text-center text-white">
-                Welcome to APES
+              <h2 className="text-2xl font-black tracking-tight text-center text-white uppercase">
+                WELCOME TO APES
               </h2>
             </div>
 
@@ -107,7 +107,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             {/* Subtitle & Description Under Logo */}
             <div className="space-y-2 text-center w-full">
               <p className="text-brand-400 font-extrabold text-sm tracking-wide uppercase">
-                Performance Evaluation System
+                AUTOMATED PERFORMANCE EVALUATION SYSTEM
               </p>
               <p className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed text-center">
                 Empowering employees through continuous feedback and core values alignment.
