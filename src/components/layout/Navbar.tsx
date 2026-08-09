@@ -87,7 +87,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between h-20 sm:h-24 gap-4">
 
           {/* Left: Hamburger + Logo + Half-Hexagon Connector + Title */}
-          <div className="flex items-center gap-2 sm:gap-2.5">
+          <div className="flex items-center gap-1 sm:gap-1.5">
             {/* Mobile hamburger */}
             <button
               onClick={onToggleSidebar}
@@ -122,15 +122,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            {/* True 3-Segment Half-Hexagon Connector SVG */}
-            <div className="hidden sm:flex items-center text-[#F28C28] dark:text-brand-400 shrink-0 mx-0.5">
-              <svg viewBox="0 0 24 44" className="h-9 sm:h-11 w-5 sm:w-6 stroke-current fill-none stroke-[2.75] stroke-linecap-round stroke-linejoin-round">
-                <path d="M 3,5 L 18,14 L 18,30 L 3,39" />
+            {/* True 3-Segment Half-Hexagon Connector SVG (Black & Closer to Logo) */}
+            <div className="hidden sm:flex items-center text-slate-900 dark:text-slate-100 shrink-0 -ml-0.5">
+              <svg viewBox="0 0 24 44" className="h-10 sm:h-12 w-5 sm:w-6 stroke-current fill-none stroke-[2.75] stroke-linecap-round stroke-linejoin-round">
+                <path d="M 3,4 L 19,14 L 19,30 L 3,40" />
               </svg>
             </div>
 
-            {/* System Title */}
-            <div className="hidden sm:flex items-center pl-1">
+            {/* System Title (.2cm / ~8px close to Half-Hexagon) */}
+            <div className="hidden sm:flex items-center pl-1.5">
               <h1 className="font-black text-xs sm:text-sm md:text-base lg:text-lg text-slate-900 dark:text-white tracking-wider uppercase whitespace-nowrap">
                 AUTOMATED PERFORMANCE EVALUATION SYSTEM
               </h1>
