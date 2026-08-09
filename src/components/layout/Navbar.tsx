@@ -86,8 +86,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-6">
         <div className="flex items-center justify-between h-20 sm:h-24 gap-4">
 
-          {/* Left: Hamburger + Logo + Half-Hexagon Connector */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Left: Hamburger + Logo + Half-Hexagon Connector + Title */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
             {/* Mobile hamburger */}
             <button
               onClick={onToggleSidebar}
@@ -122,19 +122,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            {/* Half-Hexagon Connector SVG */}
-            <div className="hidden sm:flex items-center text-[#F28C28] dark:text-brand-400 shrink-0 ml-0.5">
-              <svg viewBox="0 0 24 44" className="h-10 w-6 stroke-current fill-none stroke-[3] stroke-linecap-round stroke-linejoin-round">
-                <path d="M 3,4 L 20,22 L 3,40" />
+            {/* True 3-Segment Half-Hexagon Connector SVG */}
+            <div className="hidden sm:flex items-center text-[#F28C28] dark:text-brand-400 shrink-0 mx-0.5">
+              <svg viewBox="0 0 24 44" className="h-9 sm:h-11 w-5 sm:w-6 stroke-current fill-none stroke-[2.75] stroke-linecap-round stroke-linejoin-round">
+                <path d="M 3,5 L 18,14 L 18,30 L 3,39" />
               </svg>
             </div>
-          </div>
 
-          {/* Center: System Title */}
-          <div className="hidden sm:flex flex-1 justify-start items-center px-2">
-            <h1 className="font-black text-sm sm:text-base md:text-lg lg:text-xl text-slate-900 dark:text-white tracking-wider uppercase">
-              AUTOMATED PERFORMANCE EVALUATION SYSTEM
-            </h1>
+            {/* System Title */}
+            <div className="hidden sm:flex items-center pl-1">
+              <h1 className="font-black text-xs sm:text-sm md:text-base lg:text-lg text-slate-900 dark:text-white tracking-wider uppercase whitespace-nowrap">
+                AUTOMATED PERFORMANCE EVALUATION SYSTEM
+              </h1>
+            </div>
           </div>
 
           {/* Right: Sync + Dark Mode + Notifications + User */}
