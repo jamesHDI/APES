@@ -86,8 +86,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-6">
         <div className="flex items-center justify-between h-20 sm:h-24 gap-4">
 
-          {/* Left: Hamburger + Logo + Half-Hexagon Connector + Title */}
-          <div className="flex items-center gap-1 sm:gap-1.5">
+          {/* Left: Hamburger + Logo + Title */}
+          <div className="flex items-center gap-3 sm:gap-4">
             {/* Mobile hamburger */}
             <button
               onClick={onToggleSidebar}
@@ -122,15 +122,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            {/* True 3-Segment Half-Hexagon Connector SVG (Vertically Aligned with LEARN text) */}
-            <div className="hidden sm:flex items-center justify-center text-slate-900 dark:text-slate-100 shrink-0 -ml-0.5">
-              <svg viewBox="0 0 24 44" className="h-9 sm:h-11 w-5 sm:w-6 stroke-current fill-none stroke-[2.75] stroke-linecap-round stroke-linejoin-round">
-                <path d="M 3,6 L 18,17 L 18,27 L 3,38" />
-              </svg>
-            </div>
-
-            {/* System Title (.2cm / ~8px close to Half-Hexagon) */}
-            <div className="hidden sm:flex items-center pl-1.5">
+            {/* System Title (Left-aligned next to HDI Logo) */}
+            <div className="hidden sm:flex items-center pl-1">
               <h1 className="font-black text-xs sm:text-sm md:text-base lg:text-lg text-slate-900 dark:text-white tracking-wider uppercase whitespace-nowrap">
                 AUTOMATED PERFORMANCE EVALUATION SYSTEM
               </h1>
