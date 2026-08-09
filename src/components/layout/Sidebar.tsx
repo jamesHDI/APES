@@ -329,14 +329,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {navItems.map(renderItem)}
         </nav>
 
-        {/* Footer with HDI HIVE APES 3.0 */}
+        {/* Footer with HDI HIVE APES 3.0 in ONE LINE */}
         <div className="px-4 py-3 border-t border-[#EFE4D6] dark:border-slate-800 bg-[#FFF4EA]/60 dark:bg-slate-800/50">
           <div className="flex flex-col items-center text-center gap-0.5">
-            <p className="text-xs font-black text-[#E96B1A] dark:text-brand-400 tracking-widest uppercase">
-              HDI HIVE
-            </p>
-            <p className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
-              APES 3.0
+            <p className="text-xs font-black text-[#E96B1A] dark:text-brand-400 tracking-wider uppercase whitespace-nowrap">
+              HDI HIVE · APES 3.0
             </p>
             <p className="text-[9px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
               Strictly Confidential

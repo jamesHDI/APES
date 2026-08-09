@@ -86,7 +86,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-6">
         <div className="flex items-center justify-between h-20 sm:h-24 gap-4">
 
-          {/* Left: Hamburger + Logo */}
+          {/* Left: Hamburger + Logo + Half-Hexagon Connector */}
           <div className="flex items-center gap-3 shrink-0">
             {/* Mobile hamburger */}
             <button
@@ -121,11 +121,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 />
               </div>
             </div>
+
+            {/* Half-Hexagon Connector SVG */}
+            <div className="hidden sm:flex items-center text-[#F28C28] dark:text-brand-400 shrink-0 ml-0.5">
+              <svg viewBox="0 0 24 44" className="h-10 w-6 stroke-current fill-none stroke-[3] stroke-linecap-round stroke-linejoin-round">
+                <path d="M 3,4 L 20,22 L 3,40" />
+              </svg>
+            </div>
           </div>
 
           {/* Center: System Title */}
-          <div className="hidden sm:flex flex-1 justify-center items-center text-center px-4">
-            <h1 className="font-black text-sm sm:text-base md:text-lg lg:text-xl text-slate-900 dark:text-white tracking-wider uppercase text-center">
+          <div className="hidden sm:flex flex-1 justify-start items-center px-2">
+            <h1 className="font-black text-sm sm:text-base md:text-lg lg:text-xl text-slate-900 dark:text-white tracking-wider uppercase">
               AUTOMATED PERFORMANCE EVALUATION SYSTEM
             </h1>
           </div>

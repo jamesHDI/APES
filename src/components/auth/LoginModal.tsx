@@ -137,7 +137,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </div>
               <button
                 onClick={() => setShowSelfRegister(true)}
-                className="px-3.5 py-2 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 font-bold text-xs hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors flex items-center gap-1.5 shadow-sm border border-purple-200 dark:border-purple-800"
+                className="px-3.5 py-2 rounded-xl bg-[#FFF4EA] dark:bg-brand-950/60 text-[#E96B1A] dark:text-brand-300 font-bold text-xs hover:bg-[#FFE8D1] dark:hover:bg-brand-900/60 transition-colors flex items-center gap-1.5 shadow-sm border border-[#F28C28]/30 dark:border-brand-800"
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 Register Account
