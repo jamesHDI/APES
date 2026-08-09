@@ -35,17 +35,6 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
         </button>
 
         <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2">
-            <FileText className="w-4 h-4 text-slate-500" />
-            <select
-              value={paperSize}
-              onChange={(e) => setPaperSize(e.target.value as PaperSize)}
-              className="h-9 pl-3 pr-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-            >
-              <option value="a4">A4</option>
-              <option value="letter">Letter</option>
-            </select>
-          </div>
           <button
             onClick={handlePrint}
             className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold shadow-md shadow-brand-600/20 transition-all"

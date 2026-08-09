@@ -21,14 +21,14 @@ export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
     { id: 'draft', label: 'Self Evaluation', role: 'Employee', icon: FileEdit },
     { id: 'pending_dept_head', label: 'Department Head Review', role: 'Department Head', icon: UserCheck },
     { id: 'pending_pod', label: 'POD Review', role: 'POD Officer', icon: ShieldCheck },
-    { id: 'archived', label: 'Evaluation Completed', role: 'Completed', icon: Archive },
+    { id: 'archived', label: 'Archived / Completed', role: 'Completed', icon: Archive },
   ];
 
   const stepsDeptHead = [
     { id: 'draft', label: 'Self Evaluation', role: 'Department Head', icon: FileEdit },
     { id: 'pending_president', label: 'President Review', role: 'President & CEO', icon: Crown },
     { id: 'pending_pod', label: 'POD Review', role: 'POD Officer', icon: ShieldCheck },
-    { id: 'archived', label: 'Evaluation Completed', role: 'Completed', icon: Archive },
+    { id: 'archived', label: 'Archived / Completed', role: 'Completed', icon: Archive },
   ];
 
   const steps = isDeptHeadTrack ? stepsDeptHead : stepsRegular;
@@ -75,7 +75,7 @@ export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
         return 'Under POD Review';
       case 'pod_validated':
       case 'archived':
-        return 'Evaluation Completed';
+        return 'Archived / Completed';
       default:
         return String(st).replace(/_/g, ' ');
     }
@@ -110,13 +110,16 @@ export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
         <div className="absolute top-5 left-8 right-8 h-0.5 bg-slate-200 dark:bg-slate-800 z-0" />
         {/* Active Line Fill */}
         <div
-          className="absolute top-5 left-8 h-0.5 bg-gradient-to-r from-[#F28C28] to-[#E96B1A] z-0 transition-all duration-500"
+          className={`absolute top-5 left-8 h-0.5 z-0 transition-all duration-500 ${
+            currentIndex === 3 ? 'bg-emerald-500' : 'bg-gradient-to-r from-[#F28C28] to-[#E96B1A]'
+          }`}
           style={{ width: `calc(${(currentIndex / (steps.length - 1)) * 100}% - 4rem)` }}
         />
 
         {steps.map((step, idx) => {
-          const isCompleted = idx < currentIndex;
-          const isCurrent = idx === currentIndex;
+          const isArchivedDone = (status === 'archived' || status === 'pod_validated') && idx === 3;
+          const isCompleted = idx < currentIndex || isArchivedDone;
+          const isCurrent = idx === currentIndex && !isArchivedDone;
           const Icon = step.icon;
           const history = stepHistory.find((h) => h.stepId === step.id);
 
@@ -145,14 +148,16 @@ export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
               <div className="mt-2.5 text-center px-1">
                 <p
                   className={`text-xs font-bold leading-tight ${
-                    isCurrent
-                      ? 'text-[#E96B1A] dark:text-brand-300'
-                      : isCompleted
+                    isCompleted
                       ? 'text-slate-800 dark:text-slate-200'
+                      : isCurrent
+                      ? 'text-[#E96B1A] dark:text-brand-300'
                       : 'text-slate-400 dark:text-slate-500'
                   }`}
                 >
-                  {isCompleted
+                  {idx === 3
+                    ? (isCompleted ? 'Archived / Completed' : 'Pending Archived / Completed')
+                    : isCompleted
                     ? `${step.label} Completed`
                     : isCurrent
                     ? `Under ${step.label}`
@@ -161,7 +166,7 @@ export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
 
                 {isCompleted && (
                   <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">
-                    {history?.approverName ?? step.role}
+                    {history?.approverName ?? (idx === 3 ? 'Assigned: Completed' : step.role)}
                   </p>
                 )}
 
