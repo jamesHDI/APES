@@ -122,10 +122,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            {/* True 3-Segment Half-Hexagon Connector SVG (Black & Closer to Logo) */}
-            <div className="hidden sm:flex items-center text-slate-900 dark:text-slate-100 shrink-0 -ml-0.5">
-              <svg viewBox="0 0 24 44" className="h-10 sm:h-12 w-5 sm:w-6 stroke-current fill-none stroke-[2.75] stroke-linecap-round stroke-linejoin-round">
-                <path d="M 3,4 L 19,14 L 19,30 L 3,40" />
+            {/* True 3-Segment Half-Hexagon Connector SVG (Vertically Aligned with LEARN text) */}
+            <div className="hidden sm:flex items-center justify-center text-slate-900 dark:text-slate-100 shrink-0 -ml-0.5">
+              <svg viewBox="0 0 24 44" className="h-9 sm:h-11 w-5 sm:w-6 stroke-current fill-none stroke-[2.75] stroke-linecap-round stroke-linejoin-round">
+                <path d="M 3,6 L 18,17 L 18,27 L 3,38" />
               </svg>
             </div>
 
