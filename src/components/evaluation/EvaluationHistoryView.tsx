@@ -304,10 +304,10 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
                         {new Date(h.createdAt).toLocaleDateString()}
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2 flex-wrap">
+                        <div className="flex flex-col items-end gap-1.5">
                           <button
                             onClick={() => onOpenEvaluation(h.evaluationId)}
-                            className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm"
+                            className="w-28 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                           >
                             <Eye className="w-3.5 h-3.5 text-brand-500" />
                             <span>View</span>
@@ -316,14 +316,14 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
                             <>
                               <button
                                 onClick={() => handleViewArchive(h.evaluationId)}
-                                className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm"
+                                className="w-28 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                               >
                                 <FileText className="w-3.5 h-3.5 text-brand-500" />
                                 <span>Scorecard</span>
                               </button>
                               <button
                                 onClick={() => handleDownloadArchive(archive!)}
-                                className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm"
+                                className="w-28 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                               >
                                 <Download className="w-3.5 h-3.5 text-brand-500" />
                                 <span>Download</span>
@@ -333,7 +333,7 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
                           {!hasArchive && (
                             <button
                               onClick={() => onViewPrintable ? onViewPrintable(h.evaluationId) : onOpenEvaluation(h.evaluationId)}
-                              className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm"
+                              className="w-28 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                             >
                               <Printer className="w-3.5 h-3.5 text-brand-500" />
                               <span>Print</span>
