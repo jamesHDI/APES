@@ -147,35 +147,44 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
 
     // If active, generate evaluations and notify users
     if (initialStatus === 'active') {
+      let failed = 0;
       for (const u of targetUsers) {
-        const newEval = await assignNewEvaluationToEmployee(u, template, period, currentUser.name);
-        newEval.deploymentId = deploymentId;
-        newEval.deadline = endDate;
-        // Re-save so deploymentId & deadline are persisted to storage & Supabase
-        await saveSingleEvaluation(newEval);
+        try {
+          const newEval = await assignNewEvaluationToEmployee(u, template, period, currentUser.name);
+          newEval.deploymentId = deploymentId;
+          newEval.deadline = endDate;
+          // Re-save so deploymentId & deadline are persisted to storage & Supabase
+          await saveSingleEvaluation(newEval);
 
-        // Resolve the permanent Supabase UUID for notifications to ensure targeted delivery
-        let targetUuid = newEval.employeeId || u.id;
-        if (isSupabaseConfigured) {
-          try {
-            const { findEmployeeInSupabase, ensureUuid } = await import('../../services/supabaseService');
-            const sbUser = await findEmployeeInSupabase(u.id) || await findEmployeeInSupabase(u.email);
-            if (sbUser && sbUser.id && ensureUuid(sbUser.id) === sbUser.id) {
-              targetUuid = sbUser.id;
+          // Resolve the permanent Supabase UUID for notifications to ensure targeted delivery
+          let targetUuid = newEval.employeeId || u.id;
+          if (isSupabaseConfigured) {
+            try {
+              const { findEmployeeInSupabase, ensureUuid } = await import('../../services/supabaseService');
+              const sbUser = await findEmployeeInSupabase(u.id) || await findEmployeeInSupabase(u.email);
+              if (sbUser && sbUser.id && ensureUuid(sbUser.id) === sbUser.id) {
+                targetUuid = sbUser.id;
+              }
+            } catch (e) {
+              console.warn('[Deployment] Could not resolve notification target UUID:', e);
             }
-          } catch (e) {
-            console.warn('[Deployment] Could not resolve notification target UUID:', e);
           }
-        }
 
-        await triggerWorkflowNotification(
-          targetUuid,
-          newEval,
-          'New Evaluation Deployment Activated',
-          `Evaluation cycle "${title}" (${period}) has been deployed by ${currentUser.name}. Deadline: ${endDate}.`,
-          currentUser.name,
-          'action_required'
-        );
+          await triggerWorkflowNotification(
+            targetUuid,
+            newEval,
+            'New Evaluation Deployment Activated',
+            `Evaluation cycle "${title}" (${period}) has been deployed by ${currentUser.name}. Deadline: ${endDate}.`,
+            currentUser.name,
+            'action_required'
+          );
+        } catch (err) {
+          failed++;
+          console.error(`[Deployment] Failed to deploy evaluation for ${u.name}:`, err);
+        }
+      }
+      if (failed > 0) {
+        alert(`Deployment completed with errors. ${failed} out of ${targetUsers.length} employees failed. Check console for details.`);
       }
       triggerRealtimeBroadcast('data_changed', { type: 'evaluation_deployment', deploymentId });
     }

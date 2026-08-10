@@ -2,6 +2,7 @@ import { User, Department, EvaluationTemplate, EvaluationCycle, EvaluationDeploy
 import { MASTER_SALES_EVALUATION_TEMPLATE } from '../constants/masterSalesTemplate';
 import { 
   saveEmployeeToSupabase, 
+  saveEmployeeToSupabaseDetailed,
   saveDepartmentToSupabase, 
   saveEvaluationToSupabase,
   saveEvaluationHistoryToSupabase,
@@ -642,6 +643,18 @@ export const assignNewEvaluationToEmployee = async (
       if (sbUser && sbUser.id) {
         permanentEmpId = sbUser.id;
         resolvedEmployee = { ...employee, id: sbUser.id, email: sbUser.email || employee.email, name: sbUser.name || employee.name, employeeNumber: sbUser.employeeNumber || employee.employeeNumber };
+      } else {
+        const provisionResult = await saveEmployeeToSupabaseDetailed(employee);
+        if (provisionResult.success && provisionResult.id) {
+          permanentEmpId = provisionResult.id;
+          resolvedEmployee = { ...employee, id: provisionResult.id };
+        } else if (provisionResult.success) {
+          const refetched = await findEmployeeInSupabase(employee.email);
+          if (refetched && refetched.id) {
+            permanentEmpId = refetched.id;
+            resolvedEmployee = { ...employee, id: refetched.id, email: refetched.email || employee.email, name: refetched.name || employee.name, employeeNumber: refetched.employeeNumber || employee.employeeNumber };
+          }
+        }
       }
     } catch (e) {
       console.warn('[Assign Evaluation] Could not resolve permanent employee UUID, using provided ID:', e);
