@@ -932,7 +932,8 @@ const normalizeStatus = (st?: string): string => {
     'president_completed',
     'pod_validated',
     'archived',
-    'reopened'
+    'reopened',
+    'superseded'
   ];
   return valid.includes(clean) ? clean : 'draft';
 };

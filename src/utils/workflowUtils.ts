@@ -52,8 +52,19 @@ export const isEvaluationCompleted = (evaluation?: Evaluation | null): boolean =
 const getEvaluationTimestamp = (e: Evaluation): number => {
   if (!e) return 0;
   let baseTime = 0;
-  
-  if (e.updatedAt) {
+
+  if ((e as any).releasedAt) {
+    const t = new Date((e as any).releasedAt).getTime();
+    if (!isNaN(t) && t > 0) baseTime = t;
+  }
+  if (!baseTime && e.auditTrail && e.auditTrail.length > 0) {
+    const firstAudit = e.auditTrail[0]?.timestamp;
+    if (firstAudit) {
+      const t = new Date(firstAudit).getTime();
+      if (!isNaN(t) && t > 0) baseTime = t;
+    }
+  }
+  if (!baseTime && e.updatedAt) {
     const t = new Date(e.updatedAt).getTime();
     if (!isNaN(t) && t > 0) baseTime = t;
   }
