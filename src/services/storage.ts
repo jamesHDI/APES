@@ -11,7 +11,8 @@ import {
   uploadEvidenceFilesToSupabase,
   uploadSignaturesToSupabase,
   findEmployeeInSupabase,
-  isValidUuid
+  isValidUuid,
+  generateUuid
 } from './supabaseService';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
@@ -720,7 +721,7 @@ export const assignNewEvaluationToEmployee = async (
   }
 
   const newEval: Evaluation = {
-    id: `eval_${permanentEmpId}_${Date.now()}`,
+    id: generateUuid(),
     cycleId: 'cycle_2026_annual',
     templateId: template.id,
     workflowType,
