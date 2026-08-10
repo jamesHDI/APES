@@ -350,6 +350,22 @@ WHERE public.evaluations.employee_id IS NULL
   AND public.evaluations.employee_name <> ''
   AND public.evaluations.employee_name = (e.first_name || ' ' || e.last_name);
 
+-- 3. Fix evaluations with employee_id that does not match any employee in the employees table
+UPDATE public.evaluations
+SET employee_id = e.id, user_id = e.id
+FROM public.employees e
+WHERE public.evaluations.employee_id NOT IN (SELECT id FROM public.employees)
+  AND public.evaluations.employee_email IS NOT NULL
+  AND public.evaluations.employee_email <> ''
+  AND public.evaluations.employee_email = e.email;
+
+-- 4. Fix evaluations where employee_id exists but employee_email does not match the linked employee
+UPDATE public.evaluations
+SET employee_email = e.email
+FROM public.employees e
+WHERE public.evaluations.employee_id = e.id
+  AND (public.evaluations.employee_email IS NULL OR public.evaluations.employee_email <> e.email);
+
 -- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ==============================================================================

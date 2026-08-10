@@ -110,14 +110,19 @@ export const getUserActiveEvaluation = (user: User, evaluations: Evaluation[] = 
     const matchesId = (eUserId && eUserId === user.id) || (eEmpId && eEmpId === user.id);
     const matchesEmpNo = userEmpNo && ((eUserId && eUserId.toLowerCase() === userEmpNo) || (eEmpId && eEmpId.toLowerCase() === userEmpNo));
     const matchesEmail = cleanEmail && eEmail && eEmail === cleanEmail;
-    const matchesName = cleanName && eName && eName === cleanName;
+    const matchesName = cleanName && eName && cleanName === eName;
 
     return matchesId || matchesEmpNo || matchesEmail || matchesName;
   });
 
-  const sortedEvals = [...userEvals].sort((a, b) => getEvaluationTimestamp(b) - getEvaluationTimestamp(a));
-  const activeEval = sortedEvals.find((e) => !isEvaluationCompleted(e));
-  return activeEval || sortedEvals[0] || null;
+  const activeEvals = userEvals.filter((e) => !isEvaluationCompleted(e));
+  if (activeEvals.length === 0) return null;
+
+  return [...activeEvals].sort((a, b) => {
+    const aTime = new Date(a.createdAt || a.updatedAt || '').getTime();
+    const bTime = new Date(b.createdAt || b.updatedAt || '').getTime();
+    return bTime - aTime;
+  })[0];
 };
 
 export const getUserLatestEvaluation = (user: User, evaluations: Evaluation[] = []): Evaluation | null => {

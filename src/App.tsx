@@ -671,7 +671,8 @@ export const App: React.FC = () => {
     if (latestEval) return latestEval;
 
     const fallbackTemplate = templates.find(t => t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
-    return createDraftEvaluationInMemory(currentUser, fallbackTemplate, 'January-September 2025');
+    const currentYear = new Date().getFullYear();
+    return createDraftEvaluationInMemory(currentUser, fallbackTemplate, `${currentYear} Annual Performance Evaluation`);
   }, [evaluations, selectedEvalId, currentUser, templates]);
 
   const renderMainContent = () => {
