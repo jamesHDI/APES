@@ -108,6 +108,16 @@ export const App: React.FC = () => {
   const [inactiveAccountModal, setInactiveAccountModal] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
 
   const lastAvatarUpdateRef = useRef<{ url: string; timestamp: number } | null>(null);
+  const currentUserRef = useRef<User>(currentUser);
+  const isAuthenticatedRef = useRef<boolean>(isAuthenticated);
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  useEffect(() => {
+    isAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (darkMode) {
@@ -224,6 +234,9 @@ export const App: React.FC = () => {
   useEffect(() => {
     const syncDatabaseAndNotifications = async () => {
       if (isSupabaseConfigured) {
+        const currentUser = currentUserRef.current;
+        const isAuthenticated = isAuthenticatedRef.current;
+        
         const sbUsers = await fetchEmployeesFromSupabase();
         if (sbUsers && sbUsers.length > 0) {
           setUsers(sbUsers);

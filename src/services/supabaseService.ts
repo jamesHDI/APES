@@ -284,6 +284,15 @@ export const findEmployeeInSupabase = async (cleanId: string): Promise<User | nu
 
       console.log(`[Supabase Auth] Account "${matchedSeed.email}" absent from Supabase DB. Provisioning initial seed record...`);
       await saveEmployeeToSupabase(matchedSeed);
+      const { data: newDbRecord } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('email', matchedSeed.email.trim().toLowerCase())
+        .maybeSingle();
+      if (newDbRecord) {
+        console.log(`[Supabase Auth] Provisioned DB record for "${matchedSeed.email}" with UUID: ${newDbRecord.id}`);
+        return mapRowToUser(newDbRecord);
+      }
       return matchedSeed;
     }
 

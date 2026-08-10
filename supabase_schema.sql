@@ -380,24 +380,27 @@ DROP POLICY IF EXISTS "Allow public evaluations update" ON public.evaluations;
 
 CREATE POLICY "Allow public evaluations insert" ON public.evaluations FOR INSERT WITH CHECK (true);
 CREATE POLICY "Evaluations access control" ON public.evaluations FOR SELECT USING (
-  -- Admins and privileged roles can see all evaluations
+  -- Admins and privileged roles can see all evaluations (by linked user_id OR by email fallback)
   EXISTS (
     SELECT 1 FROM public.employees
-    WHERE employees.user_id = auth.uid()
+    WHERE (
+      employees.user_id = auth.uid()
+      OR
+      employees.email = auth.email()
+    )
     AND employees.role IN ('pod', 'hr_admin', 'system_admin', 'dept_head', 'president', 'supervisor')
   )
   OR
-  -- Regular employees can see only their own evaluations
+  -- Regular employees can see only their own evaluations (by linked user_id OR by email fallback)
   employee_id IN (
     SELECT id FROM public.employees WHERE user_id = auth.uid()
   )
   OR
-  -- Fallback: match by email if user_id not yet linked
   employee_id IN (
     SELECT id FROM public.employees WHERE email = auth.email()
   )
   OR
-  -- Fallback: allow if no auth session (backward compatible)
+  -- Backward compatible fallback if no auth session
   auth.uid() IS NULL
 );
 CREATE POLICY "Allow public evaluations update" ON public.evaluations FOR UPDATE USING (true);
