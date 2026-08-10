@@ -116,6 +116,16 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
 
       if (authData?.user) {
         console.log(`[Supabase Auth Session] Established active session for ${authEmail} (auth.uid: ${authData.user.id})`);
+        // Link employee record to Supabase Auth user for RLS policies
+        try {
+          const targetId = matchedUser.id;
+          await supabase
+            .from('employees')
+            .update({ user_id: authData.user.id, updated_at: new Date().toISOString() })
+            .or(`id.eq.${targetId},email.ilike.${authEmail}`);
+        } catch (linkErr) {
+          console.warn('[Supabase Auth] Employee-to-auth-user link note:', linkErr);
+        }
       }
     } catch (err) {
       console.warn('[Supabase Auth Session] Session establishment note:', err);
@@ -299,10 +309,22 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
   // ── Step 4. Optional Supabase Auth Sign Up ──
   if (isSupabaseConfigured && supabase) {
     try {
-      await supabase.auth.signUp({
+      const { data: signUpData } = await supabase.auth.signUp({
         email: normalizedEmail,
         password: data.password || 'password123',
       });
+
+      if (signUpData?.user) {
+        // Link employee record to Supabase Auth user for RLS policies
+        try {
+          await supabase
+            .from('employees')
+            .update({ user_id: signUpData.user.id, updated_at: new Date().toISOString() })
+            .eq('email', normalizedEmail);
+        } catch (linkErr) {
+          console.warn('[Supabase Auth] New registration employee-to-auth-user link note:', linkErr);
+        }
+      }
     } catch (err) {
       console.warn('Supabase signUp warning:', err);
     }

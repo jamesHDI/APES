@@ -9,8 +9,10 @@ import {
   generateScorecardPdfBlob,
   uploadScorecardPdfToSupabase,
   uploadEvidenceFilesToSupabase,
-  uploadSignaturesToSupabase
+  uploadSignaturesToSupabase,
+  findEmployeeInSupabase
 } from './supabaseService';
+import { isSupabaseConfigured } from './supabaseClient';
 
 const USERS_KEY = 'apes_users_v3';
 const CURRENT_USER_KEY = 'apes_current_user_v3';
@@ -629,6 +631,19 @@ export const assignNewEvaluationToEmployee = async (
   appraisalPeriod: string = 'January - December 2026',
   assignedByName: string = 'People Operations (POD)'
 ): Promise<Evaluation> => {
+  // Resolve permanent Supabase UUID for the employee to ensure cross-device consistency
+  let permanentEmpId = employee.id;
+  if (isSupabaseConfigured) {
+    try {
+      const sbUser = await findEmployeeInSupabase(employee.id) || await findEmployeeInSupabase(employee.email);
+      if (sbUser && sbUser.id) {
+        permanentEmpId = sbUser.id;
+      }
+    } catch (e) {
+      console.warn('[Assign Evaluation] Could not resolve permanent employee UUID, using provided ID:', e);
+    }
+  }
+
   const isDeptHeadTrack = employee.isDepartmentHead || employee.role === 'dept_head';
   const workflowType = isDeptHeadTrack ? ('WORKFLOW_DEPT_HEAD' as const) : ('WORKFLOW_REGULAR' as const);
 
@@ -664,11 +679,12 @@ export const assignNewEvaluationToEmployee = async (
   const dateStr = nowIso.substring(0, 10);
 
   const newEval: Evaluation = {
-    id: `eval_${employee.id}_${Date.now()}`,
+    id: `eval_${permanentEmpId}_${Date.now()}`,
     cycleId: 'cycle_2026_annual',
     templateId: template.id,
     workflowType,
-    employeeId: employee.id,
+    employeeId: permanentEmpId,
+    userId: permanentEmpId,
     employeeName: employee.name,
     employeeEmail: employee.email,
     departmentName: employee.departmentName || template.departmentName || 'General',
@@ -754,6 +770,7 @@ export const createDraftEvaluationInMemory = (
     templateId: activeTemplate.id,
     workflowType,
     employeeId: employee.id,
+    userId: employee.id,
     employeeName: employee.name,
     employeeEmail: employee.email,
     departmentName: employee.departmentName || activeTemplate.departmentName || 'General',

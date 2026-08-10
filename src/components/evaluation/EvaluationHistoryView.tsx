@@ -116,6 +116,7 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
         templateId: viewingArchive.templateId || '',
         workflowType: viewingArchive.workflowType as any,
         employeeId: viewingArchive.employeeId,
+        userId: viewingArchive.employeeId,
         employeeName: viewingArchive.employeeName,
         employeeEmail: viewingArchive.employeeEmail,
         departmentName: viewingArchive.departmentName,

@@ -266,7 +266,7 @@ export const App: React.FC = () => {
         const sbDepts = await fetchDepartmentsFromSupabase();
         if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
 
-        const sbEvals = await fetchEvaluationsFromSupabase();
+        const sbEvals = await fetchEvaluationsFromSupabase(currentUser?.id);
         if (sbEvals) {
           setEvaluations((prevEvals) => deduplicateEvaluations([...sbEvals, ...prevEvals]));
         }
@@ -350,7 +350,7 @@ export const App: React.FC = () => {
         const [sbUsers, sbDepts, sbEvals, sbNotifs] = await Promise.all([
           fetchEmployeesFromSupabase(),
           fetchDepartmentsFromSupabase(),
-          fetchEvaluationsFromSupabase(),
+          fetchEvaluationsFromSupabase(authenticatedUser.id),
           fetchNotificationsFromSupabase(authenticatedUser.id, authenticatedUser.role)
         ]);
 

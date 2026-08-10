@@ -328,6 +328,29 @@ CREATE POLICY "Allow public scorecard archives insert" ON public.evaluation_scor
 CREATE POLICY "Allow public scorecard archives select" ON public.evaluation_scorecard_archives FOR SELECT USING (true);
 
 -- ==============================================================================
+-- DATA MIGRATIONS
+-- Fix existing records to ensure cross-device evaluation sync works correctly
+-- ==============================================================================
+
+-- 1. Fix evaluations with null employee_id by matching employee_email
+UPDATE public.evaluations
+SET employee_id = e.id, user_id = e.id
+FROM public.employees e
+WHERE public.evaluations.employee_id IS NULL
+  AND public.evaluations.employee_email IS NOT NULL
+  AND public.evaluations.employee_email <> ''
+  AND public.evaluations.employee_email = e.email;
+
+-- 2. Fix evaluations with null employee_id by matching employee_name
+UPDATE public.evaluations
+SET employee_id = e.id, user_id = e.id
+FROM public.employees e
+WHERE public.evaluations.employee_id IS NULL
+  AND public.evaluations.employee_name IS NOT NULL
+  AND public.evaluations.employee_name <> ''
+  AND public.evaluations.employee_name = (e.first_name || ' ' || e.last_name);
+
+-- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ==============================================================================
 
@@ -354,8 +377,29 @@ ALTER TABLE public.evaluations ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow public evaluations insert" ON public.evaluations;
 DROP POLICY IF EXISTS "Allow public evaluations select" ON public.evaluations;
 DROP POLICY IF EXISTS "Allow public evaluations update" ON public.evaluations;
+
 CREATE POLICY "Allow public evaluations insert" ON public.evaluations FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public evaluations select" ON public.evaluations FOR SELECT USING (true);
+CREATE POLICY "Evaluations access control" ON public.evaluations FOR SELECT USING (
+  -- Admins and privileged roles can see all evaluations
+  EXISTS (
+    SELECT 1 FROM public.employees
+    WHERE employees.user_id = auth.uid()
+    AND employees.role IN ('pod', 'hr_admin', 'system_admin', 'dept_head', 'president', 'supervisor')
+  )
+  OR
+  -- Regular employees can see only their own evaluations
+  employee_id IN (
+    SELECT id FROM public.employees WHERE user_id = auth.uid()
+  )
+  OR
+  -- Fallback: match by email if user_id not yet linked
+  employee_id IN (
+    SELECT id FROM public.employees WHERE email = auth.email()
+  )
+  OR
+  -- Fallback: allow if no auth session (backward compatible)
+  auth.uid() IS NULL
+);
 CREATE POLICY "Allow public evaluations update" ON public.evaluations FOR UPDATE USING (true);
 
 -- 4. DEPARTMENTS TABLE RLS

@@ -807,11 +807,16 @@ export const saveNotificationsBatchToSupabase = async (notifs: Notification[]): 
 // 4. EVALUATIONS SUPABASE OPERATIONS
 // ==============================================================================
 
-export const fetchEvaluationsFromSupabase = async (): Promise<Evaluation[] | null> => {
+export const fetchEvaluationsFromSupabase = async (employeeId?: string): Promise<Evaluation[] | null> => {
   if (!isSupabaseConfigured || !supabase) return null;
 
   try {
-    let { data: evals, error: evalErr } = await supabase.from('evaluations').select('*');
+    let query = supabase.from('evaluations').select('*');
+    if (employeeId && isValidUuid(employeeId)) {
+      query = query.or(`employee_id.eq.${employeeId},user_id.eq.${employeeId}`);
+    }
+
+    let { data: evals, error: evalErr } = await query;
     
     if (evalErr || !evals) {
       const { SEED_EVALUATIONS } = await import('./storage');
@@ -820,7 +825,7 @@ export const fetchEvaluationsFromSupabase = async (): Promise<Evaluation[] | nul
         for (const ev of SEED_EVALUATIONS) {
           await saveEvaluationToSupabase(ev);
         }
-        const { data: retryEvals } = await supabase.from('evaluations').select('*');
+        const { data: retryEvals } = await query;
         evals = retryEvals || [];
       } else {
         evals = evals || [];
@@ -1093,6 +1098,42 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
       console.warn('[Evaluation Save] Employee lookup warning:', lookupErr);
     }
 
+    // If employee not found in DB, try to provision from seed data
+    if (!permanentEmpUuid && (employeeEmail || evaluation.employeeName)) {
+      try {
+        const { SEED_USERS } = await import('./storage');
+        const matchedSeed = SEED_USERS.find((u: any) =>
+          u.email.toLowerCase() === (employeeEmail || '').toLowerCase() ||
+          u.name.toLowerCase() === (evaluation.employeeName || '').toLowerCase()
+        );
+        if (matchedSeed) {
+          const seedUuid = isValidUuid(matchedSeed.id) ? matchedSeed.id : ensureUuid(matchedSeed.id);
+          await saveEmployeeToSupabase({ ...matchedSeed, id: seedUuid });
+          permanentEmpUuid = seedUuid;
+        }
+      } catch (provisionErr) {
+        console.warn('[Evaluation Save] Employee provisioning warning:', provisionErr);
+      }
+    }
+
+    // Last resort: if still no UUID, generate one and provision a minimal employee record
+    if (!permanentEmpUuid) {
+      permanentEmpUuid = generateUuid();
+      try {
+        const { SEED_USERS } = await import('./storage');
+        const matchedSeed = SEED_USERS.find((u: any) =>
+          u.email.toLowerCase() === (employeeEmail || '').toLowerCase() ||
+          u.name.toLowerCase() === (evaluation.employeeName || '').toLowerCase()
+        );
+        if (matchedSeed) {
+          const seedUuid = isValidUuid(matchedSeed.id) ? matchedSeed.id : ensureUuid(matchedSeed.id);
+          await saveEmployeeToSupabase({ ...matchedSeed, id: permanentEmpUuid });
+        }
+      } catch (lastResortErr) {
+        console.warn('[Evaluation Save] Last resort provisioning warning:', lastResortErr);
+      }
+    }
+
     const payload: Record<string, any> = {
       id: evalId,
       cycle_id: isValidUuid(evaluation.cycleId) ? evaluation.cycleId : null,
@@ -1125,7 +1166,7 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
     // Attempt 1: Full payload with extended columns
     let { error } = await supabase.from('evaluations').upsert(payload, { onConflict: 'id' });
 
-    // Attempt 2: If optional columns (user_id, employee_email, released_by, released_at) are missing in DB table, retry without them
+    // Attempt 2: If optional columns are missing in DB table, retry without them
     if (error && (error.code === 'PGRST204' || error.code === '42703' || error.message.includes('column') || error.message.includes('user_id') || error.message.includes('released_by') || error.message.includes('employee_email'))) {
       console.warn('[Evaluation Save] Optional columns missing in DB table, retrying with core payload...', error.message);
       const { user_id, employee_email, released_by, released_at, ...cleanPayload } = payload;
@@ -1133,15 +1174,25 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
       error = retryCol.error;
     }
 
-    // Attempt 3: If FK constraint on employee_id, cycle_id, or template_id fails, nullify FKs and retry
+    // Attempt 3: If FK constraint fails, provision employee and retry with confirmed UUID
     if (error && (error.code === '23503' || error.message.includes('foreign key'))) {
-      console.warn('[Evaluation Save] Foreign key violation, retrying with nullified FK references...', error.message);
-      delete payload.user_id;
-      payload.employee_id = null;
-      payload.cycle_id = null;
-      payload.template_id = null;
-      const retryFk = await supabase.from('evaluations').upsert(payload, { onConflict: 'id' });
-      error = retryFk.error;
+      console.warn('[Evaluation Save] Foreign key violation, provisioning employee and retrying...', error.message);
+      try {
+        const { SEED_USERS } = await import('./storage');
+        const matchedSeed = SEED_USERS.find((u: any) =>
+          u.email.toLowerCase() === (employeeEmail || '').toLowerCase() ||
+          u.name.toLowerCase() === (evaluation.employeeName || '').toLowerCase()
+        );
+        if (matchedSeed) {
+          const seedUuid = isValidUuid(matchedSeed.id) ? matchedSeed.id : ensureUuid(matchedSeed.id);
+          await saveEmployeeToSupabase({ ...matchedSeed, id: permanentEmpUuid });
+          const retryPayload = { ...payload, employee_id: permanentEmpUuid, user_id: permanentEmpUuid };
+          const { error: retryErr } = await supabase.from('evaluations').upsert(retryPayload, { onConflict: 'id' });
+          error = retryErr;
+        }
+      } catch (retryErr) {
+        console.warn('[Evaluation Save] Retry after FK violation failed:', retryErr);
+      }
     }
 
     if (error) {

@@ -373,6 +373,7 @@ export interface Evaluation {
   templateId: string;
   workflowType: EvaluationWorkflowType;
   employeeId: string;
+  userId: string;
   employeeName: string;
   employeeEmail?: string;
   departmentName: string;
