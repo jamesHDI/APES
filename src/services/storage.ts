@@ -655,9 +655,13 @@ export const assignNewEvaluationToEmployee = async (
             resolvedEmployee = { ...employee, id: refetched.id, email: refetched.email || employee.email, name: refetched.name || employee.name, employeeNumber: refetched.employeeNumber || employee.employeeNumber };
           }
         }
+        if (!permanentEmpId || permanentEmpId === employee.id) {
+          throw new Error(`[Assign Evaluation] Unable to resolve or provision permanent UUID for employee ${employee.name} (${employee.email}). Aborting evaluation creation.`);
+        }
       }
     } catch (e) {
-      console.warn('[Assign Evaluation] Could not resolve permanent employee UUID, using provided ID:', e);
+      console.error('[Assign Evaluation] Critical failure resolving employee identity:', e);
+      throw e;
     }
   }
 

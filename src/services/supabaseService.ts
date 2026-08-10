@@ -1238,18 +1238,13 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
           const retryPayload = { ...payload, employee_id: resolvedEmpId, user_id: resolvedEmpId };
           const { error: retryErr } = await supabase.from('evaluations').upsert(retryPayload, { onConflict: 'id' });
           error = retryErr;
+        } else {
+          error = { code: '23503', message: 'Foreign key violation: unable to resolve or provision employee record for evaluation.' } as any;
         }
       } catch (retryErr) {
         console.warn('[Evaluation Save] Retry after FK violation failed:', retryErr);
+        error = { code: '23503', message: `Foreign key violation retry failed: ${retryErr}` } as any;
       }
-    }
-
-    // Attempt 4: If FK STILL fails, nullify FK while preserving employee_name & employee_email
-    if (error && (error.code === '23503' || error.message.includes('foreign key'))) {
-      console.warn('[Evaluation Save] Retrying evaluation insert with nullified FK to guarantee cloud persistence...', error.message);
-      const fallbackPayload = { ...payload, employee_id: null, user_id: null };
-      const { error: nullFkErr } = await supabase.from('evaluations').upsert(fallbackPayload, { onConflict: 'id' });
-      error = nullFkErr;
     }
 
     if (error) {
