@@ -1122,21 +1122,32 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
       updated_at: new Date().toISOString()
     };
 
+    // Attempt 1: Full payload with extended columns
     let { error } = await supabase.from('evaluations').upsert(payload, { onConflict: 'id' });
-    
-    // If FK constraint on cycle_id or template_id fails, nullify FKs and retry (keep employee_id & user_id)
+
+    // Attempt 2: If optional columns (user_id, employee_email, released_by, released_at) are missing in DB table, retry without them
+    if (error && (error.code === 'PGRST204' || error.code === '42703' || error.message.includes('column') || error.message.includes('user_id') || error.message.includes('released_by') || error.message.includes('employee_email'))) {
+      console.warn('[Evaluation Save] Optional columns missing in DB table, retrying with core payload...', error.message);
+      const { user_id, employee_email, released_by, released_at, ...cleanPayload } = payload;
+      const retryCol = await supabase.from('evaluations').upsert(cleanPayload, { onConflict: 'id' });
+      error = retryCol.error;
+    }
+
+    // Attempt 3: If FK constraint on employee_id, cycle_id, or template_id fails, nullify FKs and retry
     if (error && (error.code === '23503' || error.message.includes('foreign key'))) {
-      console.warn('[Evaluation Save] Foreign key violation, retrying with nullified cycle/template FK references...', error.message);
+      console.warn('[Evaluation Save] Foreign key violation, retrying with nullified FK references...', error.message);
+      delete payload.user_id;
+      payload.employee_id = null;
       payload.cycle_id = null;
       payload.template_id = null;
-      const retryRes = await supabase.from('evaluations').upsert(payload, { onConflict: 'id' });
-      error = retryRes.error;
+      const retryFk = await supabase.from('evaluations').upsert(payload, { onConflict: 'id' });
+      error = retryFk.error;
     }
 
     if (error) {
-      console.error('[Evaluation Debug] Supabase evaluations upsert error:', error.message, error.details);
+      console.error('[Evaluation Debug] CRITICAL - Supabase evaluations upsert failed after retries:', error.message, error.details);
     } else {
-      console.log(`[APES Sync - Eval] Saved evaluation ${evaluation.id} (${evaluation.employeeName}) to Supabase successfully with permanent DB UUID ${permanentEmpUuid}.`);
+      console.log(`[APES Sync - Eval] Saved evaluation ${evaluation.id} (${evaluation.employeeName}) to Supabase successfully.`);
       // Sync relational child tables & templates
       await syncChildTablesToSupabase(evaluation);
       triggerRealtimeBroadcast('data_changed', { type: 'evaluation', id: evalId, employeeId: permanentEmpUuid });
