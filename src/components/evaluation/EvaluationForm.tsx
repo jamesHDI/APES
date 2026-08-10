@@ -68,7 +68,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
   useEffect(() => {
     setEvalData(initialEvaluation);
-  }, [initialEvaluation]);
+  }, [initialEvaluation.id]);
 
   const currentRole = currentUser.role;
   const isReadOnly = isEvaluationCompleted(evalData);
