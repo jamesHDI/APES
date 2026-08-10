@@ -1115,7 +1115,8 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
       } else if (evaluation.employeeName) {
         query = query.ilike('name', evaluation.employeeName.trim());
       }
-      const { data: empMatch } = await query.maybeSingle();
+      const { data: empMatches } = await query.limit(1);
+      const empMatch = empMatches?.[0];
       if (empMatch && empMatch.id) {
         permanentEmpUuid = empMatch.id;
         if (empMatch.email) employeeEmail = empMatch.email.toLowerCase().trim();
