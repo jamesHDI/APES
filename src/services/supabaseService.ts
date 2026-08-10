@@ -820,7 +820,7 @@ export const fetchEvaluationsFromSupabase = async (employeeId?: string): Promise
   if (!isSupabaseConfigured || !supabase) return null;
 
   try {
-    let query = supabase.from('evaluations').select('*');
+    let query = supabase.from('evaluations').select('*').order('created_at', { ascending: false });
     if (employeeId && isValidUuid(employeeId)) {
       query = query.or(`employee_id.eq.${employeeId},user_id.eq.${employeeId}`);
     }

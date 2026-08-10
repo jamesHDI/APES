@@ -49,6 +49,16 @@ export const isEvaluationCompleted = (evaluation?: Evaluation | null): boolean =
   return evaluation.status === 'pod_validated' || evaluation.status === 'archived';
 };
 
+const getEvaluationTimestamp = (e: Evaluation): number => {
+  if (!e) return 0;
+  const raw = e.updatedAt || e.createdAt || e.appraisalDate || '';
+  const time = new Date(raw).getTime();
+  if (!isNaN(time) && time > 0) return time;
+  const yearMatch = String(raw).match(/20\d\d/);
+  if (yearMatch) return new Date(`${yearMatch[0]}-01-01`).getTime();
+  return 0;
+};
+
 export const getUserActiveEvaluation = (user: User, evaluations: Evaluation[] = []): Evaluation | null => {
   if (!user) return null;
   const cleanEmail = (user.email || '').trim().toLowerCase();
@@ -70,8 +80,9 @@ export const getUserActiveEvaluation = (user: User, evaluations: Evaluation[] = 
     return matchesId || matchesEmpNo || matchesEmail || matchesName;
   });
 
-  const activeEval = userEvals.find((e) => !isEvaluationCompleted(e));
-  return activeEval || null;
+  const sortedEvals = [...userEvals].sort((a, b) => getEvaluationTimestamp(b) - getEvaluationTimestamp(a));
+  const activeEval = sortedEvals.find((e) => !isEvaluationCompleted(e));
+  return activeEval || sortedEvals[0] || null;
 };
 
 export const getUserLatestEvaluation = (user: User, evaluations: Evaluation[] = []): Evaluation | null => {
@@ -96,7 +107,7 @@ export const getUserLatestEvaluation = (user: User, evaluations: Evaluation[] = 
   });
 
   if (userEvals.length === 0) return null;
-  return [...userEvals].sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())[0];
+  return [...userEvals].sort((a, b) => getEvaluationTimestamp(b) - getEvaluationTimestamp(a))[0];
 };
 
 /**
