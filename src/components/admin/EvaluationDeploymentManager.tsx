@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { User, Department, EvaluationTemplate, EvaluationDeployment, DeploymentStatus, AssignmentType } from '../../types';
 import { getStoredDeployments, saveDeployments, assignNewEvaluationToEmployee, saveSingleEvaluation } from '../../services/storage';
 import { triggerWorkflowNotification } from '../../services/notificationService';
-import { triggerRealtimeBroadcast } from '../../services/supabaseClient';
+import { triggerRealtimeBroadcast, isSupabaseConfigured } from '../../services/supabaseClient';
 import { 
   Rocket, 
   PlusCircle, 
@@ -68,7 +68,7 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
     const isEligibleUser = (u: User) => {
       if (!u) return false;
       if (u.isActive === false) return false;
-      if (u.approvalStatus === 'rejected' || u.approvalStatus === 'pending') return false;
+      if (u.approvalStatus === 'rejected') return false;
       if (u.isApproved === false) return false;
       return true;
     };
@@ -153,9 +153,23 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
         newEval.deadline = endDate;
         // Re-save so deploymentId & deadline are persisted to storage & Supabase
         await saveSingleEvaluation(newEval);
-        
+
+        // Resolve the permanent Supabase UUID for notifications to ensure targeted delivery
+        let targetUuid = newEval.employeeId || u.id;
+        if (isSupabaseConfigured) {
+          try {
+            const { findEmployeeInSupabase, ensureUuid } = await import('../../services/supabaseService');
+            const sbUser = await findEmployeeInSupabase(u.id) || await findEmployeeInSupabase(u.email);
+            if (sbUser && sbUser.id && ensureUuid(sbUser.id) === sbUser.id) {
+              targetUuid = sbUser.id;
+            }
+          } catch (e) {
+            console.warn('[Deployment] Could not resolve notification target UUID:', e);
+          }
+        }
+
         await triggerWorkflowNotification(
-          newEval.employeeId || u.id,
+          targetUuid,
           newEval,
           'New Evaluation Deployment Activated',
           `Evaluation cycle "${title}" (${period}) has been deployed by ${currentUser.name}. Deadline: ${endDate}.`,

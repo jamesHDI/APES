@@ -520,3 +520,26 @@ CREATE INDEX IF NOT EXISTS idx_evaluations_employee_id ON public.evaluations(emp
 CREATE INDEX IF NOT EXISTS idx_evaluations_user_id ON public.evaluations(user_id);
 CREATE INDEX IF NOT EXISTS idx_evaluations_employee_email_lower ON public.evaluations(lower(employee_email));
 CREATE INDEX IF NOT EXISTS idx_evaluations_status ON public.evaluations(status);
+
+-- 5. Trigger: automatically supersede older active drafts when a new draft is created for the same employee
+CREATE OR REPLACE FUNCTION public.supersede_older_drafts()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.status IN ('draft', 'reopened') THEN
+    UPDATE public.evaluations
+    SET status = 'superseded',
+        updated_at = NOW()
+    WHERE employee_id = NEW.employee_id
+      AND status IN ('draft', 'reopened')
+      AND id <> NEW.id
+      AND created_at < NEW.created_at;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_supersede_older_drafts ON public.evaluations;
+CREATE TRIGGER trg_supersede_older_drafts
+  BEFORE INSERT ON public.evaluations
+  FOR EACH ROW
+  EXECUTE FUNCTION public.supersede_older_drafts();
