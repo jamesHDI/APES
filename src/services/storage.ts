@@ -633,11 +633,13 @@ export const assignNewEvaluationToEmployee = async (
 ): Promise<Evaluation> => {
   // Resolve permanent Supabase UUID for the employee to ensure cross-device consistency
   let permanentEmpId = employee.id;
+  let resolvedEmployee = employee;
   if (isSupabaseConfigured) {
     try {
       const sbUser = await findEmployeeInSupabase(employee.id) || await findEmployeeInSupabase(employee.email);
       if (sbUser && sbUser.id) {
         permanentEmpId = sbUser.id;
+        resolvedEmployee = { ...employee, id: sbUser.id, email: sbUser.email || employee.email, name: sbUser.name || employee.name, employeeNumber: sbUser.employeeNumber || employee.employeeNumber };
       }
     } catch (e) {
       console.warn('[Assign Evaluation] Could not resolve permanent employee UUID, using provided ID:', e);
@@ -685,10 +687,10 @@ export const assignNewEvaluationToEmployee = async (
     workflowType,
     employeeId: permanentEmpId,
     userId: permanentEmpId,
-    employeeName: employee.name,
-    employeeEmail: employee.email,
-    departmentName: employee.departmentName || template.departmentName || 'General',
-    position: employee.position || 'Staff Specialist',
+    employeeName: resolvedEmployee.name,
+    employeeEmail: resolvedEmployee.email,
+    departmentName: resolvedEmployee.departmentName || template.departmentName || 'General',
+    position: resolvedEmployee.position || 'Staff Specialist',
     isDepartmentHead: isDeptHeadTrack,
     appraisalPeriod,
     appraisalDate: dateStr,
@@ -711,7 +713,7 @@ export const assignNewEvaluationToEmployee = async (
         timestamp: new Date().toLocaleString(),
         performedBy: assignedByName,
         performedByRole: 'ADMIN_POD',
-        assignedTo: employee.name,
+        assignedTo: resolvedEmployee.name,
         actionPerformed: 'Assigned New Evaluation Template',
         previousStatus: 'none',
         newStatus: 'draft',
