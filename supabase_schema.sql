@@ -453,3 +453,66 @@ CREATE POLICY "Allow public storage insert apes-signatures" ON storage.objects F
 CREATE POLICY "Allow public storage select apes-signatures" ON storage.objects FOR SELECT USING (bucket_id = 'apes-signatures');
 CREATE POLICY "Allow public storage insert apes-attachments" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'apes-attachments');
 CREATE POLICY "Allow public storage select apes-attachments" ON storage.objects FOR SELECT USING (bucket_id = 'apes-attachments');
+
+-- ==============================================================================
+-- APES CROSS-DEVICE EVALUATION SYNC MIGRATION: DB-Level Supersede & Invariants
+-- ==============================================================================
+
+-- 1. Trigger function: whenever an evaluation row is inserted, or an existing row's
+--    status transitions to 'draft' or 'reopened' (i.e. becomes active again), mark
+--    any OTHER uncompleted draft/reopened evaluations for the same employee as
+--    'superseded'. Runs BEFORE the row is written so the uniqueness index below
+--    never conflicts with the row being inserted/updated.
+CREATE OR REPLACE FUNCTION public.supersede_previous_evaluations()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.status IN ('draft', 'reopened') THEN
+    UPDATE public.evaluations
+    SET status = 'superseded', updated_at = NOW()
+    WHERE id IS DISTINCT FROM NEW.id
+      AND status IN ('draft', 'reopened')
+      AND (
+        (NEW.employee_id IS NOT NULL AND employee_id = NEW.employee_id)
+        OR (NEW.user_id IS NOT NULL AND user_id = NEW.user_id)
+        OR (NEW.employee_email IS NOT NULL AND NEW.employee_email <> '' AND lower(employee_email) = lower(NEW.employee_email))
+      );
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_supersede_previous_evaluations ON public.evaluations;
+CREATE TRIGGER trg_supersede_previous_evaluations
+  BEFORE INSERT OR UPDATE OF status ON public.evaluations
+  FOR EACH ROW
+  EXECUTE FUNCTION public.supersede_previous_evaluations();
+
+-- 2. Backfill: collapse any pre-existing duplicate active drafts that predate this
+--    migration, keeping only the most recently updated/created one per employee so
+--    the uniqueness index below can be created successfully.
+WITH ranked AS (
+  SELECT id,
+         ROW_NUMBER() OVER (
+           PARTITION BY COALESCE(employee_id::text, user_id::text, lower(employee_email))
+           ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST
+         ) AS rn
+  FROM public.evaluations
+  WHERE status IN ('draft', 'reopened')
+)
+UPDATE public.evaluations e
+SET status = 'superseded', updated_at = NOW()
+FROM ranked
+WHERE e.id = ranked.id AND ranked.rn > 1;
+
+-- 3. Safety-net uniqueness invariant: at most ONE active (draft/reopened) evaluation
+--    may exist per employee_id at any time.
+DROP INDEX IF EXISTS idx_evaluations_single_active_per_employee;
+CREATE UNIQUE INDEX idx_evaluations_single_active_per_employee
+  ON public.evaluations (employee_id)
+  WHERE status IN ('draft', 'reopened') AND employee_id IS NOT NULL;
+
+-- 4. Indexes to speed up cross-device lookups
+CREATE INDEX IF NOT EXISTS idx_evaluations_employee_id ON public.evaluations(employee_id);
+CREATE INDEX IF NOT EXISTS idx_evaluations_user_id ON public.evaluations(user_id);
+CREATE INDEX IF NOT EXISTS idx_evaluations_employee_email_lower ON public.evaluations(lower(employee_email));
+CREATE INDEX IF NOT EXISTS idx_evaluations_status ON public.evaluations(status);

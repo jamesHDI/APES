@@ -694,7 +694,7 @@ export const assignNewEvaluationToEmployee = async (
     const isSameEmp = (eId && (eId === permanentEmpId || eId === employee.id)) || (cleanEmpEmail && eEmail === cleanEmpEmail) || (cleanEmpName && eName === cleanEmpName);
 
     if (isSameEmp && (e.status === 'draft' || e.status === 'reopened')) {
-      return { ...e, status: 'superseded' as any, updatedAt: nowIso };
+      return { ...e, status: 'superseded' as const, updatedAt: nowIso };
     }
     return e;
   });

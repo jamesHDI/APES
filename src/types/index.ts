@@ -269,7 +269,8 @@ export type EvaluationStatus =
   | 'president_completed'
   | 'pod_validated'
   | 'archived'
-  | 'reopened';
+  | 'reopened'
+  | 'superseded';
 
 export interface EvaluationStepHistory {
   stepId: string;
