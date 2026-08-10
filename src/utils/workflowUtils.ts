@@ -46,7 +46,7 @@ export const determineWorkflowType = (user?: User): EvaluationWorkflowType => {
  */
 export const isEvaluationCompleted = (evaluation?: Evaluation | null): boolean => {
   if (!evaluation) return false;
-  return evaluation.status === 'pod_validated' || evaluation.status === 'archived';
+  return evaluation.status === 'pod_validated' || evaluation.status === 'archived' || evaluation.status === 'superseded';
 };
 
 const getEvaluationTimestamp = (e: Evaluation): number => {
