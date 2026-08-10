@@ -279,7 +279,9 @@ export const App: React.FC = () => {
         const sbDepts = await fetchDepartmentsFromSupabase();
         if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
 
-        const sbEvals = await fetchEvaluationsFromSupabase(currentUser);
+        const privilegedRoles = ['system_admin', 'hr_admin', 'pod', 'dept_head', 'supervisor', 'president'];
+        const isPrivileged = currentUser?.role && privilegedRoles.includes(currentUser.role);
+        const sbEvals = await fetchEvaluationsFromSupabase(isPrivileged ? undefined : currentUser);
         if (sbEvals) {
           setEvaluations(sbEvals);
           saveEvaluations(sbEvals);
@@ -386,9 +388,11 @@ export const App: React.FC = () => {
         const currentUserRole = currentUserRef.current?.role || authenticatedUser.role;
 
         const activeUserObj = currentUserRef.current || authenticatedUser;
+        const privilegedRoles = ['system_admin', 'hr_admin', 'pod', 'dept_head', 'supervisor', 'president'];
+        const isPrivileged = currentUserRole && privilegedRoles.includes(currentUserRole);
         const [sbDepts, sbEvals, sbNotifs] = await Promise.all([
           fetchDepartmentsFromSupabase(),
-          fetchEvaluationsFromSupabase(activeUserObj),
+          fetchEvaluationsFromSupabase(isPrivileged ? undefined : activeUserObj),
           fetchNotificationsFromSupabase(currentUserId, currentUserRole)
         ]);
 
