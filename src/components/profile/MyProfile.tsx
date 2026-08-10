@@ -282,11 +282,22 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </div>
 
-            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{firstName} {lastName}</h2>
-            <p className="text-xs font-semibold text-slate-400 mt-0.5">{position || 'Staff'}</p>
+            {/* Hide top 2 text lines if redundant System Administrator or matching role title */}
+            {!(
+              (firstName + ' ' + lastName).trim().toLowerCase() === 'system administrator' ||
+              (firstName + ' ' + lastName).trim().toLowerCase() === (ROLE_LABELS[currentUser.role] || currentUser.role).toLowerCase()
+            ) && (
+              <>
+                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{firstName} {lastName}</h2>
+                {position && (firstName + ' ' + lastName).trim().toLowerCase() !== position.trim().toLowerCase() && position.trim().toLowerCase() !== 'system administrator' && (
+                  <p className="text-xs font-semibold text-slate-400 mt-0.5">{position}</p>
+                )}
+              </>
+            )}
 
+            {/* Larger Orange Role Badge */}
             <div className="mt-3">
-              <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-brand-50 dark:bg-brand-950/60 text-[#E96B1A] dark:text-brand-300 border border-brand-200/70 dark:border-brand-800/70 shadow-sm">
+              <span className="px-5 py-2 rounded-full text-sm font-black bg-[#FFF4EA] dark:bg-brand-950/80 text-[#E96B1A] dark:text-brand-300 border border-[#F28C28]/40 dark:border-brand-700/80 shadow-md inline-flex items-center gap-1.5">
                 {ROLE_LABELS[currentUser.role] || currentUser.role}
               </span>
             </div>
