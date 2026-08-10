@@ -176,7 +176,7 @@ export const triggerWorkflowNotification = async (
 
   const newNotif: Notification = {
     id: generateUuid(),
-    userId: targetUserId,
+    userId: targetUserId || evaluation.employeeId || (evaluation as any).userId,
     recipientRole,
     recipientDepartment: evaluation.departmentName,
     title,

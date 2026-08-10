@@ -79,29 +79,28 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
     if (assignmentType === 'all') {
       targetUsers = eligibleUsers;
     } else if (assignmentType === 'departments') {
-      // Map selected department IDs/names to full department records
       const selectedDeptRecords = departments.filter(
         d => selectedDepts.includes(d.id) || selectedDepts.includes(d.name)
       );
-
-      const targetDeptNames = selectedDeptRecords.map(d => d.name.toLowerCase().trim());
-      const targetDeptIds = selectedDeptRecords.map(d => d.id.toLowerCase().trim());
-      const targetDeptCodes = selectedDeptRecords.map(d => (d.code || '').toLowerCase().trim()).filter(Boolean);
 
       targetUsers = eligibleUsers.filter(u => {
         const uDeptId = (u.departmentId || '').toLowerCase().trim();
         const uDeptName = (u.departmentName || '').toLowerCase().trim();
 
-        const matchesId = targetDeptIds.includes(uDeptId);
-        const matchesName = targetDeptNames.includes(uDeptName);
-        const matchesCode = targetDeptCodes.includes(uDeptId) || targetDeptCodes.includes(uDeptName);
+        return selectedDeptRecords.some(d => {
+          const dId = (d.id || '').toLowerCase().trim();
+          const dName = (d.name || '').toLowerCase().trim();
+          const dCode = (d.code || '').toLowerCase().trim();
 
-        // Case-insensitive substring match fallback (e.g. "Admin" matches "Admin Department" or "dept_adm")
-        const partialNameMatch = targetDeptNames.some(
-          tdn => tdn && (uDeptName.includes(tdn) || tdn.includes(uDeptName))
-        );
+          if (uDeptId && (uDeptId === dId || uDeptId === dCode)) return true;
+          if (uDeptName && (uDeptName === dName || uDeptName === dCode)) return true;
+          if (dName && uDeptName && (dName.includes(uDeptName) || uDeptName.includes(dName))) return true;
+          if (dCode && (uDeptId.includes(dCode) || uDeptName.includes(dCode))) return true;
 
-        return matchesId || matchesName || matchesCode || partialNameMatch;
+          const dTokens = dName.split(/[\s_,-]+/).filter(t => t.length > 1);
+          const uTokens = uDeptName.split(/[\s_,-]+/).filter(t => t.length > 1);
+          return dTokens.some(dt => uTokens.includes(dt));
+        });
       });
     } else if (assignmentType === 'employees') {
       targetUsers = eligibleUsers.filter(u => {
@@ -155,8 +154,8 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
         // Re-save so deploymentId & deadline are persisted to storage & Supabase
         await saveSingleEvaluation(newEval);
         
-        triggerWorkflowNotification(
-          u.id,
+        await triggerWorkflowNotification(
+          newEval.employeeId || u.id,
           newEval,
           'New Evaluation Deployment Activated',
           `Evaluation cycle "${title}" (${period}) has been deployed by ${currentUser.name}. Deadline: ${endDate}.`,
