@@ -353,25 +353,47 @@ export const App: React.FC = () => {
   const handleLoginSuccess = async (authenticatedUser: User) => {
     setCurrentUser(authenticatedUser);
     setCurrentUserStore(authenticatedUser);
+    currentUserRef.current = authenticatedUser;
     sessionStorage.setItem('apes_session_active_v3', 'true');
     localStorage.removeItem('apes_session_active_v3');
     setIsAuthenticated(true);
+    isAuthenticatedRef.current = true;
 
     // Fetch all fresh data from Supabase on login
     if (isSupabaseConfigured) {
       try {
-        const [sbUsers, sbDepts, sbEvals, sbNotifs] = await Promise.all([
-          fetchEmployeesFromSupabase(),
+        const sbUsers = await fetchEmployeesFromSupabase();
+        if (sbUsers && sbUsers.length > 0) {
+          setUsers(sbUsers);
+          const dbUser = sbUsers.find(
+            (u) => u.email.toLowerCase() === authenticatedUser.email.toLowerCase() || u.id === authenticatedUser.id
+          );
+          if (dbUser) {
+            const mergedUser: User = {
+              ...dbUser,
+              avatarUrl: authenticatedUser.avatarUrl || dbUser.avatarUrl || '',
+              personalEmail: dbUser.personalEmail || authenticatedUser.personalEmail || '',
+              requiresPasswordChange: dbUser.requiresPasswordChange ?? authenticatedUser.requiresPasswordChange
+            };
+            setCurrentUser(mergedUser);
+            setCurrentUserStore(mergedUser);
+            currentUserRef.current = mergedUser;
+          }
+        }
+
+        const currentUserId = currentUserRef.current?.id || authenticatedUser.id;
+        const currentUserRole = currentUserRef.current?.role || authenticatedUser.role;
+
+        const [sbDepts, sbEvals, sbNotifs] = await Promise.all([
           fetchDepartmentsFromSupabase(),
-          fetchEvaluationsFromSupabase(authenticatedUser.id),
-          fetchNotificationsFromSupabase(authenticatedUser.id, authenticatedUser.role)
+          fetchEvaluationsFromSupabase(currentUserId),
+          fetchNotificationsFromSupabase(currentUserId, currentUserRole)
         ]);
 
-        if (sbUsers && sbUsers.length > 0) setUsers(sbUsers);
         if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
         if (sbEvals && sbEvals.length > 0) setEvaluations(deduplicateEvaluations(sbEvals));
         if (sbNotifs) {
-          setNotifications(getRoleBasedNotifications(sbNotifs, authenticatedUser));
+          setNotifications(getRoleBasedNotifications(sbNotifs, currentUserRef.current || authenticatedUser));
         }
       } catch (e) {
         console.warn('Login sync note:', e);
@@ -388,7 +410,9 @@ export const App: React.FC = () => {
     localStorage.removeItem('apes_session_active_v3');
     localStorage.removeItem('apes_active_tab_v3');
     setCurrentUser(SEED_USERS[0]);
+    currentUserRef.current = SEED_USERS[0];
     setIsAuthenticated(false);
+    isAuthenticatedRef.current = false;
 
     try {
       await logoutUser();
