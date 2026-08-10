@@ -1248,17 +1248,18 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
     }
 
     if (error) {
-      console.error('[Evaluation Debug] CRITICAL - Supabase evaluations upsert failed after retries:', error.message, error.details);
+      const errMsg = `[Evaluation Debug] CRITICAL - Supabase evaluations upsert failed after retries: ${error.message}${error.details ? ` | details: ${error.details}` : ''}${error.hint ? ` | hint: ${error.hint}` : ''}`;
+      console.error(errMsg);
+      throw new Error(errMsg);
     } else {
       console.log(`[APES Sync - Eval] Saved evaluation ${evaluation.id} (${evaluation.employeeName}) to Supabase successfully.`);
-      // Sync relational child tables & templates
       await syncChildTablesToSupabase(evaluation);
       triggerRealtimeBroadcast('data_changed', { type: 'evaluation', id: evalId, employeeId: permanentEmpUuid });
     }
-    return !error;
+    return true;
   } catch (err) {
-    console.warn('Error saving evaluation to Supabase:', err);
-    return false;
+    console.error('Error saving evaluation to Supabase:', err);
+    throw err;
   }
 };
 

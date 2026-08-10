@@ -454,7 +454,12 @@ export const saveSingleEvaluation = async (evaluation: Evaluation, historyActor?
     updatedList.unshift(evaluation);
   }
   saveEvaluations(updatedList);
-  await saveEvaluationToSupabase(evaluation);
+  try {
+    await saveEvaluationToSupabase(evaluation);
+  } catch (supabaseErr) {
+    console.error('[Storage] Supabase sync failed after local save:', supabaseErr);
+    throw new Error(`Failed to sync evaluation to Supabase: ${supabaseErr}`);
+  }
 
   const previousEval = index >= 0 ? evaluations[index] : null;
   const statusChanged = !previousEval || previousEval.status !== evaluation.status;
