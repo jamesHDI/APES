@@ -832,14 +832,17 @@ export const fetchEvaluationsFromSupabase = async (): Promise<Evaluation[] | nul
       cycleId: e.cycle_id || 'cycle_2025_annual',
       templateId: e.template_id || 'template_sales',
       workflowType: e.workflow_type,
-      employeeId: e.employee_id,
+      employeeId: e.employee_id || e.user_id,
+      userId: e.user_id || e.employee_id,
       employeeName: e.employee_name,
-      employeeEmail: e.employee_email,
+      employeeEmail: e.employee_email || '',
       departmentName: e.department_name,
       position: e.position,
       appraisalPeriod: e.appraisal_period,
       appraisalDate: e.appraisal_date,
       status: e.status,
+      releasedBy: e.released_by || '',
+      releasedAt: e.released_at || e.created_at,
       eligibilityScore: Number(e.eligibility_score || 0),
       coreValuesScore: Number(e.core_values_score || 0),
       totalEligibilityWeightedRating: Number(e.eligibility_score || 0),
@@ -1061,20 +1064,51 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
 
   try {
     const evalId = isValidUuid(evaluation.id) ? evaluation.id : ensureUuid(evaluation.id);
-    const empId = isValidUuid(evaluation.employeeId) ? evaluation.employeeId : (SEED_UUID_MAP[evaluation.employeeId] || null);
+
+    // 1. Resolve employee's permanent database UUID from Supabase employees table
+    let permanentEmpUuid: string | null = null;
+    let employeeEmail = (evaluation.employeeEmail || '').trim().toLowerCase();
+
+    if (isValidUuid(evaluation.employeeId)) {
+      permanentEmpUuid = evaluation.employeeId;
+    } else if (SEED_UUID_MAP[evaluation.employeeId]) {
+      permanentEmpUuid = SEED_UUID_MAP[evaluation.employeeId];
+    }
+
+    try {
+      let query = supabase.from('employees').select('id, email, name');
+      if (permanentEmpUuid) {
+        query = query.or(`id.eq.${permanentEmpUuid},email.ilike.${employeeEmail}`);
+      } else if (employeeEmail) {
+        query = query.ilike('email', employeeEmail);
+      } else if (evaluation.employeeName) {
+        query = query.ilike('name', evaluation.employeeName.trim());
+      }
+      const { data: empMatch } = await query.maybeSingle();
+      if (empMatch && empMatch.id) {
+        permanentEmpUuid = empMatch.id;
+        if (empMatch.email) employeeEmail = empMatch.email.toLowerCase().trim();
+      }
+    } catch (lookupErr) {
+      console.warn('[Evaluation Save] Employee lookup warning:', lookupErr);
+    }
 
     const payload: Record<string, any> = {
       id: evalId,
       cycle_id: isValidUuid(evaluation.cycleId) ? evaluation.cycleId : null,
       template_id: isValidUuid(evaluation.templateId) ? evaluation.templateId : null,
       workflow_type: normalizeWorkflowType(evaluation.workflowType),
-      employee_id: empId,
+      employee_id: permanentEmpUuid,
+      user_id: permanentEmpUuid,
       employee_name: evaluation.employeeName,
+      employee_email: employeeEmail,
       department_name: evaluation.departmentName,
       position: evaluation.position,
       appraisal_period: evaluation.appraisalPeriod,
       appraisal_date: evaluation.appraisalDate || new Date().toISOString().split('T')[0],
       status: normalizeStatus(evaluation.status),
+      released_by: evaluation.auditTrail?.[0]?.performedBy || 'People Operations Development (POD)',
+      released_at: evaluation.createdAt || new Date().toISOString(),
       eligibility_score: evaluation.eligibilityScore || 0,
       core_values_score: evaluation.coreValuesScore || 0,
       final_rating: evaluation.finalRating || 0,
@@ -1090,10 +1124,9 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
 
     let { error } = await supabase.from('evaluations').upsert(payload, { onConflict: 'id' });
     
-    // If FK constraint on employee_id, cycle_id, or template_id fails, nullify FKs and retry
+    // If FK constraint on cycle_id or template_id fails, nullify FKs and retry (keep employee_id & user_id)
     if (error && (error.code === '23503' || error.message.includes('foreign key'))) {
-      console.warn('[Evaluation Save] Foreign key violation, retrying with nullified FK references...', error.message);
-      payload.employee_id = null;
+      console.warn('[Evaluation Save] Foreign key violation, retrying with nullified cycle/template FK references...', error.message);
       payload.cycle_id = null;
       payload.template_id = null;
       const retryRes = await supabase.from('evaluations').upsert(payload, { onConflict: 'id' });
@@ -1103,9 +1136,10 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
     if (error) {
       console.error('[Evaluation Debug] Supabase evaluations upsert error:', error.message, error.details);
     } else {
-      console.log(`[APES Sync - Eval] Saved evaluation ${evaluation.id} (${evaluation.employeeName}) to Supabase.`);
+      console.log(`[APES Sync - Eval] Saved evaluation ${evaluation.id} (${evaluation.employeeName}) to Supabase successfully with permanent DB UUID ${permanentEmpUuid}.`);
       // Sync relational child tables & templates
       await syncChildTablesToSupabase(evaluation);
+      triggerRealtimeBroadcast('data_changed', { type: 'evaluation', id: evalId, employeeId: permanentEmpUuid });
     }
     return !error;
   } catch (err) {

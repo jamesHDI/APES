@@ -109,12 +109,16 @@ CREATE TABLE IF NOT EXISTS public.evaluations (
     template_id UUID REFERENCES public.evaluation_templates(id) ON DELETE SET NULL,
     workflow_type VARCHAR(50) NOT NULL CHECK (workflow_type IN ('WORKFLOW_REGULAR', 'WORKFLOW_NO_IS', 'WORKFLOW_DEPT_HEAD', 'WORKFLOW_A', 'WORKFLOW_B')),
     employee_id UUID REFERENCES public.employees(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.employees(id) ON DELETE CASCADE,
     employee_name VARCHAR(150) NOT NULL,
+    employee_email VARCHAR(150),
     department_name VARCHAR(100) NOT NULL,
     position VARCHAR(100) NOT NULL,
     appraisal_period VARCHAR(100) NOT NULL,
     appraisal_date DATE DEFAULT CURRENT_DATE,
-    status VARCHAR(50) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'employee_submitted', 'department_head_submitted', 'pending_supervisor', 'pending_dept_head', 'pending_president', 'pending_pod', 'supervisor_completed', 'president_completed', 'pod_validated', 'archived', 'reopened')),
+    status VARCHAR(50) NOT NULL DEFAULT 'draft',
+    released_by VARCHAR(150),
+    released_at TIMESTAMPTZ DEFAULT NOW(),
     
     eligibility_score NUMERIC(5,2) DEFAULT 0.00,
     core_values_score NUMERIC(5,2) DEFAULT 0.00,
@@ -136,6 +140,12 @@ CREATE TABLE IF NOT EXISTS public.evaluations (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure existing database instances add missing columns safely
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.employees(id) ON DELETE CASCADE;
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS employee_email VARCHAR(150);
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS released_by VARCHAR(150);
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ DEFAULT NOW();
 
 -- 8. KPI RATINGS TABLE
 CREATE TABLE IF NOT EXISTS public.kpi_ratings (

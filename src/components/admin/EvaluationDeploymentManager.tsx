@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Department, EvaluationTemplate, EvaluationDeployment, DeploymentStatus, AssignmentType } from '../../types';
 import { getStoredDeployments, saveDeployments, assignNewEvaluationToEmployee, saveSingleEvaluation } from '../../services/storage';
 import { triggerWorkflowNotification } from '../../services/notificationService';
+import { triggerRealtimeBroadcast } from '../../services/supabaseClient';
 import { 
   Rocket, 
   PlusCircle, 
@@ -152,12 +153,13 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
           currentUser.name,
           'action_required'
         );
-       }
-     }
+      }
+      triggerRealtimeBroadcast('data_changed', { type: 'evaluation_deployment', deploymentId });
+    }
 
-     showToast(`Successfully deployed evaluation cycle to ${targetUsers.length} employee(s)!`);
-     setIsModalOpen(false);
-     onRefreshData();
+    showToast(`Successfully deployed evaluation cycle to ${targetUsers.length} employee(s)!`);
+    setIsModalOpen(false);
+    onRefreshData();
    };
 
   const handleUpdateStatus = (id: string, newStatus: DeploymentStatus) => {

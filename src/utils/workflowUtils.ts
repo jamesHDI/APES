@@ -53,11 +53,23 @@ export const getUserActiveEvaluation = (user: User, evaluations: Evaluation[] = 
   if (!user) return null;
   const cleanEmail = (user.email || '').trim().toLowerCase();
   const cleanName = (user.name || '').trim().toLowerCase();
-  const userEvals = evaluations.filter((e) => 
-    (e.employeeId && (e.employeeId === user.id || e.employeeId === user.employeeNumber)) || 
-    (cleanEmail && e.employeeEmail && e.employeeEmail.trim().toLowerCase() === cleanEmail) ||
-    (cleanName && e.employeeName && e.employeeName.trim().toLowerCase() === cleanName)
-  );
+  const userEmpNo = (user.employeeNumber || '').trim().toLowerCase();
+
+  const userEvals = evaluations.filter((e) => {
+    if (!e) return false;
+    const eUserId = (e as any).userId;
+    const eEmpId = e.employeeId;
+    const eEmail = (e.employeeEmail || '').trim().toLowerCase();
+    const eName = (e.employeeName || '').trim().toLowerCase();
+
+    const matchesId = (eUserId && eUserId === user.id) || (eEmpId && eEmpId === user.id);
+    const matchesEmpNo = userEmpNo && ((eUserId && eUserId.toLowerCase() === userEmpNo) || (eEmpId && eEmpId.toLowerCase() === userEmpNo));
+    const matchesEmail = cleanEmail && eEmail && eEmail === cleanEmail;
+    const matchesName = cleanName && eName && eName === cleanName;
+
+    return matchesId || matchesEmpNo || matchesEmail || matchesName;
+  });
+
   const activeEval = userEvals.find((e) => !isEvaluationCompleted(e));
   return activeEval || null;
 };
@@ -66,11 +78,23 @@ export const getUserLatestEvaluation = (user: User, evaluations: Evaluation[] = 
   if (!user) return null;
   const cleanEmail = (user.email || '').trim().toLowerCase();
   const cleanName = (user.name || '').trim().toLowerCase();
-  const userEvals = evaluations.filter((e) => 
-    (e.employeeId && (e.employeeId === user.id || e.employeeId === user.employeeNumber)) || 
-    (cleanEmail && e.employeeEmail && e.employeeEmail.trim().toLowerCase() === cleanEmail) ||
-    (cleanName && e.employeeName && e.employeeName.trim().toLowerCase() === cleanName)
-  );
+  const userEmpNo = (user.employeeNumber || '').trim().toLowerCase();
+
+  const userEvals = evaluations.filter((e) => {
+    if (!e) return false;
+    const eUserId = (e as any).userId;
+    const eEmpId = e.employeeId;
+    const eEmail = (e.employeeEmail || '').trim().toLowerCase();
+    const eName = (e.employeeName || '').trim().toLowerCase();
+
+    const matchesId = (eUserId && eUserId === user.id) || (eEmpId && eEmpId === user.id);
+    const matchesEmpNo = userEmpNo && ((eUserId && eUserId.toLowerCase() === userEmpNo) || (eEmpId && eEmpId.toLowerCase() === userEmpNo));
+    const matchesEmail = cleanEmail && eEmail && eEmail === cleanEmail;
+    const matchesName = cleanName && eName && eName === cleanName;
+
+    return matchesId || matchesEmpNo || matchesEmail || matchesName;
+  });
+
   if (userEvals.length === 0) return null;
   return [...userEvals].sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())[0];
 };
