@@ -51,12 +51,36 @@ export const isEvaluationCompleted = (evaluation?: Evaluation | null): boolean =
 
 const getEvaluationTimestamp = (e: Evaluation): number => {
   if (!e) return 0;
-  const raw = e.updatedAt || e.createdAt || e.appraisalDate || '';
-  const time = new Date(raw).getTime();
-  if (!isNaN(time) && time > 0) return time;
-  const yearMatch = String(raw).match(/20\d\d/);
-  if (yearMatch) return new Date(`${yearMatch[0]}-01-01`).getTime();
-  return 0;
+  let baseTime = 0;
+  
+  if (e.updatedAt) {
+    const t = new Date(e.updatedAt).getTime();
+    if (!isNaN(t) && t > 0) baseTime = t;
+  }
+  if (!baseTime && e.createdAt) {
+    const t = new Date(e.createdAt).getTime();
+    if (!isNaN(t) && t > 0) baseTime = t;
+  }
+  if (!baseTime && e.appraisalDate) {
+    const t = new Date(e.appraisalDate).getTime();
+    if (!isNaN(t) && t > 0) baseTime = t;
+  }
+  if (!baseTime) {
+    const raw = e.appraisalPeriod || '';
+    const yearMatch = String(raw).match(/20\d\d/);
+    if (yearMatch) baseTime = new Date(`${yearMatch[0]}-01-01`).getTime();
+  }
+
+  let tieBreaker = 0;
+  if (e.id) {
+    const match = e.id.match(/\d{10,13}/);
+    if (match) {
+      const parsed = parseInt(match[0], 10);
+      if (parsed > 1000000000) tieBreaker = parsed;
+    }
+  }
+
+  return (baseTime * 1000) + (tieBreaker % 100000000);
 };
 
 export const getUserActiveEvaluation = (user: User, evaluations: Evaluation[] = []): Evaluation | null => {

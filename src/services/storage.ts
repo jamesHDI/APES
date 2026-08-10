@@ -720,8 +720,8 @@ export const assignNewEvaluationToEmployee = async (
         remarks: `Assigned new evaluation scorecard for ${appraisalPeriod}.`
       }
     ],
-    createdAt: dateStr,
-    updatedAt: dateStr
+    createdAt: nowIso,
+    updatedAt: nowIso
   };
 
   await saveSingleEvaluation(newEval);
