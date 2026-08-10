@@ -148,6 +148,7 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
     // If active, generate evaluations and notify users
     if (initialStatus === 'active') {
       let failed = 0;
+      const errors: string[] = [];
       for (const u of targetUsers) {
         try {
           const newEval = await assignNewEvaluationToEmployee(u, template, period, currentUser.name);
@@ -180,11 +181,17 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
           );
         } catch (err) {
           failed++;
-          console.error(`[Deployment] Failed to deploy evaluation for ${u.name}:`, err);
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`[Deployment] Failed to deploy evaluation for ${u.name}:`, msg);
+          errors.push(`${u.name}: ${msg}`);
         }
       }
       if (failed > 0) {
-        alert(`Deployment completed with errors. ${failed} out of ${targetUsers.length} employees failed. Check console for details.`);
+        alert(
+          `Deployment completed with errors.\n\n${failed} out of ${targetUsers.length} employees failed.\n\n` +
+          errors.slice(0, 5).join('\n') +
+          (errors.length > 5 ? `\n\n...and ${errors.length - 5} more. Check browser console for full details.` : '')
+        );
       }
       triggerRealtimeBroadcast('data_changed', { type: 'evaluation_deployment', deploymentId });
     }

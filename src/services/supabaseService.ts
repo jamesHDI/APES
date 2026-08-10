@@ -529,6 +529,24 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       saveErr = fallbackErr;
     }
 
+    if (saveErr && (saveErr.code === 'PGRST204' || saveErr.code === '42703' || saveErr.message.includes('column'))) {
+      console.warn('[Supabase DB Update] Column mismatch detected, retrying with core payload...', saveErr.message);
+      const {
+        employee_number, middle_name, suffix, personal_email, contact_number,
+        username, password, requires_password_change, avatar_url,
+        employment_status, date_hired, approval_status, hr_rejection_remarks,
+        is_department_head, immediate_superior_name, department_head_name,
+        immediate_superior_id, department_head_id, ...corePayload
+      } = payload;
+      if (existingId) {
+        const { error: coreErr } = await supabase.from('employees').update(corePayload).eq('id', existingId);
+        saveErr = coreErr;
+      } else if (cleanEmail) {
+        const { error: coreErr } = await supabase.from('employees').upsert(corePayload, { onConflict: 'email' });
+        saveErr = coreErr;
+      }
+    }
+
     if (saveErr) {
       console.error('[Supabase DB Update] UPDATE Query Failed - Full PostgREST error:', JSON.stringify(saveErr, null, 2));
       console.error('[Supabase DB Update] Payload that failed:', JSON.stringify(payload, null, 2));

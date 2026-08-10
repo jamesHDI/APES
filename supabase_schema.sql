@@ -38,7 +38,9 @@ CREATE TABLE IF NOT EXISTS public.employees (
     middle_name VARCHAR(100),
     last_name VARCHAR(100) NOT NULL,
     suffix VARCHAR(20),
+    name VARCHAR(150),
     email VARCHAR(150) UNIQUE NOT NULL,
+    personal_email VARCHAR(150),
     contact_number VARCHAR(50),
     department_id UUID REFERENCES public.departments(id) ON DELETE RESTRICT,
     department_name VARCHAR(100) NOT NULL,
@@ -63,6 +65,10 @@ CREATE TABLE IF NOT EXISTS public.employees (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure existing database instances add missing columns safely
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS name VARCHAR(150);
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS personal_email VARCHAR(150);
 
 -- 4. EVALUATION CYCLES TABLE
 CREATE TABLE IF NOT EXISTS public.evaluation_cycles (
