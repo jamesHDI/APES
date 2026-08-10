@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Department } from '../../types';
 import { authenticateUser, requestPasswordReset } from '../../services/authService';
 import { SelfRegisterModal } from './SelfRegisterModal';
@@ -11,7 +11,8 @@ import {
   AlertCircle, 
   UserPlus, 
   Eye,
-  EyeOff
+  EyeOff,
+  Clock
 } from 'lucide-react';
 
 interface LoginModalProps {
@@ -21,6 +22,11 @@ interface LoginModalProps {
   departments: Department[];
   onRegisterNewUser: (newUser: User) => void;
 }
+
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MS = 60 * 1000; // 1 minute lockout
+const ATTEMPTS_STORAGE_KEY = 'apes_login_failed_attempts';
+const LOCKOUT_TIME_STORAGE_KEY = 'apes_login_lockout_until';
 
 export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
@@ -39,19 +45,86 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [forgotToast, setForgotToast] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const [failedAttempts, setFailedAttempts] = useState<number>(() => {
+    const saved = localStorage.getItem(ATTEMPTS_STORAGE_KEY);
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(() => {
+    const saved = localStorage.getItem(LOCKOUT_TIME_STORAGE_KEY);
+    if (!saved) return null;
+    const time = parseInt(saved, 10);
+    if (time > Date.now()) return time;
+    localStorage.removeItem(LOCKOUT_TIME_STORAGE_KEY);
+    localStorage.removeItem(ATTEMPTS_STORAGE_KEY);
+    return null;
+  });
+
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
+
+  useEffect(() => {
+    if (!lockoutUntil) {
+      setRemainingSeconds(0);
+      return;
+    }
+
+    const updateTimer = () => {
+      const diff = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      if (diff <= 0) {
+        setLockoutUntil(null);
+        setFailedAttempts(0);
+        setRemainingSeconds(0);
+        localStorage.removeItem(LOCKOUT_TIME_STORAGE_KEY);
+        localStorage.removeItem(ATTEMPTS_STORAGE_KEY);
+      } else {
+        setRemainingSeconds(diff);
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutUntil]);
+
   if (!isOpen) return null;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+
+    if (lockoutUntil && lockoutUntil > Date.now()) {
+      const secs = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      setErrorMsg(`Too many failed login attempts (5/5). Account locked. Please wait ${secs}s before trying again.`);
+      return;
+    }
+
     setIsLoading(true);
 
     const result = await authenticateUser({ identifier, password });
     setIsLoading(false);
+
     if (result.error || !result.user) {
-      setErrorMsg(result.error || 'Authentication failed.');
+      const newCount = failedAttempts + 1;
+      setFailedAttempts(newCount);
+      localStorage.setItem(ATTEMPTS_STORAGE_KEY, newCount.toString());
+
+      if (newCount >= MAX_FAILED_ATTEMPTS) {
+        const lockTime = Date.now() + LOCKOUT_MS;
+        setLockoutUntil(lockTime);
+        localStorage.setItem(LOCKOUT_TIME_STORAGE_KEY, lockTime.toString());
+        setErrorMsg(`Too many failed sign in attempts (5/5). Account locked for 1 minute. Please wait before trying again.`);
+      } else {
+        const remaining = MAX_FAILED_ATTEMPTS - newCount;
+        setErrorMsg(`${result.error || 'Authentication failed.'} (${newCount}/${MAX_FAILED_ATTEMPTS} attempts used, ${remaining} remaining)`);
+      }
       return;
     }
+
+    // Success - clear failed attempts & lockout state
+    setFailedAttempts(0);
+    setLockoutUntil(null);
+    localStorage.removeItem(ATTEMPTS_STORAGE_KEY);
+    localStorage.removeItem(LOCKOUT_TIME_STORAGE_KEY);
 
     onLoginSuccess(result.user);
   };
@@ -68,7 +141,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-12 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-12">
         
         {/* Left Branding Panel */}
         <div className="md:col-span-5 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] p-8 text-white flex flex-col justify-center items-center text-center relative overflow-hidden">
@@ -144,8 +217,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </button>
             </div>
 
+            {/* Lockout Warning Banner */}
+            {remainingSeconds > 0 && (
+              <div className="mb-4 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 animate-pulse shrink-0" />
+                  <span className="font-semibold">Too many failed sign in attempts (5/5).</span>
+                </div>
+                <span className="font-black text-xs px-2.5 py-1 rounded-lg bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100">
+                  {remainingSeconds}s remaining
+                </span>
+              </div>
+            )}
+
             {/* Error */}
-            {errorMsg && (
+            {errorMsg && remainingSeconds === 0 && (
               <div className="mb-4 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs flex items-start gap-2 animate-in fade-in">
                 <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                 <span>{errorMsg}</span>
@@ -163,8 +249,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     required
+                    disabled={remainingSeconds > 0}
                     placeholder="EMP-1001 or your@email.com"
-                    className="form-input pl-9"
+                    className="form-input pl-9 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -187,8 +274,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    disabled={remainingSeconds > 0}
                     placeholder="Enter your password"
-                    className="form-input pl-9 pr-10"
+                    className="form-input pl-9 pr-10 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <button
                     type="button"
@@ -202,8 +290,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
               <button
                 type="submit"
-                disabled={isLoading}
-                className="w-full py-3 rounded-xl bg-orange-600 hover:bg-orange-700 disabled:opacity-60 text-white font-black shadow-lg shadow-orange-600/20 transition-all flex items-center justify-center gap-2 mt-2"
+                disabled={isLoading || remainingSeconds > 0}
+                className="w-full py-3 rounded-xl bg-orange-600 hover:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-black shadow-lg shadow-orange-600/20 transition-all flex items-center justify-center gap-2 mt-2"
               >
                 {isLoading ? (
                   <span className="flex items-center gap-2">
@@ -212,6 +300,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                     </svg>
                     Signing in...
+                  </span>
+                ) : remainingSeconds > 0 ? (
+                  <span className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 animate-pulse" />
+                    Please wait ({remainingSeconds}s)
                   </span>
                 ) : (
                   <>
