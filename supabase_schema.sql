@@ -458,8 +458,9 @@ CREATE POLICY "Allow public storage select apes-attachments" ON storage.objects 
 -- APES CROSS-DEVICE EVALUATION SYNC MIGRATION: DB-Level Supersede & Invariants
 -- ==============================================================================
 
--- 0. Ensure user_id column exists on public.evaluations table safely
+-- 0. Ensure columns exist on public.evaluations table safely
 ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.employees(id) ON DELETE CASCADE;
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS employee_email VARCHAR(150);
 
 -- 1. Trigger function: whenever an evaluation row is inserted, or an existing row's
 --    status transitions to 'draft' or 'reopened' (i.e. becomes active again), mark
@@ -496,7 +497,7 @@ CREATE TRIGGER trg_supersede_previous_evaluations
 WITH ranked AS (
   SELECT id,
          ROW_NUMBER() OVER (
-           PARTITION BY COALESCE(employee_id::text, lower(employee_email))
+           PARTITION BY COALESCE(employee_id::text, id::text)
            ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST
          ) AS rn
   FROM public.evaluations
