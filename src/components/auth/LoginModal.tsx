@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { User, Department } from '../../types';
 import { authenticateUser, requestPasswordReset } from '../../services/authService';
 import { SelfRegisterModal } from './SelfRegisterModal';
-import { 
-  Lock, 
-  Mail, 
-  Key, 
-  ArrowRight, 
-  ShieldCheck, 
-  AlertCircle, 
-  UserPlus, 
+import {
+  Lock,
+  Mail,
+  Key,
+  ArrowRight,
+  ShieldCheck,
+  AlertCircle,
+  UserPlus,
   Eye,
   EyeOff,
   Clock
@@ -24,7 +24,7 @@ interface LoginModalProps {
 }
 
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_MS = 60 * 1000; // 1 minute lockout
+const LOCKOUT_MS = 30 * 1000; // 30 seconds lockout
 const ATTEMPTS_STORAGE_KEY = 'apes_login_failed_attempts';
 const LOCKOUT_TIME_STORAGE_KEY = 'apes_login_lockout_until';
 
@@ -112,7 +112,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         const lockTime = Date.now() + LOCKOUT_MS;
         setLockoutUntil(lockTime);
         localStorage.setItem(LOCKOUT_TIME_STORAGE_KEY, lockTime.toString());
-        setErrorMsg(`Too many failed sign in attempts (5/5). Account locked for 1 minute. Please wait before trying again.`);
+        setErrorMsg(`Too many failed sign in attempts (5/5). Account locked for 30 seconds. Please wait before trying again.`);
       } else {
         const remaining = MAX_FAILED_ATTEMPTS - newCount;
         setErrorMsg(`${result.error || 'Authentication failed.'} (${newCount}/${MAX_FAILED_ATTEMPTS} attempts used, ${remaining} remaining)`);
@@ -142,7 +142,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-12">
-        
+
         {/* Left Branding Panel */}
         <div className="md:col-span-5 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] p-8 text-white flex flex-col justify-center items-center text-center relative overflow-hidden">
           {/* Decorative blobs */}
@@ -200,7 +200,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
         {/* Right Form Panel */}
         <div className="md:col-span-7 p-8 space-y-6 flex flex-col justify-between bg-white dark:bg-slate-900">
-          
+
           <div>
             <div className="flex items-center justify-between mb-6">
               <div>
