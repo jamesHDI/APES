@@ -816,13 +816,30 @@ export const saveNotificationsBatchToSupabase = async (notifs: Notification[]): 
 // 4. EVALUATIONS SUPABASE OPERATIONS
 // ==============================================================================
 
-export const fetchEvaluationsFromSupabase = async (employeeId?: string): Promise<Evaluation[] | null> => {
+export const fetchEvaluationsFromSupabase = async (employeeIdOrUser?: string | User): Promise<Evaluation[] | null> => {
   if (!isSupabaseConfigured || !supabase) return null;
 
   try {
     let query = supabase.from('evaluations').select('*').order('created_at', { ascending: false });
-    if (employeeId && isValidUuid(employeeId)) {
-      query = query.or(`employee_id.eq.${employeeId},user_id.eq.${employeeId}`);
+    if (employeeIdOrUser) {
+      const empId = typeof employeeIdOrUser === 'string' ? employeeIdOrUser : employeeIdOrUser.id;
+      const empEmail = typeof employeeIdOrUser === 'object' ? (employeeIdOrUser.email || '').trim().toLowerCase() : '';
+      const empName = typeof employeeIdOrUser === 'object' ? (employeeIdOrUser.name || '').trim() : '';
+
+      const conditions: string[] = [];
+      if (empId && isValidUuid(empId)) {
+        conditions.push(`employee_id.eq.${empId}`, `user_id.eq.${empId}`);
+      }
+      if (empEmail) {
+        conditions.push(`employee_email.ilike.${empEmail}`);
+      }
+      if (empName) {
+        conditions.push(`employee_name.ilike.${empName}`);
+      }
+
+      if (conditions.length > 0) {
+        query = query.or(conditions.join(','));
+      }
     }
 
     let { data: evals, error: evalErr } = await query;
@@ -1183,25 +1200,53 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
       error = retryCol.error;
     }
 
-    // Attempt 3: If FK constraint fails, provision employee and retry with confirmed UUID
+    // Attempt 3: If FK constraint fails, provision employee in Supabase employees table and retry
     if (error && (error.code === '23503' || error.message.includes('foreign key'))) {
-      console.warn('[Evaluation Save] Foreign key violation, provisioning employee and retrying...', error.message);
+      console.warn('[Evaluation Save] Foreign key violation, provisioning employee in Supabase employees table and retrying...', error.message);
       try {
-        const { SEED_USERS } = await import('./storage');
-        const matchedSeed = SEED_USERS.find((u: any) =>
-          u.email.toLowerCase() === (employeeEmail || '').toLowerCase() ||
-          u.name.toLowerCase() === (evaluation.employeeName || '').toLowerCase()
+        const { getStoredUsers } = await import('./storage');
+        const allUsers = getStoredUsers();
+        const matchedUser = allUsers.find((u: any) =>
+          (employeeEmail && u.email?.toLowerCase() === employeeEmail) ||
+          (evaluation.employeeName && u.name?.toLowerCase() === evaluation.employeeName.toLowerCase()) ||
+          u.id === evaluation.employeeId
         );
-        if (matchedSeed) {
-          const seedUuid = isValidUuid(matchedSeed.id) ? matchedSeed.id : ensureUuid(matchedSeed.id);
-          await saveEmployeeToSupabase({ ...matchedSeed, id: permanentEmpUuid });
-          const retryPayload = { ...payload, employee_id: permanentEmpUuid, user_id: permanentEmpUuid };
+
+        const empToProvision: User = matchedUser || {
+          id: permanentEmpUuid || generateUuid(),
+          employeeNumber: `EMP-${Date.now().toString().slice(-6)}`,
+          firstName: evaluation.employeeName?.split(' ')[0] || 'Employee',
+          lastName: evaluation.employeeName?.split(' ').slice(1).join(' ') || 'User',
+          name: evaluation.employeeName || 'Employee',
+          email: employeeEmail || `${evaluation.employeeName?.toLowerCase().replace(/\s+/g, '.')}@hdiadventures.com`,
+          role: 'employee',
+          departmentId: '',
+          departmentName: evaluation.departmentName || 'General',
+          position: evaluation.position || 'Staff',
+          isActive: true,
+          isApproved: true,
+          approvalStatus: 'approved'
+        };
+
+        const provisionResult = await saveEmployeeToSupabaseDetailed(empToProvision);
+        const resolvedEmpId = provisionResult.success && provisionResult.id ? provisionResult.id : (isValidUuid(empToProvision.id) ? empToProvision.id : permanentEmpUuid);
+
+        if (resolvedEmpId) {
+          const retryPayload = { ...payload, employee_id: resolvedEmpId, user_id: resolvedEmpId };
           const { error: retryErr } = await supabase.from('evaluations').upsert(retryPayload, { onConflict: 'id' });
           error = retryErr;
         }
       } catch (retryErr) {
         console.warn('[Evaluation Save] Retry after FK violation failed:', retryErr);
       }
+    }
+
+    // Attempt 4: If FK STILL fails, nullify FK while preserving employee_name & employee_email
+    if (error && (error.code === '23503' || error.message.includes('foreign key'))) {
+      console.warn('[Evaluation Save] Retrying evaluation insert with nullified FK to guarantee cloud persistence...', error.message);
+      const fallbackPayload = { ...payload, employee_id: null, user_id: null };
+      const { error: nullFkErr } = await supabase.from('evaluations').upsert(fallbackPayload, { onConflict: 'id' });
+      error = nullFkErr;
     }
 
     if (error) {

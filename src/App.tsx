@@ -279,7 +279,7 @@ export const App: React.FC = () => {
         const sbDepts = await fetchDepartmentsFromSupabase();
         if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
 
-        const sbEvals = await fetchEvaluationsFromSupabase(currentUser?.id);
+        const sbEvals = await fetchEvaluationsFromSupabase(currentUser);
         if (sbEvals) {
           setEvaluations((prevEvals) => deduplicateEvaluations([...sbEvals, ...prevEvals]));
         }
