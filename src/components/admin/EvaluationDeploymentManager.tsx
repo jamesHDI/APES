@@ -66,8 +66,10 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
 
     // Determine target employees
     const isEligibleUser = (u: User) => {
-      if (u.isActive !== true) return false;
-      if (u.isApproved !== true || u.approvalStatus === 'pending' || u.approvalStatus === 'rejected') return false;
+      if (!u) return false;
+      if (u.isActive === false) return false;
+      if (u.approvalStatus === 'rejected' || u.approvalStatus === 'pending') return false;
+      if (u.isApproved === false) return false;
       return true;
     };
 
@@ -102,7 +104,15 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
         return matchesId || matchesName || matchesCode || partialNameMatch;
       });
     } else if (assignmentType === 'employees') {
-      targetUsers = eligibleUsers.filter(u => selectedEmps.includes(u.id));
+      targetUsers = eligibleUsers.filter(u => {
+        const uId = u.id;
+        const uEmail = (u.email || '').toLowerCase().trim();
+        const uName = (u.name || '').toLowerCase().trim();
+        return selectedEmps.some(se => {
+          const cleanSe = se.toLowerCase().trim();
+          return se === uId || cleanSe === uEmail || cleanSe === uName;
+        });
+      });
     }
 
     if (targetUsers.length === 0) {

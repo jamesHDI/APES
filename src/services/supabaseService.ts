@@ -689,14 +689,15 @@ export const fetchNotificationsFromSupabase = async (userId?: string, userRole?:
   try {
     let query = supabase.from('notifications').select('*');
 
-    // Server-side filtering: fetch only notifications targeted to user ID, recipient role, or global announcements
-    if (userId && isValidUuid(userId)) {
+    // Server-side filtering: fetch notifications targeted to user ID (UUID or string), recipient role, or global announcements
+    if (userId) {
+      const targetUuid = ensureUuid(userId);
       if (userRole === 'system_admin' || userRole === 'hr_admin') {
-        query = query.or(`user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,recipient_role.eq.ALL_ADMINS,recipient_role.eq.${userRole},is_announcement.eq.true`);
+        query = query.or(`user_id.eq.${targetUuid},user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,recipient_role.eq.ALL_ADMINS,recipient_role.eq.${userRole},is_announcement.eq.true`);
       } else if (userRole) {
-        query = query.or(`user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,recipient_role.eq.${userRole},is_announcement.eq.true`);
+        query = query.or(`user_id.eq.${targetUuid},user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,recipient_role.eq.${userRole},is_announcement.eq.true`);
       } else {
-        query = query.or(`user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,is_announcement.eq.true`);
+        query = query.or(`user_id.eq.${targetUuid},user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,is_announcement.eq.true`);
       }
     }
 
@@ -749,7 +750,7 @@ export const saveNotificationToSupabase = async (notif: Notification): Promise<b
   try {
     const payload: any = {
       id: ensureUuid(notif.id),
-      user_id: isValidUuid(notif.userId) ? notif.userId : null,
+      user_id: ensureUuid(notif.userId),
       recipient_role: notif.recipientRole || null,
       recipient_department: notif.recipientDepartment || null,
       title: notif.title,
@@ -782,7 +783,7 @@ export const saveNotificationsBatchToSupabase = async (notifs: Notification[]): 
   try {
     const payloads = notifs.map(notif => ({
       id: ensureUuid(notif.id),
-      user_id: isValidUuid(notif.userId) ? notif.userId : null,
+      user_id: ensureUuid(notif.userId),
       recipient_role: notif.recipientRole || null,
       recipient_department: notif.recipientDepartment || null,
       title: notif.title,
