@@ -1214,10 +1214,18 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
     let { error } = await supabase.from('evaluations').upsert(payload, { onConflict: 'id' });
 
     // Attempt 2: If optional columns are missing in DB table, retry without them
-    if (error && (error.code === 'PGRST204' || error.code === '42703' || error.message.includes('column') || error.message.includes('user_id') || error.message.includes('released_by') || error.message.includes('employee_email'))) {
+    if (error && (error.code === 'PGRST204' || error.code === '42703' || error.message.includes('column') || error.message.includes('audit_trail_data') || error.message.includes('kpi_ratings_data') || error.message.includes('user_id') || error.message.includes('released_by') || error.message.includes('employee_email'))) {
       console.warn('[Evaluation Save] Optional columns missing in DB table, retrying with core payload...', error.message);
-      const { user_id, employee_email, released_by, released_at, ...cleanPayload } = payload;
-      const retryCol = await supabase.from('evaluations').upsert(cleanPayload, { onConflict: 'id' });
+      const {
+        user_id, employee_email, released_by, released_at,
+        eligibility_score, core_values_score, final_rating, rating_classification,
+        kpi_ratings_data, core_value_ratings_data, signatures_data,
+        audit_trail_data, development_plan_data, personnel_action_data,
+        appraisee_summary_comment, supervisor_summary_comment,
+        president_summary_comment, pod_validation_comment,
+        ...corePayload
+      } = payload;
+      const retryCol = await supabase.from('evaluations').upsert(corePayload, { onConflict: 'id' });
       error = retryCol.error;
     }
 

@@ -152,6 +152,20 @@ ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES 
 ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS employee_email VARCHAR(150);
 ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS released_by VARCHAR(150);
 ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS audit_trail_data JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS development_plan_data JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS personnel_action_data JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS appraisee_summary_comment TEXT;
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS supervisor_summary_comment TEXT;
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS president_summary_comment TEXT;
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS pod_validation_comment TEXT;
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS rating_classification VARCHAR(100) DEFAULT 'Unsatisfactory';
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS eligibility_score NUMERIC(5,2) DEFAULT 0.00;
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS core_values_score NUMERIC(5,2) DEFAULT 0.00;
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS final_rating NUMERIC(5,2) DEFAULT 0.00;
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS kpi_ratings_data JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS core_value_ratings_data JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS signatures_data JSONB DEFAULT '{}'::jsonb;
 
 -- 8. KPI RATINGS TABLE
 CREATE TABLE IF NOT EXISTS public.kpi_ratings (
