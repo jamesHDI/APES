@@ -10,9 +10,10 @@ import {
   uploadScorecardPdfToSupabase,
   uploadEvidenceFilesToSupabase,
   uploadSignaturesToSupabase,
-  findEmployeeInSupabase
+  findEmployeeInSupabase,
+  isValidUuid
 } from './supabaseService';
-import { isSupabaseConfigured } from './supabaseClient';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 const USERS_KEY = 'apes_users_v3';
 const CURRENT_USER_KEY = 'apes_current_user_v3';
@@ -679,6 +680,44 @@ export const assignNewEvaluationToEmployee = async (
 
   const nowIso = new Date().toISOString();
   const dateStr = nowIso.substring(0, 10);
+
+  // Supersede previous uncompleted draft evaluations for this employee so the newly assigned evaluation becomes the sole active evaluation
+  const cleanEmpEmail = (resolvedEmployee.email || '').toLowerCase().trim();
+  const cleanEmpName = (resolvedEmployee.name || '').toLowerCase().trim();
+  const existingEvals = getStoredEvaluations();
+
+  const updatedEvals = existingEvals.map((e) => {
+    const eEmail = (e.employeeEmail || '').toLowerCase().trim();
+    const eName = (e.employeeName || '').toLowerCase().trim();
+    const eId = e.employeeId || (e as any).userId;
+    const isSameEmp = (eId && (eId === permanentEmpId || eId === employee.id)) || (cleanEmpEmail && eEmail === cleanEmpEmail) || (cleanEmpName && eName === cleanEmpName);
+
+    if (isSameEmp && (e.status === 'draft' || e.status === 'reopened')) {
+      return { ...e, status: 'superseded' as any, updatedAt: nowIso };
+    }
+    return e;
+  });
+  saveEvaluations(updatedEvals);
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      if (isValidUuid(permanentEmpId)) {
+        await supabase
+          .from('evaluations')
+          .update({ status: 'superseded', updated_at: nowIso })
+          .or(`employee_id.eq.${permanentEmpId},user_id.eq.${permanentEmpId}`)
+          .in('status', ['draft', 'reopened']);
+      } else if (cleanEmpEmail) {
+        await supabase
+          .from('evaluations')
+          .update({ status: 'superseded', updated_at: nowIso })
+          .ilike('employee_email', cleanEmpEmail)
+          .in('status', ['draft', 'reopened']);
+      }
+    } catch (supErr) {
+      console.warn('[Assign Evaluation] Superseding previous evaluations warning:', supErr);
+    }
+  }
 
   const newEval: Evaluation = {
     id: `eval_${permanentEmpId}_${Date.now()}`,

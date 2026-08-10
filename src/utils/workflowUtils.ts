@@ -90,7 +90,7 @@ export const getUserActiveEvaluation = (user: User, evaluations: Evaluation[] = 
   const userEmpNo = (user.employeeNumber || '').trim().toLowerCase();
 
   const userEvals = evaluations.filter((e) => {
-    if (!e) return false;
+    if (!e || e.status === ('superseded' as any)) return false;
     const eUserId = (e as any).userId;
     const eEmpId = e.employeeId;
     const eEmail = (e.employeeEmail || '').trim().toLowerCase();
@@ -116,7 +116,7 @@ export const getUserLatestEvaluation = (user: User, evaluations: Evaluation[] = 
   const userEmpNo = (user.employeeNumber || '').trim().toLowerCase();
 
   const userEvals = evaluations.filter((e) => {
-    if (!e) return false;
+    if (!e || e.status === ('superseded' as any)) return false;
     const eUserId = (e as any).userId;
     const eEmpId = e.employeeId;
     const eEmail = (e.employeeEmail || '').trim().toLowerCase();

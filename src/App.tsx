@@ -281,7 +281,8 @@ export const App: React.FC = () => {
 
         const sbEvals = await fetchEvaluationsFromSupabase(currentUser);
         if (sbEvals) {
-          setEvaluations((prevEvals) => deduplicateEvaluations([...sbEvals, ...prevEvals]));
+          setEvaluations(sbEvals);
+          saveEvaluations(sbEvals);
         }
 
         const sbNotifs = await fetchNotificationsFromSupabase(currentUser?.id, currentUser?.role);
@@ -384,16 +385,21 @@ export const App: React.FC = () => {
         const currentUserId = currentUserRef.current?.id || authenticatedUser.id;
         const currentUserRole = currentUserRef.current?.role || authenticatedUser.role;
 
+        const activeUserObj = currentUserRef.current || authenticatedUser;
         const [sbDepts, sbEvals, sbNotifs] = await Promise.all([
           fetchDepartmentsFromSupabase(),
-          fetchEvaluationsFromSupabase(currentUserId),
+          fetchEvaluationsFromSupabase(activeUserObj),
           fetchNotificationsFromSupabase(currentUserId, currentUserRole)
         ]);
 
         if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
-        if (sbEvals && sbEvals.length > 0) setEvaluations(deduplicateEvaluations(sbEvals));
+        if (sbEvals) {
+          const cleanEvals = deduplicateEvaluations(sbEvals);
+          setEvaluations(cleanEvals);
+          saveEvaluations(cleanEvals);
+        }
         if (sbNotifs) {
-          setNotifications(getRoleBasedNotifications(sbNotifs, currentUserRef.current || authenticatedUser));
+          setNotifications(getRoleBasedNotifications(sbNotifs, activeUserObj));
         }
       } catch (e) {
         console.warn('Login sync note:', e);
