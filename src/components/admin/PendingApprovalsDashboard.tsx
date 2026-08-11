@@ -273,6 +273,7 @@ export const PendingApprovalsDashboard: React.FC<PendingApprovalsDashboardProps>
                     className="form-input font-bold py-2.5 px-3.5 text-xs w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-700 rounded-xl"
                   >
                     <option value="employee">Employee (Appraisee)</option>
+                    <option value="employee">IT INTERN</option>
                     <option value="supervisor">Immediate Supervisor (IS)</option>
                     <option value="dept_head">Department Head</option>
                     <option value="president">President</option>

@@ -216,20 +216,20 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       )}
 
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-brand-900 via-brand-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
         <div>
           <div className="flex items-center space-x-2">
-            <SlidersHorizontal className="w-6 h-6 text-brand-300" />
-            <h2 className="text-xl font-black tracking-tight">Dynamic HR Evaluation Template & KPI Builder</h2>
+            <SlidersHorizontal className="w-6 h-6 text-brand-600 dark:text-brand-400" />
+            <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">Dynamic HR Evaluation Template & KPI Builder</h2>
           </div>
-          <p className="text-xs text-brand-200 mt-1 max-w-2xl">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
             Create or customize performance scorecards for any department (IT, Sales, Accounting, HR, Operations, Engineering) without modifying source code.
           </p>
         </div>
 
         <button
           onClick={handleCreateNewTemplate}
-          className="px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-white text-xs font-bold shadow-lg flex items-center space-x-2 shrink-0"
+          className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold shadow-md flex items-center space-x-2 shrink-0 transition-all"
         >
           <Plus className="w-4 h-4" />
           <span>Create New Template</span>

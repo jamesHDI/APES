@@ -319,9 +319,12 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
                       {dep.period} ({dep.year})
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className="px-2 py-0.5 rounded font-bold uppercase text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
-                        {dep.assignmentType} ({dep.totalAssigned} users)
-                      </span>
+                      <div className="inline-flex flex-col items-start px-2.5 py-1 rounded-lg font-bold uppercase text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 leading-tight">
+                        <span>{dep.assignmentType}</span>
+                        <span className="whitespace-nowrap font-extrabold text-[9.5px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          ({dep.totalAssigned} USERS)
+                        </span>
+                      </div>
                     </td>
                     <td className="py-3.5 px-4 font-mono font-medium text-slate-600 dark:text-slate-400">
                       {dep.startDate} → {dep.endDate}
