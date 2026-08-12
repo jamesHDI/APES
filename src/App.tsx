@@ -1069,6 +1069,7 @@ export const App: React.FC = () => {
             pendingAccountCount={pendingAccountCount}
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
+            onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           />
 
           <main className="flex-1 min-w-0 overflow-y-auto">

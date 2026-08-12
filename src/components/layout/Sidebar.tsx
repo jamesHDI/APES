@@ -20,6 +20,7 @@ import {
   Settings,
   UserCircle,
   Rocket,
+  Menu,
 } from 'lucide-react';
 
 interface NavItem {
@@ -38,6 +39,7 @@ interface SidebarProps {
   pendingAccountCount?: number;
   isOpen: boolean;
   onClose: () => void;
+  onToggleSidebar?: () => void;
   userName?: string;
 }
 
@@ -49,6 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   pendingAccountCount = 0,
   isOpen,
   onClose,
+  onToggleSidebar,
   userName,
 }) => {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['management', 'config']));
@@ -207,6 +210,71 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const isExpanded = expandedGroups.has(item.id);
     const hasActiveChild = item.children?.some((c) => c.id === activeTab);
 
+    // Render for Collapsed Mode (Icon Only)
+    if (!isOpen) {
+      if (isGroup) {
+        return (
+          <div key={item.id} className="flex flex-col items-center py-1">
+            <button
+              onClick={() => toggleGroup(item.id)}
+              title={item.label}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150 ${
+                hasActiveChild
+                  ? 'bg-[#FFF4EA] text-[#E96B1A]'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-[#FFF8F3] dark:hover:bg-slate-800 hover:text-[#E96B1A]'
+              }`}
+            >
+              <Icon className={`w-5 h-5 ${hasActiveChild ? 'text-[#F28C28]' : 'text-slate-400'}`} />
+            </button>
+            {isExpanded && item.children && (
+              <div className="mt-1 space-y-1">
+                {item.children.map((child) => (
+                  <button
+                    key={child.id}
+                    onClick={() => handleSelectTab(child.id)}
+                    title={child.label}
+                    className={`w-9 h-9 mx-auto rounded-lg flex items-center justify-center transition-all duration-150 relative ${
+                      activeTab === child.id
+                        ? 'bg-[#F28C28]/20 text-[#E96B1A] font-bold'
+                        : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <child.icon className={`w-4 h-4 ${activeTab === child.id ? 'text-[#F28C28]' : 'text-slate-400'}`} />
+                    {child.badge !== undefined && child.badge > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 text-[8px] font-extrabold rounded-full bg-[#F28C28] text-white flex items-center justify-center">
+                        {child.badge}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      return (
+        <button
+          key={item.id}
+          onClick={() => handleSelectTab(item.id)}
+          title={item.label}
+          className={`w-11 h-11 mx-auto my-0.5 flex items-center justify-center rounded-xl transition-all duration-150 relative ${
+            isActive
+              ? 'bg-[#FFF4EA] text-[#E96B1A] font-bold ring-2 ring-[#F28C28]/40'
+              : 'text-slate-500 dark:text-slate-400 hover:bg-[#FFF8F3] dark:hover:bg-slate-800 hover:text-[#E96B1A]'
+          }`}
+        >
+          <Icon className={`w-5 h-5 ${isActive ? 'text-[#F28C28]' : 'text-slate-400 dark:text-slate-500'}`} />
+          {item.badge !== undefined && item.badge > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 text-[9px] font-extrabold rounded-full bg-[#F28C28] text-white flex items-center justify-center shadow-sm">
+              {item.badge}
+            </span>
+          )}
+        </button>
+      );
+    }
+
+    // Render for Expanded Mode (Icon + Text)
     if (isGroup) {
       return (
         <div key={item.id}>
@@ -294,55 +362,88 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar Panel */}
       <aside
-        className={`no-print fixed top-16 left-4 bottom-0 z-40 w-64
+        className={`no-print fixed top-16 left-4 bottom-0 z-40
           bg-gradient-to-b from-[#FFFAF6] via-[#FFF8F3] to-[#FFF6EF]
           dark:from-slate-900 dark:via-slate-900 dark:to-slate-900
           border-r border-[#EFE4D6] dark:border-slate-800
           flex flex-col transition-all duration-300 ease-in-out overflow-hidden
           lg:sticky lg:top-0 lg:left-5 lg:h-[calc(100vh-4rem)]
           ${isOpen 
-            ? 'translate-x-0 opacity-100 w-64' 
-            : '-translate-x-full opacity-0 w-0 pointer-events-none lg:-ml-64'}
+            ? 'w-64 translate-x-0 opacity-100' 
+            : '-translate-x-full opacity-0 w-0 lg:translate-x-0 lg:opacity-100 lg:w-[72px]'}
         `}
       >
-        {/* Mobile Close Button */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#EFE4D6] dark:border-slate-800 lg:hidden">
-          <div className="flex items-center gap-2">
-            <img src="/hdi-logo.png" alt="HDI Hive" className="h-6 w-auto object-contain dark:hidden" />
-            <div className="hidden dark:inline-flex relative h-6 items-center overflow-hidden">
-              <img src="/hdi-logo.png" alt="HDI Icon" className="h-full w-auto object-contain max-w-none" style={{ clipPath: 'inset(0 68% 0 0)' }} />
-              <img src="/hdi-logo.png" alt="HDI Text" className="h-full w-auto object-contain max-w-none absolute top-0 left-0 brightness-0 invert" style={{ clipPath: 'inset(0 0 0 32%)' }} />
+        {/* Navigation Panel Top Header with 3 Parallel Lines Toggle Button */}
+        <div className="px-3 py-3 border-b border-[#EFE4D6] dark:border-slate-800">
+          {isOpen ? (
+            <div className="flex items-center justify-between w-full">
+              <p className={`uppercase tracking-widest font-black text-slate-400 dark:text-slate-500 ${
+                isDeptOrEmp ? 'text-xs' : 'text-[11px]'
+              }`}>
+                Navigation
+              </p>
+              {onToggleSidebar && (
+                <button
+                  onClick={onToggleSidebar}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-[#E96B1A] hover:bg-[#FFF4EA] dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="Collapse to icons only"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+              )}
             </div>
+          ) : (
+            <div className="flex justify-center w-full">
+              {onToggleSidebar && (
+                <button
+                  onClick={onToggleSidebar}
+                  className="p-1.5 rounded-xl text-slate-500 hover:text-[#E96B1A] hover:bg-[#FFF4EA] dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="Expand navigation menu"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Close Button (Visible on Mobile overlay) */}
+        <div className="flex items-center justify-between px-4 py-2 border-b border-[#EFE4D6] dark:border-slate-800 lg:hidden">
+          <div className="flex items-center gap-2">
+            <img src="/hdi-logo.png" alt="HDI Hive" className="h-5 w-auto object-contain dark:hidden" />
             <span className="text-xs font-bold text-slate-700 dark:text-slate-200">APES v3.0</span>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-[#FFF4EA] dark:hover:bg-slate-800 text-slate-400 hover:text-[#E96B1A] transition-colors"
+            className="p-1 rounded-lg hover:bg-[#FFF4EA] dark:hover:bg-slate-800 text-slate-400 hover:text-[#E96B1A] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Nav Items */}
-        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
-          <p className={`px-3 uppercase tracking-widest mb-2 font-black text-slate-400 dark:text-slate-500 ${
-            isDeptOrEmp ? 'text-xs' : 'text-[11px]'
-          }`}>
-            Navigation
-          </p>
+        <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
           {navItems.map(renderItem)}
         </nav>
 
-        {/* Footer with HDI HIVE APES 3.0 in ONE LINE */}
-        <div className="px-4 py-3 border-t border-[#EFE4D6] dark:border-slate-800 bg-[#FFF4EA]/60 dark:bg-slate-800/50">
-          <div className="flex flex-col items-center text-center gap-0.5">
-            <p className="text-xs font-black text-[#E96B1A] dark:text-brand-400 tracking-wider uppercase whitespace-nowrap">
-              HDI HIVE · APES 3.0
-            </p>
-            <p className="text-[9px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
-              Strictly Confidential
-            </p>
-          </div>
+        {/* Footer */}
+        <div className="px-3 py-3 border-t border-[#EFE4D6] dark:border-slate-800 bg-[#FFF4EA]/60 dark:bg-slate-800/50">
+          {isOpen ? (
+            <div className="flex flex-col items-center text-center gap-0.5">
+              <p className="text-xs font-black text-[#E96B1A] dark:text-brand-400 tracking-wider uppercase whitespace-nowrap">
+                HDI HIVE · APES 3.0
+              </p>
+              <p className="text-[9px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+                Strictly Confidential
+              </p>
+            </div>
+          ) : (
+            <div className="flex justify-center">
+              <span className="text-[9px] font-black text-[#E96B1A] dark:text-brand-400 uppercase tracking-widest">
+                v3.0
+              </span>
+            </div>
+          )}
         </div>
       </aside>
     </>
