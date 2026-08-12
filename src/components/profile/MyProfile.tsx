@@ -151,15 +151,19 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-        const scale = zoomScale / 100;
-        const drawWidth = img.width * scale;
-        const drawHeight = img.height * scale;
-
+        // Match the CSS preview exactly:
+        // Step 1 — compute object-cover base scale so the image fills the canvas
+        const coverScale = Math.max(CANVAS_SIZE / img.width, CANVAS_SIZE / img.height);
+        // Step 2 — apply user zoom on top of the cover scale
+        const finalScale = coverScale * (zoomScale / 100);
+        const drawWidth = img.width * finalScale;
+        const drawHeight = img.height * finalScale;
+        // Center the drawn image on the canvas
         const x = (CANVAS_SIZE - drawWidth) / 2;
         const y = (CANVAS_SIZE - drawHeight) / 2;
 
         ctx.drawImage(img, x, y, drawWidth, drawHeight);
-        resolve(canvas.toDataURL('image/jpeg', 0.88));
+        resolve(canvas.toDataURL('image/jpeg', 0.90));
       };
       img.onerror = () => resolve(adjustImageSrc);
       img.src = adjustImageSrc;
@@ -173,7 +177,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       avatarUrl: finalAvatarUrl
     };
     onUpdateUser(autoSavedUser);
-    showProfileFeedback('success', 'Profile picture size adjusted and saved successfully!');
+    showProfileFeedback('success', 'Profile picture updated and saved successfully!');
   };
 
   const handleSaveProfile = () => {
@@ -255,7 +259,8 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
         {/* Left Column: Profile Card */}
         <div className="lg:col-span-4 space-y-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-[18px] p-6 shadow-xl shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:-translate-y-0.5 relative overflow-hidden flex flex-col items-center text-center">
-            <div className="relative mb-3 mt-1">
+            <div className="relative mb-1 mt-1">
+              {/* Avatar — clean, no icons overlaid */}
               <div className="w-28 h-28 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 ring-4 ring-white dark:ring-slate-800 shadow-md flex items-center justify-center">
                 {avatarPreview ? (
                   <img
@@ -270,6 +275,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
                   </span>
                 )}
               </div>
+              {/* Camera upload button — bottom-right only */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -278,22 +284,25 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
               >
                 <Camera className="w-4 h-4" />
               </button>
-              {avatarPreview && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAdjustImageSrc(avatarPreview);
-                    setZoomScale(100);
-                    setShowAdjustModal(true);
-                  }}
-                  className="absolute bottom-0 left-0 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center shadow-md transition-all active:scale-95 cursor-pointer border border-slate-600"
-                  title="Adjust picture size & zoom"
-                >
-                  <Sliders className="w-3.5 h-3.5" />
-                </button>
-              )}
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </div>
+
+            {/* Adjust size link — below avatar, never overlaid on image */}
+            {avatarPreview && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAdjustImageSrc(avatarPreview);
+                  setZoomScale(100);
+                  setShowAdjustModal(true);
+                }}
+                className="text-[10px] font-semibold text-[#E96B1A] hover:underline cursor-pointer mb-2 flex items-center gap-1"
+                title="Adjust picture size & zoom"
+              >
+                <Sliders className="w-3 h-3" />
+                Adjust size
+              </button>
+            )}
 
             {/* Hide top 2 text lines if redundant System Administrator or matching role title */}
             {!(
@@ -665,14 +674,21 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
               Drag the slider to zoom in or zoom out to adjust your profile picture size and fit.
             </p>
 
-            {/* Live Circular Preview Frame */}
+            {/* Live Circular Preview Frame
+                Uses object-cover (fills circle) + CSS scale to match the canvas output exactly */}
             <div className="relative w-44 h-44 mx-auto rounded-full overflow-hidden border-4 border-[#F28C28] shadow-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
               {adjustImageSrc && (
                 <img
                   src={adjustImageSrc}
                   alt="Preview"
-                  style={{ transform: `scale(${zoomScale / 100})` }}
-                  className="w-full h-full object-cover transition-transform duration-75"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    transform: `scale(${zoomScale / 100})`,
+                    transformOrigin: 'center center',
+                    transition: 'transform 75ms',
+                  }}
                 />
               )}
             </div>
