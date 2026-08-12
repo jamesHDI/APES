@@ -193,7 +193,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const handleSelectTab = (tab: string) => {
     onSelectTab(tab);
-    onClose();
+    if (window.innerWidth < 1024) {
+      onClose();
+    }
   };
 
   const isDeptOrEmp = currentRole === 'dept_head' || currentRole === 'employee';
@@ -296,9 +298,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           bg-gradient-to-b from-[#FFFAF6] via-[#FFF8F3] to-[#FFF6EF]
           dark:from-slate-900 dark:via-slate-900 dark:to-slate-900
           border-r border-[#EFE4D6] dark:border-slate-800
-          flex flex-col transition-transform duration-250 ease-out
-          lg:sticky lg:top-0 lg:left-5 lg:translate-x-0 lg:shrink-0 lg:h-[calc(100vh-4rem)]
-          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          flex flex-col transition-all duration-300 ease-in-out overflow-hidden
+          lg:sticky lg:top-0 lg:left-5 lg:h-[calc(100vh-4rem)]
+          ${isOpen 
+            ? 'translate-x-0 opacity-100 w-64' 
+            : '-translate-x-full opacity-0 w-0 pointer-events-none lg:-ml-64'}
         `}
       >
         {/* Mobile Close Button */}

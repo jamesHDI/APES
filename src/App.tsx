@@ -102,7 +102,7 @@ export const App: React.FC = () => {
     }
   });
   const [viewMode, setViewMode] = useState<'normal' | 'printable'>('normal');
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [evaluationHistory, setEvaluationHistory] = useState<any[]>([]);
   const [scorecardArchives, setScorecardArchives] = useState<EvaluationScorecardArchive[]>([]);
   const [inactiveAccountModal, setInactiveAccountModal] = useState<{ open: boolean; message: string }>({ open: false, message: '' });

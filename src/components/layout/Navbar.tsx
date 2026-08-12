@@ -88,13 +88,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Left: Hamburger + Logo + Title */}
           <div className="flex items-center gap-3 sm:gap-4">
-            {/* Mobile hamburger */}
+            {/* 3 Parallel Lines Navigation Toggle Button */}
             <button
               onClick={onToggleSidebar}
-              className="p-2 rounded-xl text-slate-500 dark:text-slate-300 hover:bg-[#FFF4EA] hover:text-[#E96B1A] dark:hover:bg-slate-800 transition-all duration-150 lg:hidden"
-              aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
+              className="p-2 rounded-xl text-slate-500 dark:text-slate-300 hover:bg-[#FFF4EA] hover:text-[#E96B1A] dark:hover:bg-slate-800 transition-all duration-150 cursor-pointer"
+              aria-label={isSidebarOpen ? 'Hide navigation bar' : 'Show navigation bar'}
+              title={isSidebarOpen ? 'Hide navigation bar' : 'Show navigation bar'}
             >
-              {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              <Menu className="w-6 h-6" />
             </button>
 
             {/* Brand Logo */}
