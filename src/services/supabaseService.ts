@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './supabaseClient';
-import { User, Department, Evaluation, Notification, EvaluationHistory, EvaluationScorecardArchive, EvidenceFile } from '../types';
+import { User, Department, Evaluation, Notification, EvaluationHistory, EvaluationScorecardArchive, EvidenceFile, EvaluationTemplate, KRACategory, KPITemplateItem } from '../types';
 import { hashPassword, isHashedPassword } from '../utils/crypto';
+import { MASTER_SALES_EVALUATION_TEMPLATE, createMasterBasedTemplate } from '../constants/masterSalesTemplate';
 
 export const logEmployeesSchema = async (): Promise<void> => {
   if (!isSupabaseConfigured || !supabase) return;
@@ -989,138 +990,8 @@ export const syncEvaluationTemplateToSupabase = async (evaluation: Evaluation): 
   }
 };
 
-// ==============================================================================
-// TEMPLATE BUILDER SYNC — Save & Fetch full EvaluationTemplate objects
-// These functions sync the complete template (KRAs, KPIs, criteria, weights)
-// so that all devices see the same templates after POD creates/edits them.
-// ==============================================================================
 
-export const saveEvaluationTemplateBuilderToSupabase = async (template: any): Promise<boolean> => {
-  if (!isSupabaseConfigured || !supabase || !template) return false;
 
-  try {
-    const templateId = isValidUuid(template.id) ? template.id : ensureUuid(template.id || `tmpl_builder_${Date.now()}`);
-
-    const payload = {
-      id: templateId,
-      title: template.title || 'Evaluation Template',
-      department_name: template.targetDepartment || template.departmentName || 'General',
-      evaluation_period: template.evaluationPeriod || template.period || 'Annual 2026',
-      eligibility_weight: template.eligibilityWeight ?? 85,
-      core_values_weight: template.coreValuesWeight ?? 15,
-      is_active: true,
-      full_payload: template,           // Store the complete template JSON
-      updated_at: new Date().toISOString(),
-    };
-
-    const { error } = await supabase
-      .from('evaluation_templates')
-      .upsert(payload, { onConflict: 'id', ignoreDuplicates: false });
-
-    if (error) {
-      // If the full_payload column doesn't exist yet, fall back to saving without it
-      if (error.message?.includes('full_payload') || error.code === '42703') {
-        const { error: fallbackError } = await supabase
-          .from('evaluation_templates')
-          .upsert({
-            id: payload.id,
-            title: payload.title,
-            department_name: payload.department_name,
-            evaluation_period: payload.evaluation_period,
-            eligibility_weight: payload.eligibility_weight,
-            core_values_weight: payload.core_values_weight,
-            is_active: payload.is_active,
-            updated_at: payload.updated_at,
-          }, { onConflict: 'id', ignoreDuplicates: false });
-        if (fallbackError) {
-          console.warn('[Template Builder Sync] Fallback save failed:', fallbackError.message);
-          return false;
-        }
-        console.log(`[Template Builder Sync] Saved template "${template.title}" without full_payload (column may not exist).`);
-        return true;
-      }
-      console.warn('[Template Builder Sync] Could not save template:', error.message);
-      return false;
-    }
-
-    console.log(`[Template Builder Sync] Saved template "${template.title}" (id: ${templateId}) to Supabase.`);
-    return true;
-  } catch (err) {
-    console.warn('[Template Builder Sync] Exception:', err);
-    return false;
-  }
-};
-
-export const fetchEvaluationTemplatesFromSupabase = async (): Promise<any[] | null> => {
-  if (!isSupabaseConfigured || !supabase) return null;
-
-  try {
-    const { data, error } = await supabase
-      .from('evaluation_templates')
-      .select('*')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.warn('[Template Builder Sync] Could not fetch templates:', error.message);
-      return null;
-    }
-
-    if (!data || data.length === 0) return null;
-
-    // Reconstruct full EvaluationTemplate objects from stored rows
-    const templates = data.map((row: any) => {
-      // If full_payload was saved, return it directly
-      if (row.full_payload && typeof row.full_payload === 'object') {
-        return {
-          ...row.full_payload,
-          id: row.id, // Always trust the DB id
-        };
-      }
-      // Otherwise reconstruct a minimal template from basic columns
-      return {
-        id: row.id,
-        title: row.title || 'Evaluation Template',
-        targetDepartment: row.department_name || '',
-        departmentName: row.department_name || '',
-        evaluationPeriod: row.evaluation_period || '',
-        eligibilityWeight: row.eligibility_weight ?? 85,
-        coreValuesWeight: row.core_values_weight ?? 15,
-        kraCategories: [],
-        coreValues: [],
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      };
-    });
-
-    console.log(`[Template Builder Sync] Fetched ${templates.length} templates from Supabase.`);
-    return templates;
-  } catch (err) {
-    console.warn('[Template Builder Sync] Exception fetching templates:', err);
-    return null;
-  }
-};
-
-export const deleteEvaluationTemplateFromSupabase = async (templateId: string): Promise<boolean> => {
-  if (!isSupabaseConfigured || !supabase || !templateId) return false;
-  try {
-    const uuid = isValidUuid(templateId) ? templateId : ensureUuid(templateId);
-    const { error } = await supabase
-      .from('evaluation_templates')
-      .update({ is_active: false, updated_at: new Date().toISOString() })
-      .eq('id', uuid);
-    if (error) {
-      console.warn('[Template Builder Sync] Could not soft-delete template:', error.message);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.warn('[Template Builder Sync] Exception deleting template:', err);
-    return false;
-  }
-};
-
-// ==============================================================================
 // RELATIONAL CHILD TABLES SYNC (kpi_ratings, core_value_ratings, digital_signatures, evidence_files, kpis)
 // ==============================================================================
 
@@ -2195,4 +2066,150 @@ export const uploadSignaturesToSupabase = async (
 
   return updatedSignatures;
 };
+
+// ==============================================================================
+// EVALUATION TEMPLATES CLOUD SYNC
+// Safely saves, fetches, and deletes evaluation templates in Supabase
+// using standard table columns so all devices see the same templates.
+// ==============================================================================
+
+export const saveEvaluationTemplateToSupabase = async (template: EvaluationTemplate): Promise<boolean> => {
+  if (!isSupabaseConfigured || !supabase || !template) return false;
+
+  try {
+    const templateUuid = isValidUuid(template.id) ? template.id : ensureUuid(template.id || `tmpl_${Date.now()}`);
+
+    const payload = {
+      id: templateUuid,
+      title: (template.title || 'Evaluation Template').substring(0, 150),
+      department_name: (template.departmentName || 'General').substring(0, 100),
+      evaluation_period: (template.evaluationPeriod || 'Annual 2026').substring(0, 100),
+      eligibility_weight: template.formulaConfig?.eligibilityWeight ?? 85.00,
+      core_values_weight: template.formulaConfig?.coreValuesWeight ?? 15.00,
+      is_active: template.isActive ?? true,
+    };
+
+    if (isValidUuid(template.departmentId)) {
+      (payload as any).department_id = template.departmentId;
+    }
+
+    const { error } = await supabase.from('evaluation_templates').upsert(payload, { onConflict: 'id' });
+
+    if (error) {
+      console.warn('[Template Cloud Sync] Could not upsert template to Supabase:', error.message);
+      return false;
+    }
+
+    // Save KPIs associated with this template if kraCategories exists
+    if (template.kraCategories && template.kraCategories.length > 0) {
+      for (const kra of template.kraCategories) {
+        if (kra.kpis && kra.kpis.length > 0) {
+          for (const kpi of kra.kpis) {
+            const kpiUuid = isValidUuid(kpi.id) ? kpi.id : ensureUuid(kpi.id || `${templateUuid}_${kpi.name}`);
+            const kpiPayload = {
+              id: kpiUuid,
+              template_id: templateUuid,
+              kra_name: (kra.name || 'KRA').substring(0, 150),
+              kpi_name: (kpi.name || 'KPI Item').substring(0, 200),
+              description: kpi.description || '',
+              weight_percent: kpi.weightPercent || 0,
+              evidence_required: Boolean(kpi.evidenceRequired),
+            };
+            await supabase.from('kpis').upsert(kpiPayload, { onConflict: 'id' }).catch(() => {});
+          }
+        }
+      }
+    }
+
+    console.log(`[Template Cloud Sync] Successfully saved template "${template.title}" to Supabase.`);
+    return true;
+  } catch (err) {
+    console.warn('[Template Cloud Sync] Exception saving template to Supabase:', err);
+    return false;
+  }
+};
+
+export const fetchEvaluationTemplatesFromSupabase = async (): Promise<EvaluationTemplate[] | null> => {
+  if (!isSupabaseConfigured || !supabase) return null;
+
+  try {
+    const { data: rows, error } = await supabase.from('evaluation_templates').select('*');
+    if (error || !rows || rows.length === 0) return null;
+
+    let kpiRows: any[] = [];
+    try {
+      const { data: kps } = await supabase.from('kpis').select('*');
+      if (kps) kpiRows = kps;
+    } catch {}
+
+    const templates: EvaluationTemplate[] = rows.map((row: any) => {
+      const deptName = row.department_name || 'Sales';
+      const tmplKpis = kpiRows.filter((k: any) => k.template_id === row.id);
+
+      let kraCategories: KRACategory[] = [];
+
+      if (tmplKpis && tmplKpis.length > 0) {
+        const kraMap = new Map<string, KPITemplateItem[]>();
+        for (const k of tmplKpis) {
+          const kraName = k.kra_name || '1. FINANCIAL';
+          if (!kraMap.has(kraName)) kraMap.set(kraName, []);
+          kraMap.get(kraName)!.push({
+            id: k.id,
+            kraId: `kra_${row.id}_${kraName}`,
+            kraName: kraName,
+            name: k.kpi_name,
+            description: k.description || '',
+            weightPercent: Number(k.weight_percent || 0),
+            evidenceRequired: Boolean(k.evidence_required),
+            standards: MASTER_SALES_EVALUATION_TEMPLATE.kraCategories[0]?.kpis[0]?.standards || []
+          });
+        }
+
+        kraCategories = Array.from(kraMap.entries()).map(([kraName, kpis], idx) => ({
+          id: `kra_${row.id}_${idx}`,
+          name: kraName,
+          categoryWeightPercent: kpis.reduce((sum, item) => sum + item.weightPercent, 0),
+          kpis: kpis
+        }));
+      } else {
+        const built = createMasterBasedTemplate(row.department_id || 'dept_acc', deptName, row.title, row.evaluation_period);
+        kraCategories = built.kraCategories;
+      }
+
+      return {
+        id: row.id,
+        title: row.title || `${deptName} Performance Evaluation Scorecard Template`,
+        departmentId: row.department_id || 'dept_acc',
+        departmentName: deptName,
+        evaluationPeriod: row.evaluation_period || 'January-September 2025',
+        formulaConfig: {
+          eligibilityWeight: Number(row.eligibility_weight || 85),
+          coreValuesWeight: Number(row.core_values_weight || 15)
+        },
+        classificationRanges: MASTER_SALES_EVALUATION_TEMPLATE.classificationRanges,
+        kraCategories,
+        isActive: row.is_active ?? true,
+        createdAt: row.created_at ? new Date(row.created_at).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10)
+      };
+    });
+
+    console.log(`[Template Cloud Sync] Fetched ${templates.length} templates from Supabase.`);
+    return templates;
+  } catch (err) {
+    console.warn('[Template Cloud Sync] Exception fetching templates from Supabase:', err);
+    return null;
+  }
+};
+
+export const deleteEvaluationTemplateFromSupabase = async (templateId: string): Promise<boolean> => {
+  if (!isSupabaseConfigured || !supabase || !templateId) return false;
+  try {
+    const uuid = isValidUuid(templateId) ? templateId : ensureUuid(templateId);
+    await supabase.from('evaluation_templates').delete().eq('id', uuid).catch(() => {});
+    return true;
+  } catch (err) {
+    return false;
+  }
+};
+
 

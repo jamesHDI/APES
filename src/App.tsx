@@ -37,7 +37,7 @@ import {
   findEmployeeInSupabase,
   isValidUuid,
   ensureUuid,
-  saveEvaluationTemplateBuilderToSupabase,
+  saveEvaluationTemplateToSupabase,
   fetchEvaluationTemplatesFromSupabase,
   deleteEvaluationTemplateFromSupabase
 } from './services/supabaseService';
@@ -213,31 +213,41 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // 1.5. Load evaluation history, scorecard archives, and evaluation templates from Supabase
+  // 1.5. Load evaluation history, scorecard archives, and templates
   useEffect(() => {
-    const loadHistoryArchivesAndTemplates = async () => {
+    const loadHistoryAndArchives = async () => {
       setEvaluationHistory(getStoredEvaluationHistory());
       setScorecardArchives(getStoredScorecardArchives());
 
       if (isSupabaseConfigured) {
-        const sbHistory = await fetchEvaluationHistoryFromSupabase();
-        if (sbHistory && sbHistory.length > 0) {
-          setEvaluationHistory(sbHistory);
-        }
-        const sbArchives = await fetchScorecardArchivesFromSupabase();
-        if (sbArchives && sbArchives.length > 0) {
-          setScorecardArchives(sbArchives);
-        }
-        // Load evaluation templates from Supabase so all devices see the same templates
-        const sbTemplates = await fetchEvaluationTemplatesFromSupabase();
-        if (sbTemplates && sbTemplates.length > 0) {
-          setTemplates(sbTemplates);
-          saveTemplates(sbTemplates);
-          console.log(`[App Init] Loaded ${sbTemplates.length} templates from Supabase.`);
-        }
+        try {
+          const sbHistory = await fetchEvaluationHistoryFromSupabase();
+          if (sbHistory && sbHistory.length > 0) setEvaluationHistory(sbHistory);
+        } catch (e) {}
+
+        try {
+          const sbArchives = await fetchScorecardArchivesFromSupabase();
+          if (sbArchives && sbArchives.length > 0) setScorecardArchives(sbArchives);
+        } catch (e) {}
+
+        try {
+          const sbTemplates = await fetchEvaluationTemplatesFromSupabase();
+          if (sbTemplates && sbTemplates.length > 0) {
+            setTemplates(prev => {
+              const combined = [...sbTemplates];
+              for (const localT of prev) {
+                if (!combined.some(t => t.id === localT.id || (t.departmentName === localT.departmentName && t.title === localT.title))) {
+                  combined.push(localT);
+                }
+              }
+              saveTemplates(combined);
+              return combined;
+            });
+          }
+        } catch (e) {}
       }
     };
-    loadHistoryArchivesAndTemplates();
+    loadHistoryAndArchives();
   }, []);
 
   // 2. Real-time Database & Notification Polling (Every 3s)
@@ -347,6 +357,20 @@ export const App: React.FC = () => {
           .channel('apes_broadcast_events')
           .on('broadcast', { event: 'data_changed' }, () => {
             syncDatabaseAndNotifications();
+            fetchEvaluationTemplatesFromSupabase().then(sbTemplates => {
+              if (sbTemplates && sbTemplates.length > 0) {
+                setTemplates(prev => {
+                  const combined = [...sbTemplates];
+                  for (const localT of prev) {
+                    if (!combined.some(t => t.id === localT.id || (t.departmentName === localT.departmentName && t.title === localT.title))) {
+                      combined.push(localT);
+                    }
+                  }
+                  saveTemplates(combined);
+                  return combined;
+                });
+              }
+            }).catch(() => {});
           })
           .subscribe();
       } catch (e) {
@@ -641,11 +665,11 @@ export const App: React.FC = () => {
     }
     setTemplates(newTemplates);
     saveTemplates(newTemplates);
-    // Persist template to Supabase so all devices see the same templates
+
     if (isSupabaseConfigured) {
-      saveEvaluationTemplateBuilderToSupabase(updatedTemplate).then((ok) => {
-        if (ok) triggerRealtimeBroadcast('data_changed', { type: 'template', id: updatedTemplate.id });
-      });
+      saveEvaluationTemplateToSupabase(updatedTemplate).then(() => {
+        triggerRealtimeBroadcast('data_changed', { type: 'template' });
+      }).catch(() => {});
     }
   };
 
@@ -653,11 +677,11 @@ export const App: React.FC = () => {
     const updated = templates.filter((t) => t.id !== templateId);
     setTemplates(updated);
     saveTemplates(updated);
-    // Soft-delete in Supabase so other devices also remove it
+
     if (isSupabaseConfigured) {
-      deleteEvaluationTemplateFromSupabase(templateId).then((ok) => {
-        if (ok) triggerRealtimeBroadcast('data_changed', { type: 'template_deleted', id: templateId });
-      });
+      deleteEvaluationTemplateFromSupabase(templateId).then(() => {
+        triggerRealtimeBroadcast('data_changed', { type: 'template_deleted' });
+      }).catch(() => {});
     }
   };
 
