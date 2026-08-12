@@ -234,10 +234,18 @@ export const App: React.FC = () => {
           const sbTemplates = await fetchEvaluationTemplatesFromSupabase();
           if (sbTemplates && sbTemplates.length > 0) {
             setTemplates(prev => {
-              const combined = [...sbTemplates];
-              for (const localT of prev) {
-                if (!combined.some(t => t.id === localT.id || (t.departmentName === localT.departmentName && t.title === localT.title))) {
-                  combined.push(localT);
+              let combined = [...prev];
+              if (!combined.some(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales')) {
+                combined.unshift(MASTER_SALES_EVALUATION_TEMPLATE);
+              }
+              for (const remoteT of sbTemplates) {
+                if (!remoteT || !remoteT.id) continue;
+                if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales' || remoteT.departmentName === 'Sales') continue;
+                const existingIdx = combined.findIndex(t => t.id === remoteT.id);
+                if (existingIdx >= 0) {
+                  combined[existingIdx] = remoteT;
+                } else {
+                  combined.push(remoteT);
                 }
               }
               saveTemplates(combined);
@@ -360,10 +368,18 @@ export const App: React.FC = () => {
             fetchEvaluationTemplatesFromSupabase().then(sbTemplates => {
               if (sbTemplates && sbTemplates.length > 0) {
                 setTemplates(prev => {
-                  const combined = [...sbTemplates];
-                  for (const localT of prev) {
-                    if (!combined.some(t => t.id === localT.id || (t.departmentName === localT.departmentName && t.title === localT.title))) {
-                      combined.push(localT);
+                  let combined = [...prev];
+                  if (!combined.some(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales')) {
+                    combined.unshift(MASTER_SALES_EVALUATION_TEMPLATE);
+                  }
+                  for (const remoteT of sbTemplates) {
+                    if (!remoteT || !remoteT.id) continue;
+                    if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales' || remoteT.departmentName === 'Sales') continue;
+                    const existingIdx = combined.findIndex(t => t.id === remoteT.id);
+                    if (existingIdx >= 0) {
+                      combined[existingIdx] = remoteT;
+                    } else {
+                      combined.push(remoteT);
                     }
                   }
                   saveTemplates(combined);

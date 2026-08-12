@@ -353,14 +353,30 @@ export const saveDepartments = (departments: Department[]) => {
 
 export const getStoredTemplates = (): EvaluationTemplate[] => {
   const data = localStorage.getItem(TEMPLATES_KEY);
+  let templates: EvaluationTemplate[] = [];
   if (data) {
     try {
       const parsed: EvaluationTemplate[] = JSON.parse(data);
-      if (parsed && parsed.length > 0) return parsed;
+      if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+        templates = parsed;
+      }
     } catch {}
   }
-  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(SEED_TEMPLATES));
-  return SEED_TEMPLATES;
+
+  // Ensure MASTER_SALES_EVALUATION_TEMPLATE is ALWAYS included and intact
+  const masterSalesIdx = templates.findIndex(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales');
+  if (masterSalesIdx === -1) {
+    templates.unshift(MASTER_SALES_EVALUATION_TEMPLATE);
+  } else {
+    // If master sales template exists but lost its KRAs/KPIs, restore it to full MASTER_SALES_EVALUATION_TEMPLATE
+    const masterT = templates[masterSalesIdx];
+    if (!masterT.kraCategories || masterT.kraCategories.length === 0) {
+      templates[masterSalesIdx] = MASTER_SALES_EVALUATION_TEMPLATE;
+    }
+  }
+
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+  return templates;
 };
 
 export const saveTemplates = (templates: EvaluationTemplate[]) => {
