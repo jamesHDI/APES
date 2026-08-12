@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { User, Role, Evaluation, EvaluationTemplate, Department, EvaluationCycle, Notification, isPendingUser, EvaluationScorecardArchive } from './types';
+import { User, Role, Evaluation, EvaluationTemplate, Department, EvaluationCycle, Notification, isPendingUser, EvaluationScorecardArchive, DevelopmentPlan, PersonnelAction } from './types';
 import { MASTER_SALES_EVALUATION_TEMPLATE } from './constants/masterSalesTemplate';
 import { 
   getStoredUsers, 
