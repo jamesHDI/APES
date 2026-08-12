@@ -313,33 +313,32 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
                             <Eye className="w-3.5 h-3.5 text-brand-500" />
                             <span>View</span>
                           </button>
-                          {hasArchive && (
-                            <>
-                              <button
-                                onClick={() => handleViewArchive(h.evaluationId)}
-                                className="w-28 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                              >
-                                <FileText className="w-3.5 h-3.5 text-brand-500" />
-                                <span>Scorecard</span>
-                              </button>
-                              <button
-                                onClick={() => handleDownloadArchive(archive!)}
-                                className="w-28 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                              >
-                                <Download className="w-3.5 h-3.5 text-brand-500" />
-                                <span>Download</span>
-                              </button>
-                            </>
-                          )}
-                          {!hasArchive && (
-                            <button
-                              onClick={() => onViewPrintable ? onViewPrintable(h.evaluationId) : onOpenEvaluation(h.evaluationId)}
-                              className="w-28 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                            >
-                              <Printer className="w-3.5 h-3.5 text-brand-500" />
-                              <span>Print</span>
-                            </button>
-                          )}
+
+                          <button
+                            onClick={() => {
+                              if (hasArchive && archive) {
+                                handleDownloadArchive(archive);
+                              } else if (onViewPrintable) {
+                                onViewPrintable(h.evaluationId);
+                              } else {
+                                onOpenEvaluation(h.evaluationId);
+                              }
+                            }}
+                            className="w-28 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                            title="Download Evaluation Record PDF"
+                          >
+                            <Download className="w-3.5 h-3.5 text-brand-500" />
+                            <span>Download</span>
+                          </button>
+
+                          <button
+                            onClick={() => onViewPrintable ? onViewPrintable(h.evaluationId) : onOpenEvaluation(h.evaluationId)}
+                            className="w-28 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                            title="Print Evaluation Scorecard"
+                          >
+                            <Printer className="w-3.5 h-3.5 text-brand-500" />
+                            <span>Print</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
