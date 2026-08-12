@@ -107,6 +107,66 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
     }
   };
 
+  const handleDownloadDirectPDF = async (historyId: string, archive?: EvaluationScorecardArchive) => {
+    if (archive && archive.pdfUrl) {
+      const a = document.createElement('a');
+      a.href = archive.pdfUrl;
+      a.download = archive.fileName || `scorecard-${archive.employeeName.replace(/\s+/g, '-')}-${archive.appraisalPeriod}.pdf`;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+
+    if (onViewPrintable) {
+      onViewPrintable(historyId);
+      setTimeout(async () => {
+        const elem = document.getElementById('printable-scorecard-content');
+        if (elem) {
+          try {
+            const html2canvas = (await import('html2canvas')).default;
+            const { jsPDF } = await import('jspdf');
+
+            const canvas = await html2canvas(elem, {
+              scale: 2,
+              useCORS: true,
+              logging: false,
+              backgroundColor: '#ffffff',
+            });
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+            let heightLeft = pdfHeight;
+            let position = 0;
+
+            pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+            heightLeft -= pageHeight;
+
+            while (heightLeft > 0) {
+              position = heightLeft - pdfHeight;
+              pdf.addPage();
+              pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+              heightLeft -= pageHeight;
+            }
+
+            const targetRec = historyRecords.find(r => r.evaluationId === historyId);
+            const safeName = (targetRec?.employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_');
+            const safePeriod = (targetRec?.appraisalPeriod || 'Scorecard').replace(/[^a-zA-Z0-9_-]/g, '_');
+            pdf.save(`APES_Scorecard_${safeName}_${safePeriod}.pdf`);
+          } catch (err) {
+            console.error('Direct PDF export error:', err);
+          }
+        }
+      }, 350);
+    }
+  };
+
   const viewingArchive = viewingArchiveId ? scorecardArchives.find(a => a.id === viewingArchiveId) : null;
 
     if (viewingArchive) {
@@ -315,17 +375,9 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
                           </button>
 
                           <button
-                            onClick={() => {
-                              if (hasArchive && archive) {
-                                handleDownloadArchive(archive);
-                              } else if (onViewPrintable) {
-                                onViewPrintable(h.evaluationId);
-                              } else {
-                                onOpenEvaluation(h.evaluationId);
-                              }
-                            }}
-                            className="w-28 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                            title="Download Evaluation Record PDF"
+                            onClick={() => handleDownloadDirectPDF(h.evaluationId, archive)}
+                            className="w-28 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+                            title="Download Evaluation Record PDF file"
                           >
                             <Download className="w-3.5 h-3.5 text-brand-500" />
                             <span>Download</span>

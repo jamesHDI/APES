@@ -430,3 +430,31 @@
 [data-tooltip]:hover::after {
   opacity: 1;
 }
+
+/* =============================================
+   PRINT MEDIA STYLES
+============================================= */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  #app-container {
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+  main {
+    overflow: visible !important;
+  }
+  #printable-scorecard-content {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+}

@@ -11,9 +11,59 @@ type PaperSize = 'a4' | 'letter';
 
 export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluation, onBack }) => {
   const [paperSize, setPaperSize] = useState<PaperSize>('a4');
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    setIsGeneratingPdf(true);
+    try {
+      const element = document.getElementById('printable-scorecard-content');
+      if (!element) {
+        alert('Scorecard document element not found.');
+        return;
+      }
+
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      let heightLeft = pdfHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const safeName = (evaluation.employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const safePeriod = (evaluation.appraisalPeriod || 'Scorecard').replace(/[^a-zA-Z0-9_-]/g, '_');
+      pdf.save(`APES_Scorecard_${safeName}_${safePeriod}.pdf`);
+    } catch (err) {
+      console.error('PDF Generation failed:', err);
+      alert('Failed to generate PDF file. Please try again.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   const paperSizeLabels: Record<PaperSize, string> = {
@@ -27,8 +77,9 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
       {/* Top Action Bar (hidden when printing) */}
       <div className="no-print flex items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
         <button
+          type="button"
           onClick={onBack}
-          className="flex items-center space-x-2 px-4 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 text-sm font-bold transition-colors"
+          className="flex items-center space-x-2 px-4 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 text-sm font-bold transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Evaluation Workspace</span>
@@ -36,11 +87,24 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
 
         <div className="flex items-center space-x-3">
           <button
+            type="button"
+            onClick={handleDownloadPDF}
+            disabled={isGeneratingPdf}
+            className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-sm font-bold shadow-md shadow-[#F28C28]/20 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+            title="Download official PDF file to your computer"
+          >
+            <Download className="w-4 h-4" />
+            <span>{isGeneratingPdf ? 'Generating PDF...' : 'Download PDF File'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handlePrint}
-            className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold shadow-md shadow-brand-600/20 transition-all"
+            className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold shadow-md transition-all active:scale-95 cursor-pointer"
+            title="Open browser print dialog"
           >
             <Printer className="w-4 h-4" />
-            <span>Print Official Scorecard PDF</span>
+            <span>Print Scorecard</span>
           </button>
         </div>
       </div>

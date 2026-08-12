@@ -679,14 +679,56 @@ export const App: React.FC = () => {
     return createDraftEvaluationInMemory(currentUser, fallbackTemplate, `${currentYear} Annual Performance Evaluation`);
   }, [evaluations, selectedEvalId, currentUser, templates]);
 
+  const printableEvaluation = useMemo(() => {
+    if (selectedEvalId) {
+      const foundEval = evaluations.find(e => e.id === selectedEvalId);
+      if (foundEval) return foundEval;
+
+      const foundArchive = scorecardArchives.find(a => a.id === selectedEvalId || a.evaluationId === selectedEvalId);
+      if (foundArchive) {
+        if (foundArchive.scorecardSnapshot) return foundArchive.scorecardSnapshot;
+        return {
+          id: foundArchive.evaluationId || foundArchive.id,
+          cycleId: foundArchive.cycleId || '',
+          templateId: foundArchive.templateId || '',
+          workflowType: (foundArchive.workflowType as any) || 'standard_3tier',
+          employeeId: foundArchive.employeeId,
+          userId: foundArchive.employeeId,
+          employeeName: foundArchive.employeeName,
+          employeeEmail: '',
+          departmentId: '',
+          departmentName: foundArchive.departmentName || '',
+          position: foundArchive.position || '',
+          appraisalPeriod: foundArchive.appraisalPeriod,
+          appraisalDate: foundArchive.archivedAt ? new Date(foundArchive.archivedAt).toLocaleDateString() : new Date().toLocaleDateString(),
+          status: 'archived',
+          workflowStage: 'archived',
+          kpiRatings: foundArchive.kpiRatings || [],
+          coreValueRatings: foundArchive.coreValueRatings || [],
+          eligibilityScore: foundArchive.finalScore || 0,
+          coreValuesScore: 0,
+          finalRating: foundArchive.finalScore || 0,
+          ratingClassification: foundArchive.ratingClassification || '',
+          overallComments: foundArchive.notes || '',
+          createdAt: foundArchive.archivedAt || new Date().toISOString(),
+          updatedAt: foundArchive.archivedAt || new Date().toISOString(),
+        } as Evaluation;
+      }
+    }
+    return currentEvaluation;
+  }, [selectedEvalId, evaluations, scorecardArchives, currentEvaluation]);
+
   const renderMainContent = () => {
-    if (viewMode === 'printable' && currentEvaluation) {
-      return (
-        <PrintableScorecard
-          evaluation={currentEvaluation}
-          onBack={() => setViewMode('normal')}
-        />
-      );
+    if (viewMode === 'printable') {
+      const targetForPrint = printableEvaluation || currentEvaluation;
+      if (targetForPrint) {
+        return (
+          <PrintableScorecard
+            evaluation={targetForPrint}
+            onBack={() => setViewMode('normal')}
+          />
+        );
+      }
     }
 
     if (activeTab === 'dept_actions') {
