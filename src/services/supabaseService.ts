@@ -1059,7 +1059,7 @@ export const fetchEvaluationTemplatesFromSupabase = async (): Promise<any[] | nu
       .from('evaluation_templates')
       .select('*')
       .eq('is_active', true)
-      .order('updated_at', { ascending: false, nullsFirst: false });
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.warn('[Template Builder Sync] Could not fetch templates:', error.message);

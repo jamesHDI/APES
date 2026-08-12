@@ -297,12 +297,6 @@ export const App: React.FC = () => {
           saveEvaluations(sbEvals);
         }
 
-        // Sync evaluation templates from Supabase every polling cycle
-        const sbTemplates = await fetchEvaluationTemplatesFromSupabase();
-        if (sbTemplates && sbTemplates.length > 0) {
-          setTemplates(sbTemplates);
-          saveTemplates(sbTemplates);
-        }
 
         const sbNotifs = await fetchNotificationsFromSupabase(currentUser?.id, currentUser?.role);
         if (sbNotifs) {
@@ -310,7 +304,7 @@ export const App: React.FC = () => {
           setNotifications(computed);
         }
 
-        console.log(`[APES Sync - Dashboard] Synchronized cloud state from Supabase: ${sbUsers?.length || 0} employees, ${sbDepts?.length || 0} departments, ${sbEvals?.length || 0} scorecards, ${sbTemplates?.length || 0} templates, ${sbNotifs?.length || 0} notifications.`);
+        console.log(`[APES Sync - Dashboard] Synchronized cloud state from Supabase: ${sbUsers?.length || 0} employees, ${sbDepts?.length || 0} departments, ${sbEvals?.length || 0} scorecards, ${sbNotifs?.length || 0} notifications.`);
       } else {
         const storedUsers = getStoredUsers();
         setUsers(storedUsers);
