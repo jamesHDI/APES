@@ -1065,6 +1065,20 @@ export const App: React.FC = () => {
 
   const pendingAccountCount = users.filter(isPendingUser).length;
 
+  if (viewMode === 'printable') {
+    const targetForPrint = printableEvaluation || currentEvaluation;
+    return (
+      <div className="min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-4 sm:p-6 font-sans">
+        <div className="max-w-5xl mx-auto">
+          <PrintableScorecard
+            evaluation={targetForPrint}
+            onBack={() => setViewMode('normal')}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div id="app-container" className="relative h-screen overflow-hidden bg-gradient-to-br from-[#FFF8F2] via-[#FFF4EA] via-60% to-[#F8FAFC] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
       {/* Soft Translucent Top-Right Ambient Glow */}
