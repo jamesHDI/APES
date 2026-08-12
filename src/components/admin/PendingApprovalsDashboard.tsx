@@ -149,7 +149,7 @@ export const PendingApprovalsDashboard: React.FC<PendingApprovalsDashboardProps>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredPending.map((u) => (
-            <div key={u.id} className="card p-5 space-y-4 border-l-4 border-l-amber-400">
+            <div key={u.id} className="card p-5 space-y-4">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <img src={u.avatarUrl} alt={u.name} className="w-11 h-11 rounded-full object-cover ring-2 ring-[#F28C28]/30" />

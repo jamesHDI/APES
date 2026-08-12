@@ -437,9 +437,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </p>
             </div>
           ) : (
-            <div className="flex justify-center">
-              <span className="text-[9.5px] font-black text-[#E96B1A] dark:text-brand-400 uppercase tracking-widest">
-                v3.0
+            <div className="flex justify-center text-center">
+              <span className="text-[8px] font-black text-[#E96B1A] dark:text-brand-400 uppercase tracking-widest leading-tight">
+                APES 3.0
               </span>
             </div>
           )}

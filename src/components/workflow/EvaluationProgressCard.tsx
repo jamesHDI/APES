@@ -71,9 +71,6 @@ export const EvaluationProgressCard: React.FC<EvaluationProgressCardProps> = ({
 
   return (
     <div className="card p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm rounded-2xl relative overflow-hidden transition-all hover:shadow-md">
-      {/* Accent Header Glow */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#F28C28] to-[#E96B1A]" />
-
       {/* Header Row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
         <div>

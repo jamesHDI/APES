@@ -216,7 +216,7 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
       </div>
 
       {/* 1. SECTION: Evaluations Waiting for POD Review */}
-      <div className="card space-y-4 p-5 border-l-4 border-l-blue-500">
+      <div className="card space-y-4 p-5">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div>
             <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
@@ -292,7 +292,7 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
       </div>
 
       {/* 2. SECTION: Evaluations Forwarded to Executive Review (President) */}
-      <div className="card space-y-4 p-5 border-l-4 border-l-purple-500">
+      <div className="card space-y-4 p-5">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div>
             <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
