@@ -686,33 +686,42 @@ export const App: React.FC = () => {
 
       const foundArchive = scorecardArchives.find(a => a.id === selectedEvalId || a.evaluationId === selectedEvalId);
       if (foundArchive) {
-        if (foundArchive.scorecardSnapshot) return foundArchive.scorecardSnapshot;
-        return {
+        const reconstructed: Evaluation = {
           id: foundArchive.evaluationId || foundArchive.id,
           cycleId: foundArchive.cycleId || '',
           templateId: foundArchive.templateId || '',
-          workflowType: (foundArchive.workflowType as any) || 'standard_3tier',
+          workflowType: (foundArchive.workflowType as any) || 'WORKFLOW_REGULAR',
           employeeId: foundArchive.employeeId,
           userId: foundArchive.employeeId,
           employeeName: foundArchive.employeeName,
-          employeeEmail: '',
-          departmentId: '',
+          employeeEmail: foundArchive.employeeEmail || '',
           departmentName: foundArchive.departmentName || '',
           position: foundArchive.position || '',
           appraisalPeriod: foundArchive.appraisalPeriod,
           appraisalDate: foundArchive.archivedAt ? new Date(foundArchive.archivedAt).toLocaleDateString() : new Date().toLocaleDateString(),
           status: 'archived',
-          workflowStage: 'archived',
-          kpiRatings: foundArchive.kpiRatings || [],
-          coreValueRatings: foundArchive.coreValueRatings || [],
-          eligibilityScore: foundArchive.finalScore || 0,
-          coreValuesScore: 0,
-          finalRating: foundArchive.finalScore || 0,
+          eligibilityScore: foundArchive.eligibilityScore || 0,
+          coreValuesScore: foundArchive.coreValuesScore || 0,
+          totalEligibilityWeightedRating: foundArchive.eligibilityScore || 0,
+          totalCoreValuesWeightedRating: foundArchive.coreValuesScore || 0,
+          finalRating: foundArchive.finalRating || 0,
           ratingClassification: foundArchive.ratingClassification || '',
-          overallComments: foundArchive.notes || '',
-          createdAt: foundArchive.archivedAt || new Date().toISOString(),
+          kpiRatings: foundArchive.kpiRatingsData || [],
+          coreValueRatings: foundArchive.coreValueRatingsData || [],
+          developmentPlan: (foundArchive.developmentPlanData as DevelopmentPlan) || { strengths: '', areasForImprovement: '', learningNeeds: [] },
+          personnelAction: (foundArchive.personnelActionData as PersonnelAction) || { actionType: 'no_action' },
+          signatures: foundArchive.signaturesData || {},
+          evidenceFiles: foundArchive.evidenceFilesData || [],
+          stepHistory: foundArchive.stepHistoryData || [],
+          auditTrail: foundArchive.auditTrailData || [],
+          appraiseeSummaryComment: foundArchive.appraiseeSummaryComment || '',
+          supervisorSummaryComment: foundArchive.supervisorSummaryComment || '',
+          presidentSummaryComment: foundArchive.presidentSummaryComment || '',
+          podValidationComment: foundArchive.podValidationComment || '',
+          createdAt: foundArchive.createdAt || foundArchive.archivedAt || new Date().toISOString(),
           updatedAt: foundArchive.archivedAt || new Date().toISOString(),
-        } as Evaluation;
+        };
+        return reconstructed;
       }
     }
     return currentEvaluation;
