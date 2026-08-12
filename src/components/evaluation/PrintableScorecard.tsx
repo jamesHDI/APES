@@ -20,39 +20,39 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
   const handleDownloadPDF = async () => {
     setIsGeneratingPdf(true);
     try {
-      const element = document.getElementById('printable-scorecard-content');
-      if (!element) {
-        alert('Scorecard document element not found.');
-        return;
-      }
+      const page1Elem = document.getElementById('scorecard-page-1');
+      const page2Elem = document.getElementById('scorecard-page-2');
 
       const html2canvas = (await import('html2canvas')).default;
       const { jsPDF } = await import('jspdf');
 
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-      });
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
+      const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
 
-      let heightLeft = pdfHeight;
-      let position = 0;
+      if (page1Elem) {
+        const canvas1 = await html2canvas(page1Elem, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+        });
+        const imgData1 = canvas1.toDataURL('image/jpeg', 0.95);
+        const imgHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
+        pdf.addImage(imgData1, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight1, pdfHeight));
+      }
 
-      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - pdfHeight;
+      if (page2Elem) {
         pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
+        const canvas2 = await html2canvas(page2Elem, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+        });
+        const imgData2 = canvas2.toDataURL('image/jpeg', 0.95);
+        const imgHeight2 = (canvas2.height * pdfWidth) / canvas2.width;
+        pdf.addImage(imgData2, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight2, pdfHeight));
       }
 
       const safeName = (evaluation.employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -110,10 +110,10 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
       </div>
 
       {/* Official 2-Page Document Sheet */}
-      <div id="printable-scorecard-content" className={`bg-white text-black p-8 sm:p-10 rounded-none shadow-2xl max-w-5xl mx-auto text-xs font-sans border border-slate-300 space-y-6 leading-snug print-${paperSize}`}>
+      <div id="printable-scorecard-content" className={`max-w-5xl mx-auto space-y-6 print-${paperSize}`}>
         
-        {/* PAGE 1 HEADER */}
-        <div>
+        {/* PAGE 1 CONTENT */}
+        <div id="scorecard-page-1" className="bg-white text-black p-8 sm:p-10 rounded-none shadow-xl border border-slate-300 space-y-6 leading-snug">
           <div className="flex items-center justify-between border-b-2 border-hdi-red pb-3 mb-4">
             <div className="flex items-center space-x-3">
               <div className="bg-white rounded-lg p-1 border border-slate-200 shadow-sm shrink-0">
@@ -211,13 +211,16 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
               </tr>
             </tbody>
           </table>
+          <div className="pt-2 text-right text-[9px] text-slate-400 font-bold uppercase">
+            HDI HIVE • STRICTLY CONFIDENTIAL • Page 1 of 2
+          </div>
         </div>
 
         {/* Page Break demarcation */}
-        <div className="page-break pt-4"></div>
+        <div className="page-break"></div>
 
         {/* PAGE 2 CONTENT */}
-        <div>
+        <div id="scorecard-page-2" className="bg-white text-black p-8 sm:p-10 rounded-none shadow-xl border border-slate-300 space-y-6 leading-snug">
           
           {/* PART 1B: CORE VALUES */}
           <div className="bg-slate-100 p-2 font-bold text-center border border-slate-400 uppercase text-[11px] mb-2">

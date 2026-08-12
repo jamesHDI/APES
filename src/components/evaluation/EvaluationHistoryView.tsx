@@ -123,37 +123,38 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
     if (onViewPrintable) {
       onViewPrintable(historyId);
       setTimeout(async () => {
-        const elem = document.getElementById('printable-scorecard-content');
-        if (elem) {
+        const page1Elem = document.getElementById('scorecard-page-1');
+        const page2Elem = document.getElementById('scorecard-page-2');
+
+        if (page1Elem && page2Elem) {
           try {
             const html2canvas = (await import('html2canvas')).default;
             const { jsPDF } = await import('jspdf');
 
-            const canvas = await html2canvas(elem, {
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+
+            const canvas1 = await html2canvas(page1Elem, {
               scale: 2,
               useCORS: true,
               logging: false,
               backgroundColor: '#ffffff',
             });
+            const imgData1 = canvas1.toDataURL('image/jpeg', 0.95);
+            const imgHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
+            pdf.addImage(imgData1, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight1, pdfHeight));
 
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-            let heightLeft = pdfHeight;
-            let position = 0;
-
-            pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-            heightLeft -= pageHeight;
-
-            while (heightLeft > 0) {
-              position = heightLeft - pdfHeight;
-              pdf.addPage();
-              pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-              heightLeft -= pageHeight;
-            }
+            pdf.addPage();
+            const canvas2 = await html2canvas(page2Elem, {
+              scale: 2,
+              useCORS: true,
+              logging: false,
+              backgroundColor: '#ffffff',
+            });
+            const imgData2 = canvas2.toDataURL('image/jpeg', 0.95);
+            const imgHeight2 = (canvas2.height * pdfWidth) / canvas2.width;
+            pdf.addImage(imgData2, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight2, pdfHeight));
 
             const targetRec = historyRecords.find(r => r.evaluationId === historyId);
             const safeName = (targetRec?.employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -163,7 +164,7 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
             console.error('Direct PDF export error:', err);
           }
         }
-      }, 350);
+      }, 400);
     }
   };
 

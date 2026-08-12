@@ -435,13 +435,27 @@
    PRINT MEDIA STYLES
 ============================================= */
 @media print {
+  /* 1. Hide non-printable app UI */
   .no-print,
   nav,
   aside,
   header,
   footer,
-  button {
+  button,
+  .sidebar-container,
+  [role="dialog"] {
     display: none !important;
+  }
+
+  /* 2. Hide all body elements by default to prevent blank 8-page spill */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* 3. Show ONLY the printable scorecard container and its contents */
+  #printable-scorecard-content,
+  #printable-scorecard-content * {
+    visibility: visible !important;
   }
 
   html, body, #root {
@@ -450,57 +464,58 @@
     max-height: none !important;
     overflow: visible !important;
     background: #ffffff !important;
-    color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
   }
 
-  /* Force printable scorecard element and all its children to print in solid black on white */
-  #printable-scorecard-content,
-  #printable-scorecard-content * {
-    visibility: visible !important;
-    display: revert !important;
-    color: #000000 !important;
-    background-color: transparent !important;
-    border-color: #333333 !important;
-    opacity: 1 !important;
-    box-shadow: none !important;
-    text-shadow: none !important;
+  /* Preserve exact colors, background highlights, badges, and score boxes */
+  *, *::before, *::after {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    color-adjust: exact !important;
   }
 
   #printable-scorecard-content {
     display: block !important;
-    position: relative !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0 auto !important;
-    padding: 10px !important;
+    margin: 0 !important;
+    padding: 0 !important;
     border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  #scorecard-page-1,
+  #scorecard-page-2 {
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    padding: 24px !important;
+    margin: 0 !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Clean Page Break between Page 1 and Page 2 */
+  .page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   #printable-scorecard-content table {
     width: 100% !important;
     border-collapse: collapse !important;
+    page-break-inside: avoid !important;
   }
 
-  #printable-scorecard-content th,
-  #printable-scorecard-content td {
-    border: 1px solid #333333 !important;
-    color: #000000 !important;
-  }
-
-  #printable-scorecard-content .bg-slate-100,
-  #printable-scorecard-content .bg-slate-200,
-  #printable-scorecard-content .bg-amber-50 {
-    background-color: #f1f5f9 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  .page-break {
-    page-break-before: always !important;
-    break-before: page !important;
+  #printable-scorecard-content tr {
+    page-break-inside: avoid !important;
   }
 }
