@@ -302,72 +302,104 @@
 }
 
 /* =============================================
-   PRINT STYLES
+   PRINT STYLES — Official Scorecard only
+   Scoped strictly to #printable-scorecard-content.
+   Must NOT affect any normal APES UI.
 ============================================= */
 @media print {
   @page {
-    margin: 1cm;
+    size: A4 portrait;
+    margin: 8mm;
   }
 
-  body {
-    background-color: white !important;
-    color: black !important;
-  }
-  .no-print {
-    display: none !important;
-  }
-  .print-only {
-    display: block !important;
-  }
-  .page-break {
-    page-break-after: always;
-    break-after: page;
+  /* ── 1. Preserve exact colors / backgrounds in print ── */
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
   }
 
-  /* App shell must not constrain print height/overflow */
-  #app-container, #root, #app, main, .flex-1, aside, nav {
-    overflow: visible !important;
+  /* ── 2. Hide every part of the app shell ── */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* ── 3. Reveal ONLY the scorecard wrapper and its children ── */
+  #printable-scorecard-content,
+  #printable-scorecard-content * {
+    visibility: visible !important;
+  }
+
+  /* ── 4. Reset root containers so nothing clips the scorecard ── */
+  html, body, #root, #app-container {
     height: auto !important;
-    min-height: auto !important;
+    min-height: 0 !important;
     max-height: none !important;
-  }
-
-  /* Remove outer page padding so scorecard controls its own print margins */
-  main > div {
+    overflow: visible !important;
+    background: #ffffff !important;
+    margin: 0 !important;
     padding: 0 !important;
-    max-width: none !important;
   }
 
-  /* Hide fixed decorative background elements */
-  .fixed.z-0 {
-    display: none !important;
-  }
-
-  /* Scorecard print sizing */
-  #printable-scorecard-content.print-a4 {
-    width: 210mm;
-    min-height: 297mm;
-    padding: 15mm;
-    margin: 0 auto;
-    font-size: 10.5px;
-    max-width: 210mm !important;
-    box-shadow: none !important;
-  }
-
-  #printable-scorecard-content.print-letter {
-    width: 8.5in;
-    min-height: 11in;
-    padding: 0.5in;
-    margin: 0 auto;
-    font-size: 10.5px;
-    max-width: 8.5in !important;
-    box-shadow: none !important;
-  }
-
+  /* ── 5. Position the scorecard wrapper at the top of the print surface ── */
   #printable-scorecard-content {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
     max-width: 100% !important;
-    margin: 0 auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
     box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* ── 6. Each page sheet fills the print surface ── */
+  #scorecard-page-1,
+  #scorecard-page-2 {
+    width: 100% !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 8mm !important;
+    background: #ffffff !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* ── 7. Page break between Page 1 and Page 2 ── */
+  .page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* ── 8. Tables: prevent rows from splitting across pages ── */
+  #printable-scorecard-content table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  #printable-scorecard-content tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* ── 9. Hide APES shell elements if they somehow remain ── */
+  .no-print,
+  nav,
+  aside,
+  header,
+  footer,
+  button,
+  [role="dialog"],
+  [role="alertdialog"] {
+    display: none !important;
   }
 }
 
@@ -431,91 +463,3 @@
   opacity: 1;
 }
 
-/* =============================================
-   PRINT MEDIA STYLES
-============================================= */
-@media print {
-  /* 1. Hide non-printable app UI */
-  .no-print,
-  nav,
-  aside,
-  header,
-  footer,
-  button,
-  .sidebar-container,
-  [role="dialog"] {
-    display: none !important;
-  }
-
-  /* 2. Hide all body elements by default to prevent blank 8-page spill */
-  body * {
-    visibility: hidden !important;
-  }
-
-  /* 3. Show ONLY the printable scorecard container and its contents */
-  #printable-scorecard-content,
-  #printable-scorecard-content * {
-    visibility: visible !important;
-  }
-
-  html, body, #root {
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    overflow: visible !important;
-    background: #ffffff !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  /* Preserve exact colors, background highlights, badges, and score boxes */
-  *, *::before, *::after {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
-  }
-
-  #printable-scorecard-content {
-    display: block !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
-  }
-
-  #scorecard-page-1,
-  #scorecard-page-2 {
-    border: 1px solid #cbd5e1 !important;
-    box-shadow: none !important;
-    padding: 24px !important;
-    margin: 0 !important;
-    width: 100% !important;
-    background: #ffffff !important;
-    page-break-inside: avoid !important;
-  }
-
-  /* Clean Page Break between Page 1 and Page 2 */
-  .page-break {
-    page-break-before: always !important;
-    break-before: page !important;
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  #printable-scorecard-content table {
-    width: 100% !important;
-    border-collapse: collapse !important;
-    page-break-inside: avoid !important;
-  }
-
-  #printable-scorecard-content tr {
-    page-break-inside: avoid !important;
-  }
-}

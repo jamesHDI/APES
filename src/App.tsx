@@ -1068,13 +1068,11 @@ export const App: React.FC = () => {
   if (viewMode === 'printable') {
     const targetForPrint = printableEvaluation || currentEvaluation;
     return (
-      <div className="min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-4 sm:p-6 font-sans">
-        <div className="max-w-5xl mx-auto">
-          <PrintableScorecard
-            evaluation={targetForPrint}
-            onBack={() => setViewMode('normal')}
-          />
-        </div>
+      <div id="apes-print-shell" className="min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-4 sm:p-6 font-sans">
+        <PrintableScorecard
+          evaluation={targetForPrint}
+          onBack={() => setViewMode('normal')}
+        />
       </div>
     );
   }
