@@ -360,21 +360,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
       )}
 
-      {/* Sidebar Panel */}
       <aside
         className={`no-print fixed top-16 left-4 bottom-0 z-40
           bg-gradient-to-b from-[#FFFAF6] via-[#FFF8F3] to-[#FFF6EF]
           dark:from-slate-900 dark:via-slate-900 dark:to-slate-900
           border-r border-[#EFE4D6] dark:border-slate-800
           flex flex-col transition-all duration-300 ease-in-out overflow-hidden
-          lg:sticky lg:top-0 lg:left-5 lg:h-[calc(100vh-4rem)]
+          lg:sticky lg:top-0 lg:left-5 lg:h-[calc(100vh-6rem)]
           ${isOpen 
             ? 'w-64 translate-x-0 opacity-100' 
             : '-translate-x-full opacity-0 w-0 lg:translate-x-0 lg:opacity-100 lg:w-[72px]'}
         `}
       >
         {/* Navigation Panel Top Header with 3 Parallel Lines Toggle Button */}
-        <div className="px-3 py-3 border-b border-[#EFE4D6] dark:border-slate-800">
+        <div className="px-3.5 py-3 border-b border-[#EFE4D6] dark:border-slate-800">
           {isOpen ? (
             <div className="flex items-center justify-between w-full">
               <p className={`uppercase tracking-widest font-black text-slate-400 dark:text-slate-500 ${
@@ -386,7 +385,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   onClick={onToggleSidebar}
                   className="p-1.5 rounded-lg text-slate-500 hover:text-[#E96B1A] hover:bg-[#FFF4EA] dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                  title="Collapse to icons only"
+                  title="Collapse navigation menu"
                 >
                   <Menu className="w-5 h-5" />
                 </button>
@@ -426,20 +425,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {navItems.map(renderItem)}
         </nav>
 
-        {/* Footer */}
-        <div className="px-3 py-3 border-t border-[#EFE4D6] dark:border-slate-800 bg-[#FFF4EA]/60 dark:bg-slate-800/50">
+        {/* Footer with HDI HIVE APES 3.0 adjusted upwards for clear visibility */}
+        <div className="px-3 pt-3 pb-5 border-t border-[#EFE4D6] dark:border-slate-800 bg-[#FFF4EA]/60 dark:bg-slate-800/50 shrink-0">
           {isOpen ? (
             <div className="flex flex-col items-center text-center gap-0.5">
               <p className="text-xs font-black text-[#E96B1A] dark:text-brand-400 tracking-wider uppercase whitespace-nowrap">
                 HDI HIVE · APES 3.0
               </p>
-              <p className="text-[9px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+              <p className="text-[9.5px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
                 Strictly Confidential
               </p>
             </div>
           ) : (
             <div className="flex justify-center">
-              <span className="text-[9px] font-black text-[#E96B1A] dark:text-brand-400 uppercase tracking-widest">
+              <span className="text-[9.5px] font-black text-[#E96B1A] dark:text-brand-400 uppercase tracking-widest">
                 v3.0
               </span>
             </div>

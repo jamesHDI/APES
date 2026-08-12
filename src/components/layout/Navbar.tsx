@@ -86,17 +86,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-6">
         <div className="flex items-center justify-between h-20 sm:h-24 gap-4">
 
-          {/* Left: Hamburger + Logo + Title */}
+          {/* Left: Logo + Title */}
           <div className="flex items-center gap-3 sm:gap-4">
-            {/* 3 Parallel Lines Navigation Toggle Button */}
-            <button
-              onClick={onToggleSidebar}
-              className="p-2 rounded-xl text-slate-500 dark:text-slate-300 hover:bg-[#FFF4EA] hover:text-[#E96B1A] dark:hover:bg-slate-800 transition-all duration-150 cursor-pointer"
-              aria-label={isSidebarOpen ? 'Hide navigation bar' : 'Show navigation bar'}
-              title={isSidebarOpen ? 'Hide navigation bar' : 'Show navigation bar'}
-            >
-              <Menu className="w-6 h-6" />
-            </button>
 
             {/* Brand Logo */}
             <div className="shrink-0 flex items-center justify-start py-1">
