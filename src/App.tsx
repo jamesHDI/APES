@@ -36,7 +36,10 @@ import {
   saveDepartmentToSupabase,
   findEmployeeInSupabase,
   isValidUuid,
-  ensureUuid
+  ensureUuid,
+  saveEvaluationTemplateBuilderToSupabase,
+  fetchEvaluationTemplatesFromSupabase,
+  deleteEvaluationTemplateFromSupabase
 } from './services/supabaseService';
 import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './services/supabaseClient';
 import { 
@@ -210,9 +213,9 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // 1.5. Load evaluation history and scorecard archives
+  // 1.5. Load evaluation history, scorecard archives, and evaluation templates from Supabase
   useEffect(() => {
-    const loadHistoryAndArchives = async () => {
+    const loadHistoryArchivesAndTemplates = async () => {
       setEvaluationHistory(getStoredEvaluationHistory());
       setScorecardArchives(getStoredScorecardArchives());
 
@@ -225,9 +228,16 @@ export const App: React.FC = () => {
         if (sbArchives && sbArchives.length > 0) {
           setScorecardArchives(sbArchives);
         }
+        // Load evaluation templates from Supabase so all devices see the same templates
+        const sbTemplates = await fetchEvaluationTemplatesFromSupabase();
+        if (sbTemplates && sbTemplates.length > 0) {
+          setTemplates(sbTemplates);
+          saveTemplates(sbTemplates);
+          console.log(`[App Init] Loaded ${sbTemplates.length} templates from Supabase.`);
+        }
       }
     };
-    loadHistoryAndArchives();
+    loadHistoryArchivesAndTemplates();
   }, []);
 
   // 2. Real-time Database & Notification Polling (Every 3s)
@@ -287,13 +297,20 @@ export const App: React.FC = () => {
           saveEvaluations(sbEvals);
         }
 
+        // Sync evaluation templates from Supabase every polling cycle
+        const sbTemplates = await fetchEvaluationTemplatesFromSupabase();
+        if (sbTemplates && sbTemplates.length > 0) {
+          setTemplates(sbTemplates);
+          saveTemplates(sbTemplates);
+        }
+
         const sbNotifs = await fetchNotificationsFromSupabase(currentUser?.id, currentUser?.role);
         if (sbNotifs) {
           const computed = getRoleBasedNotifications(sbNotifs, currentUser);
           setNotifications(computed);
         }
 
-        console.log(`[APES Sync - Dashboard] Synchronized cloud state from Supabase: ${sbUsers?.length || 0} employees, ${sbDepts?.length || 0} departments, ${sbEvals?.length || 0} scorecards, ${sbNotifs?.length || 0} notifications.`);
+        console.log(`[APES Sync - Dashboard] Synchronized cloud state from Supabase: ${sbUsers?.length || 0} employees, ${sbDepts?.length || 0} departments, ${sbEvals?.length || 0} scorecards, ${sbTemplates?.length || 0} templates, ${sbNotifs?.length || 0} notifications.`);
       } else {
         const storedUsers = getStoredUsers();
         setUsers(storedUsers);
@@ -630,12 +647,24 @@ export const App: React.FC = () => {
     }
     setTemplates(newTemplates);
     saveTemplates(newTemplates);
+    // Persist template to Supabase so all devices see the same templates
+    if (isSupabaseConfigured) {
+      saveEvaluationTemplateBuilderToSupabase(updatedTemplate).then((ok) => {
+        if (ok) triggerRealtimeBroadcast('data_changed', { type: 'template', id: updatedTemplate.id });
+      });
+    }
   };
 
   const handleDeleteTemplate = (templateId: string) => {
     const updated = templates.filter((t) => t.id !== templateId);
     setTemplates(updated);
     saveTemplates(updated);
+    // Soft-delete in Supabase so other devices also remove it
+    if (isSupabaseConfigured) {
+      deleteEvaluationTemplateFromSupabase(templateId).then((ok) => {
+        if (ok) triggerRealtimeBroadcast('data_changed', { type: 'template_deleted', id: templateId });
+      });
+    }
   };
 
   const handleResetAllData = () => {
