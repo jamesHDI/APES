@@ -232,24 +232,26 @@ export const App: React.FC = () => {
 
         try {
           const sbTemplates = await fetchEvaluationTemplatesFromSupabase();
-          if (sbTemplates && sbTemplates.length > 0) {
+          if (sbTemplates !== null) {
+            // Auto-push Sales template to Supabase if it doesn't exist in cloud DB yet
+            const hasSalesInDb = sbTemplates.some(t => t.id === 'template_sales' || t.departmentName === 'Sales');
+            if (!hasSalesInDb) {
+              saveEvaluationTemplateToSupabase(MASTER_SALES_EVALUATION_TEMPLATE).catch(() => {});
+            }
+
             setTemplates(prev => {
-              let combined = [...prev];
-              if (!combined.some(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales')) {
-                combined.unshift(MASTER_SALES_EVALUATION_TEMPLATE);
-              }
+              const masterSales = prev.find(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
+              const result: EvaluationTemplate[] = [masterSales];
+
               for (const remoteT of sbTemplates) {
                 if (!remoteT || !remoteT.id) continue;
                 if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales' || remoteT.departmentName === 'Sales') continue;
-                const existingIdx = combined.findIndex(t => t.id === remoteT.id);
-                if (existingIdx >= 0) {
-                  combined[existingIdx] = remoteT;
-                } else {
-                  combined.push(remoteT);
+                if (!result.some(t => t.id === remoteT.id)) {
+                  result.push(remoteT);
                 }
               }
-              saveTemplates(combined);
-              return combined;
+              saveTemplates(result);
+              return result;
             });
           }
         } catch (e) {}
@@ -359,6 +361,25 @@ export const App: React.FC = () => {
           .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => {
             syncDatabaseAndNotifications();
           })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'evaluation_templates' }, () => {
+            fetchEvaluationTemplatesFromSupabase().then(sbTemplates => {
+              if (sbTemplates !== null) {
+                setTemplates(prev => {
+                  const masterSales = prev.find(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
+                  const result: EvaluationTemplate[] = [masterSales];
+                  for (const remoteT of sbTemplates) {
+                    if (!remoteT || !remoteT.id) continue;
+                    if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales' || remoteT.departmentName === 'Sales') continue;
+                    if (!result.some(t => t.id === remoteT.id)) {
+                      result.push(remoteT);
+                    }
+                  }
+                  saveTemplates(result);
+                  return result;
+                });
+              }
+            }).catch(() => {});
+          })
           .subscribe();
 
         broadcastChannel = supabase
@@ -366,24 +387,19 @@ export const App: React.FC = () => {
           .on('broadcast', { event: 'data_changed' }, () => {
             syncDatabaseAndNotifications();
             fetchEvaluationTemplatesFromSupabase().then(sbTemplates => {
-              if (sbTemplates && sbTemplates.length > 0) {
+              if (sbTemplates !== null) {
                 setTemplates(prev => {
-                  let combined = [...prev];
-                  if (!combined.some(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales')) {
-                    combined.unshift(MASTER_SALES_EVALUATION_TEMPLATE);
-                  }
+                  const masterSales = prev.find(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
+                  const result: EvaluationTemplate[] = [masterSales];
                   for (const remoteT of sbTemplates) {
                     if (!remoteT || !remoteT.id) continue;
                     if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales' || remoteT.departmentName === 'Sales') continue;
-                    const existingIdx = combined.findIndex(t => t.id === remoteT.id);
-                    if (existingIdx >= 0) {
-                      combined[existingIdx] = remoteT;
-                    } else {
-                      combined.push(remoteT);
+                    if (!result.some(t => t.id === remoteT.id)) {
+                      result.push(remoteT);
                     }
                   }
-                  saveTemplates(combined);
-                  return combined;
+                  saveTemplates(result);
+                  return result;
                 });
               }
             }).catch(() => {});
