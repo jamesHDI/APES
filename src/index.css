@@ -309,7 +309,7 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm;
+    margin: 12mm 10mm;
   }
 
   /* ── 1. Preserve exact colors / backgrounds in print ── */
@@ -330,8 +330,8 @@
     visibility: visible !important;
   }
 
-  /* ── 4. Reset root containers so nothing clips the scorecard ── */
-  html, body, #root, #app-container {
+  /* ── 4. Reset root/shell containers so nothing clips the scorecard ── */
+  html, body, #root, #app-container, #apes-print-shell {
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
@@ -341,11 +341,9 @@
     padding: 0 !important;
   }
 
-  /* ── 5. Position the scorecard wrapper at the top of the print surface ── */
+  /* ── 5. Scorecard wrapper: static flow (NOT fixed — fixed causes 1-page squish) ── */
   #printable-scorecard-content {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
+    position: static !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -355,42 +353,66 @@
     background: transparent !important;
   }
 
-  /* ── 6. Each page sheet fills the print surface ── */
-  #scorecard-page-1,
-  #scorecard-page-2 {
-    width: 100% !important;
-    margin: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 8mm !important;
-    background: #ffffff !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
+  /* Remove Tailwind space-y gap between page divs in print */
+  #printable-scorecard-content > * + * {
+    margin-top: 0 !important;
   }
 
-  /* ── 7. Page break between Page 1 and Page 2 ── */
-  .page-break {
+  /* ── 6. Page 1: natural multi-page flow — NO page-break-inside:avoid on container ──
+     The KPI table may be long, so it must be allowed to flow across print pages. ── */
+  #scorecard-page-1 {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    /* INTENTIONALLY no page-break-inside:avoid — content must flow naturally */
+  }
+
+  /* ── 7. Page 2: always start on a new print page ── */
+  #scorecard-page-2 {
     page-break-before: always !important;
     break-before: page !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    /* INTENTIONALLY no page-break-inside:avoid — content must flow naturally */
+  }
+
+  /* ── 8. .page-break div: hidden spacer — page 2 itself triggers the break ── */
+  .page-break {
+    display: none !important;
     height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
-    display: block !important;
-    visibility: visible !important;
   }
 
-  /* ── 8. Tables: prevent rows from splitting across pages ── */
+  /* ── 9. Tables: allow natural multi-page flow ── */
   #printable-scorecard-content table {
     width: 100% !important;
     border-collapse: collapse !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
   }
 
+  /* ── 10. Individual table rows: never split a single row across pages ── */
   #printable-scorecard-content tr {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
 
-  /* ── 9. Hide APES shell elements if they somehow remain ── */
+  /* ── 11. Section/subsection headers: stay with content below them ── */
+  #printable-scorecard-content .bg-slate-100,
+  #printable-scorecard-content thead {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* ── 12. Hide APES shell elements ── */
   .no-print,
   nav,
   aside,
