@@ -473,101 +473,11 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               </div>
             </div>
 
-            {/* Part 1B - Core Values Configuration */}
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Part 1B – Core Values</span>
-                  <p className="text-[11px] text-slate-500">Subdivisions of the Part 1B total weight</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    type="button"
-                    onClick={recalculateCoreValueWeights}
-                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200"
-                    title="Redistribute Part 1B weight equally among all Core Values"
-                  >
-                    Recalculate Equally
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAddCoreValue}
-                    className="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-sm flex items-center space-x-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Core Value</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${
-                isCoreValuesValid
-                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
-                  : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 text-amber-800 dark:text-amber-300'
-              }`}>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Part 1B Total: {activeTemplate.formulaConfig.coreValuesWeight || 0}% • Core Values: {activeTemplate.coreValues?.length || 0} • Sum: {Number(totalCoreValueWeight.toFixed(2))}%</span>
-                </div>
-                {!isCoreValuesValid && (
-                  <span className="text-[11px] font-normal">Core Values must total exactly Part 1B weight.</span>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                {(activeTemplate.coreValues || []).map((cv) => (
-                  <div key={cv.id} className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          value={cv.name}
-                          onChange={(e) => handleUpdateCoreValue(cv.id, 'name', e.target.value)}
-                          className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs font-bold"
-                          placeholder="Core Value Name"
-                        />
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={cv.weightPercent || 0}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/[^0-9]/g, '');
-                            handleUpdateCoreValue(cv.id, 'weightPercent', val === '' ? 0 : Number(val));
-                          }}
-                          className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs font-bold"
-                          placeholder="Weight %"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCoreValue(cv.id)}
-                        className="p-1 text-slate-400 hover:text-rose-600 rounded shrink-0"
-                        title="Remove Core Value"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      value={cv.description || ''}
-                      onChange={(e) => handleUpdateCoreValue(cv.id, 'description', e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 text-xs"
-                      placeholder="Core Value description"
-                    />
-                  </div>
-                ))}
-                {(activeTemplate.coreValues?.length || 0) === 0 && (
-                  <p className="text-[11px] text-slate-500 italic">No Core Values defined. Click "Add Core Value" to create one.</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* KRAs & KPIs Configuration List */}
+          {/* Part 1A - EVALUATION ON ELIGIBILITY FACTORS */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-extrabold text-slate-900 dark:text-white text-sm uppercase tracking-wider">
-                Key Result Areas (KRAs) & KPIs
+                EVALUATION ON ELIGIBILITY FACTORS
               </h3>
               <button
                 onClick={handleAddKRA}
@@ -696,6 +606,96 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
       </div>
 
+
+            {/* Part 1B - EVALUATION ON SUITABILITY FACTORS */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">EVALUATION ON SUITABILITY FACTORS</span>
+                  <p className="text-[11px] text-slate-500">Subdivisions of the Part 1B total weight</p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={recalculateCoreValueWeights}
+                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200"
+                    title="Redistribute Part 1B weight equally among all Core Values"
+                  >
+                    Recalculate Equally
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddCoreValue}
+                    className="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-sm flex items-center space-x-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Core Value</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${
+                isCoreValuesValid
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 text-amber-800 dark:text-amber-300'
+              }`}>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Part 1B Total: {activeTemplate.formulaConfig.coreValuesWeight || 0}% • Core Values: {activeTemplate.coreValues?.length || 0} • Sum: {Number(totalCoreValueWeight.toFixed(2))}%</span>
+                </div>
+                {!isCoreValuesValid && (
+                  <span className="text-[11px] font-normal">Core Values must total exactly Part 1B weight.</span>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {(activeTemplate.coreValues || []).map((cv) => (
+                  <div key={cv.id} className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={cv.name}
+                          onChange={(e) => handleUpdateCoreValue(cv.id, 'name', e.target.value)}
+                          className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs font-bold"
+                          placeholder="Core Value Name"
+                        />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={cv.weightPercent || 0}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            handleUpdateCoreValue(cv.id, 'weightPercent', val === '' ? 0 : Number(val));
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs font-bold"
+                          placeholder="Weight %"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCoreValue(cv.id)}
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded shrink-0"
+                        title="Remove Core Value"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={cv.description || ''}
+                      onChange={(e) => handleUpdateCoreValue(cv.id, 'description', e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 text-xs"
+                      placeholder="Core Value description"
+                    />
+                  </div>
+                ))}
+                {(activeTemplate.coreValues?.length || 0) === 0 && (
+                  <p className="text-[11px] text-slate-500 italic">No Core Values defined. Click "Add Core Value" to create one.</p>
+                )}
+              </div>
+            </div>
+          </div>
       {/* Live Master Scorecard PDF Preview Modal */}
       {showPreviewModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">

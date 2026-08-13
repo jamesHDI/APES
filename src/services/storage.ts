@@ -835,12 +835,17 @@ export const createDraftEvaluationInMemory = (
     }))
   );
 
-  const defaultCoreValues = [
-    { coreValueId: 'cv_integrity', name: 'Integrity & Ethics', description: 'Upholds highest standards of honesty, fairness, and business ethics.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
-    { coreValueId: 'cv_excellence', name: 'Excellence & Performance', description: 'Consistently delivers top-tier results and strives for continuous improvement.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
-    { coreValueId: 'cv_teamwork', name: 'Teamwork & Collaboration', description: 'Fosters positive collaboration across departments and supports team goals.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
-    { coreValueId: 'cv_accountability', name: 'Accountability & Ownership', description: 'Takes full ownership of duties, commitments, and professional conduct.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' }
-  ];
+  const coreValueRatings = (activeTemplate.coreValues || []).map((cv) => ({
+    coreValueId: cv.id,
+    name: cv.name,
+    description: cv.description || '',
+    podRating: 0,
+    peerRating: 0,
+    isRating: 0,
+    avgRating: 0,
+    weightedScore: 0,
+    comments: ''
+  }));
 
   const dateStr = new Date().toISOString().substring(0, 10);
 
@@ -866,7 +871,7 @@ export const createDraftEvaluationInMemory = (
     finalRating: 0,
     ratingClassification: 'Pending Evaluation',
     kpiRatings,
-    coreValueRatings: defaultCoreValues,
+    coreValueRatings,
     developmentPlan: { strengths: '', areasForImprovement: '', learningNeeds: [] },
     personnelAction: { actionType: 'no_action' },
     signatures: {},
