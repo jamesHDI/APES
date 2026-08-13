@@ -24,69 +24,124 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
     const content = document.getElementById('printable-scorecard-content');
     if (!content) { window.print(); return; }
 
-    // Gather all stylesheets from the parent document
-    const styleLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-      .map((el) => el.outerHTML)
-      .join('\n');
-    const styleTags = Array.from(document.querySelectorAll('style'))
-      .map((el) => `<style>${el.innerHTML}</style>`)
-      .join('\n');
+    // ── Clone the DOM so we can safely mutate without touching the live page ──
+    const clone = content.cloneNode(true) as HTMLElement;
+
+    // ── Inline all background/color classes as style attributes.
+    //    Tailwind uses CSS variables (--tw-bg-opacity) which may not resolve
+    //    before print fires in a new window, so we bake the values in directly. ──
+    const inlineMap: Array<[string, Record<string, string>]> = [
+      ['bg-slate-100', { 'background-color': '#f1f5f9' }],
+      ['bg-slate-200', { 'background-color': '#e2e8f0' }],
+      ['bg-slate-50',  { 'background-color': '#f8fafc' }],
+      ['bg-amber-50',  { 'background-color': '#fffbeb' }],
+      ['bg-white',     { 'background-color': '#ffffff' }],
+      ['text-hdi-red',    { 'color': '#cc0000' }],
+      ['text-brand-700',  { 'color': '#c2440f' }],
+      ['text-brand-500',  { 'color': '#ea580c' }],
+      ['text-slate-900',  { 'color': '#0f172a' }],
+      ['text-slate-700',  { 'color': '#334155' }],
+      ['text-slate-600',  { 'color': '#475569' }],
+      ['text-slate-500',  { 'color': '#64748b' }],
+      ['text-slate-400',  { 'color': '#94a3b8' }],
+      ['border-slate-400', { 'border-color': '#94a3b8' }],
+      ['border-slate-500', { 'border-color': '#64748b' }],
+      ['border-hdi-red',   { 'border-color': '#cc0000' }],
+    ];
+
+    inlineMap.forEach(([cls, props]) => {
+      clone.querySelectorAll(`.${cls}`).forEach((el) => {
+        Object.entries(props).forEach(([prop, val]) => {
+          (el as HTMLElement).style.setProperty(prop, val, 'important');
+        });
+      });
+    });
+
+    // ── Strip classes that should be hidden in print ──
+    clone.querySelectorAll('.no-print').forEach((el) => {
+      (el as HTMLElement).style.setProperty('display', 'none', 'important');
+    });
+    clone.querySelectorAll('.page-break').forEach((el) => {
+      (el as HTMLElement).style.setProperty('display', 'none', 'important');
+    });
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) { window.print(); return; }
 
     const employeeName = evaluation.employeeName || 'Employee';
+    const html = clone.outerHTML;
 
     printWindow.document.write(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <title>APES Scorecard \u2014 ${employeeName}</title>
-  ${styleLinks}
-  ${styleTags}
   <style>
     @page { size: A4 portrait; margin: 8mm; }
     html, body {
       margin: 0; padding: 0; background: #ffffff;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 10px;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
+      color-adjust: exact !important;
     }
     *, *::before, *::after {
+      box-sizing: border-box;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
+      color-adjust: exact !important;
     }
-    .no-print { display: none !important; }
-    .page-break { display: none !important; }
-    #printable-scorecard-content {
-      width: 100% !important; max-width: 100% !important;
-      margin: 0 !important; padding: 0 !important;
-    }
+    /* Typography utilities */
+    .font-bold, .font-semibold, .font-extrabold, .font-black { font-weight: bold; }
+    .uppercase { text-transform: uppercase; }
+    .italic { font-style: italic; }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .text-left { text-align: left; }
+    .text-sm { font-size: 12px; }
+    .text-xs { font-size: 10px; }
+    /* Layout */
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .space-x-3 > * + * { margin-left: 12px; }
+    .w-full { width: 100%; }
+    /* Borders */
+    .border { border: 1px solid #94a3b8; }
+    .border-collapse { border-collapse: collapse; }
+    .border-b-2 { border-bottom: 2px solid; }
+    /* Spacing */
+    .p-1 { padding: 4px; }
+    .p-2 { padding: 8px; }
+    .p-1\.5 { padding: 6px; }
+    .pb-3 { padding-bottom: 12px; }
+    .mb-2 { margin-bottom: 8px; }
+    .mb-4 { margin-bottom: 16px; }
+    .mt-1 { margin-top: 4px; }
+    .mt-0\.5 { margin-top: 2px; }
+    /* Page layout */
+    #printable-scorecard-content { width: 100%; max-width: 100%; margin: 0; padding: 0; }
     #printable-scorecard-content > * { margin: 0 !important; }
     #scorecard-page-1 {
-      display: block !important; width: 100% !important;
-      margin: 0 !important; padding: 6mm 4mm !important;
-      border: none !important; box-shadow: none !important;
-      background: #ffffff !important;
-      page-break-after: always !important; break-after: page !important;
+      width: 100%; margin: 0; padding: 6mm 4mm;
+      page-break-after: always; break-after: page;
     }
     #scorecard-page-2 {
-      display: block !important; width: 100% !important;
-      margin: 0 !important; padding: 6mm 4mm !important;
-      border: none !important; box-shadow: none !important;
-      background: #ffffff !important;
-      page-break-before: always !important; break-before: page !important;
+      width: 100%; margin: 0; padding: 6mm 4mm;
+      page-break-before: always; break-before: page;
     }
-    table { page-break-inside: auto !important; }
-    tr    { page-break-inside: avoid !important; }
-    thead { page-break-after:  avoid !important; }
-    .bg-slate-100 { background-color: #f1f5f9 !important; }
-    .bg-slate-200 { background-color: #e2e8f0 !important; }
-    .bg-amber-50  { background-color: #fffbeb !important; }
-    .text-hdi-red   { color: #cc0000 !important; }
-    .text-brand-700 { color: #c2440f !important; }
+    table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+    tr    { page-break-inside: avoid; }
+    thead { page-break-after: avoid; }
+    td, th { padding: 4px 6px; }
+    /* Image */
+    img { max-height: 40px; width: auto; object-fit: contain; }
   </style>
 </head>
-<body>${content.outerHTML}</body>
+<body>
+  <div id="printable-scorecard-content">${html}</div>
+</body>
 </html>`);
 
     printWindow.document.close();
@@ -97,12 +152,8 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
       setTimeout(() => { if (!printWindow.closed) printWindow.close(); }, 2000);
     };
 
-    if (printWindow.document.readyState === 'complete') {
-      setTimeout(doPrint, 400);
-    } else {
-      printWindow.addEventListener('load', () => setTimeout(doPrint, 300));
-      setTimeout(doPrint, 1500); // hard fallback
-    }
+    // Small delay so the new window finishes layout before triggering print
+    setTimeout(doPrint, 600);
   };
 
   const handleDownloadPDF = async () => {
