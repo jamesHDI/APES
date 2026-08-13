@@ -248,30 +248,38 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
               </tr>
             </thead>
             <tbody>
-              {evaluation.coreValueRatings.map((cv) => (
-                <React.Fragment key={cv.coreValueId}>
-                  <tr>
-                    <td rowSpan={3} className="border border-slate-400 p-2 font-semibold align-top">
-                      {cv.name}
-                      <p className="text-[10px] font-normal text-slate-600 mt-1">{cv.comments}</p>
-                    </td>
-                    <td className="border border-slate-400 p-1.5 text-center">POD</td>
-                    <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.podRating}</td>
-                    <td rowSpan={3} className="border border-slate-400 p-2 text-center align-middle font-bold">{coreValuesWeight}%</td>
-                    <td rowSpan={3} className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">
-                      {cv.weightedScore.toFixed(2)}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="border border-slate-400 p-1.5 text-center">Peer</td>
-                    <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.peerRating}</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-slate-400 p-1.5 text-center">IS (Superior)</td>
-                    <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.isRating}</td>
-                  </tr>
-                </React.Fragment>
-              ))}
+              {evaluation.coreValueRatings.map((cv) => {
+                const cvCount = evaluation.coreValueRatings?.length || 1;
+                const rawWeight = (cv as any).weightPercent ?? (coreValuesWeight / cvCount);
+                const formattedWeight = Number.isInteger(rawWeight)
+                  ? `${rawWeight}%`
+                  : `${Number(rawWeight.toFixed(2))}%`;
+
+                return (
+                  <React.Fragment key={cv.coreValueId}>
+                    <tr>
+                      <td rowSpan={3} className="border border-slate-400 p-2 font-semibold align-top">
+                        {cv.name}
+                        <p className="text-[10px] font-normal text-slate-600 mt-1">{cv.comments}</p>
+                      </td>
+                      <td className="border border-slate-400 p-1.5 text-center">POD</td>
+                      <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.podRating}</td>
+                      <td rowSpan={3} className="border border-slate-400 p-2 text-center align-middle font-bold">{formattedWeight}</td>
+                      <td rowSpan={3} className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">
+                        {cv.weightedScore.toFixed(2)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-400 p-1.5 text-center">Peer</td>
+                      <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.peerRating}</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-400 p-1.5 text-center">IS (Superior)</td>
+                      <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.isRating}</td>
+                    </tr>
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
 

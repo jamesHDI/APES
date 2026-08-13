@@ -1701,7 +1701,14 @@ export const generateScorecardPdfBlob = async (evaluation: Evaluation, formulaCo
             </tr>
           </thead>
           <tbody>
-            ${(evaluation.coreValueRatings || []).map((cv: any) => `
+            ${(evaluation.coreValueRatings || []).map((cv: any) => {
+              const cvCount = (evaluation.coreValueRatings || []).length || 1;
+              const rawWeight = cv.weightPercent ?? (coreValuesWeight / cvCount);
+              const formattedWeight = Number.isInteger(rawWeight)
+                ? `${rawWeight}%`
+                : `${Number(rawWeight.toFixed(2))}%`;
+
+              return `
               <tr>
                 <td rowSpan="3" style="border:1px solid #94a3b8;padding:6px;font-weight:600;vertical-align:top;">
                   ${cv.name}
@@ -1709,7 +1716,7 @@ export const generateScorecardPdfBlob = async (evaluation: Evaluation, formulaCo
                 </td>
                 <td style="border:1px solid #94a3b8;padding:6px;text-align:center;">POD</td>
                 <td style="border:1px solid #94a3b8;padding:6px;text-align:center;font-weight:700;">${cv.podRating || 0}</td>
-                <td rowSpan="3" style="border:1px solid #94a3b8;padding:6px;text-align:center;vertical-align:middle;font-weight:700;">${coreValuesWeight}%</td>
+                <td rowSpan="3" style="border:1px solid #94a3b8;padding:6px;text-align:center;vertical-align:middle;font-weight:700;">${formattedWeight}</td>
                 <td rowSpan="3" style="border:1px solid #94a3b8;padding:6px;text-align:center;vertical-align:middle;font-weight:700;font-size:13px;">${(cv.weightedScore || 0).toFixed(2)}</td>
               </tr>
               <tr>
@@ -1720,7 +1727,8 @@ export const generateScorecardPdfBlob = async (evaluation: Evaluation, formulaCo
                 <td style="border:1px solid #94a3b8;padding:6px;text-align:center;">IS (Superior)</td>
                 <td style="border:1px solid #94a3b8;padding:6px;text-align:center;font-weight:700;">${cv.isRating || 0}</td>
               </tr>
-            `).join('')}
+            `;
+            }).join('')}
           </tbody>
         </table>
 
