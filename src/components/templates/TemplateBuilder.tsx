@@ -415,42 +415,6 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             </div>
 
             {/* Formula Weight Configuration */}
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Formula Weights</span>
-                <p className="text-[11px] text-slate-500">Eligibility Factors Weight % vs Core Values Weight %</p>
-              </div>
-              <div className="flex items-center space-x-3 text-xs font-bold">
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 mr-1">Eligibility:</span>
-                  <input
-                    type="number"
-                    value={activeTemplate.formulaConfig.eligibilityWeight}
-                    onChange={(e) => setActiveTemplate({
-                      ...activeTemplate,
-                      formulaConfig: { ...activeTemplate.formulaConfig, eligibilityWeight: Number(e.target.value) }
-                    })}
-                    className="w-14 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center font-bold"
-                  />
-                  <span className="text-slate-600 dark:text-slate-400 ml-1">%</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 mr-1">Core Values:</span>
-                  <input
-                    type="number"
-                    value={activeTemplate.formulaConfig.coreValuesWeight}
-                    onChange={(e) => setActiveTemplate({
-                      ...activeTemplate,
-                      formulaConfig: { ...activeTemplate.formulaConfig, coreValuesWeight: Number(e.target.value) }
-                    })}
-                    className="w-14 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center font-bold"
-                  />
-                  <span className="text-slate-600 dark:text-slate-400 ml-1">%</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Formula Weight Configuration */}
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -461,12 +425,16 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   <div>
                     <span className="text-slate-500 dark:text-slate-400 mr-1">Part 1A:</span>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       value={activeTemplate.formulaConfig.eligibilityWeight}
-                      onChange={(e) => setActiveTemplate({
-                        ...activeTemplate,
-                        formulaConfig: { ...activeTemplate.formulaConfig, eligibilityWeight: Number(e.target.value) }
-                      })}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setActiveTemplate({
+                          ...activeTemplate,
+                          formulaConfig: { ...activeTemplate.formulaConfig, eligibilityWeight: val === '' ? 0 : Number(val) }
+                        });
+                      }}
                       className="w-14 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center font-bold"
                     />
                     <span className="text-slate-600 dark:text-slate-400 ml-1">%</span>
@@ -474,12 +442,16 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   <div>
                     <span className="text-slate-500 dark:text-slate-400 mr-1">Part 1B:</span>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       value={activeTemplate.formulaConfig.coreValuesWeight}
-                      onChange={(e) => setActiveTemplate({
-                        ...activeTemplate,
-                        formulaConfig: { ...activeTemplate.formulaConfig, coreValuesWeight: Number(e.target.value) }
-                      })}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setActiveTemplate({
+                          ...activeTemplate,
+                          formulaConfig: { ...activeTemplate.formulaConfig, coreValuesWeight: val === '' ? 0 : Number(val) }
+                        });
+                      }}
                       className="w-14 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center font-bold"
                     />
                     <span className="text-slate-600 dark:text-slate-400 ml-1">%</span>
@@ -555,9 +527,13 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                           placeholder="Core Value Name"
                         />
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
                           value={cv.weightPercent || 0}
-                          onChange={(e) => handleUpdateCoreValue(cv.id, 'weightPercent', Number(e.target.value))}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            handleUpdateCoreValue(cv.id, 'weightPercent', val === '' ? 0 : Number(val));
+                          }}
                           className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs font-bold"
                           placeholder="Weight %"
                         />
@@ -664,11 +640,13 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                           <div>
                             <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Weight %</label>
                             <input
-                              type="number"
+                              type="text"
+                              inputMode="numeric"
                               value={kpi.weightPercent}
                               onChange={(e) => {
-                                const val = Number(e.target.value);
-                                const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, weightPercent: val } : item);
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                const numVal = val === '' ? 0 : Number(val);
+                                const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, weightPercent: numVal } : item);
                                 const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
                                 setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
                               }}
