@@ -81,7 +81,15 @@ export function validateEvaluationTemplate(template: EvaluationTemplate): Templa
       }
     });
 
-    // 5. KPI weights must equal the configured Part 1A eligibility weight
+    // 5. KRA total weight must not exceed configured Part 1A eligibility weight
+    const totalKraWeight = (template.kraCategories || []).reduce((sum, kra) => sum + (Number(kra.categoryWeightPercent) || 0), 0);
+    if (totalKraWeight > eligibilityWeight) {
+      errors.push(
+        `KRA Total Exceeds Part 1A: Sum of KRA weights is ${totalKraWeight.toFixed(2)}%, but Part 1A is only ${eligibilityWeight}%.`
+      );
+    }
+
+    // 6. KPI weights must equal the configured Part 1A eligibility weight
     if (Math.abs(totalKpiWeight - eligibilityWeight) > 0.01) {
       errors.push(
         `KPI Weight Total Mismatch: Part 1A KPI weights total ${Number(totalKpiWeight.toFixed(2))}%, but the template's configured Part 1A weight is ${eligibilityWeight}%.`

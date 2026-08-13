@@ -249,7 +249,19 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     return kpiTotal <= kraWeight;
   };
 
+  const getKraTotalWeight = (): number => {
+    return (activeTemplate.kraCategories || []).reduce((sum, kra) => sum + (Number(kra.categoryWeightPercent) || 0), 0);
+  };
+
+  const eligibilityWeight = Number(activeTemplate.formulaConfig.eligibilityWeight || 0);
+  const isPart1AWeightValid = (): boolean => {
+    const kraTotal = getKraTotalWeight();
+    return kraTotal <= eligibilityWeight;
+  };
+
   const handleSave = () => {
+    const kraTotal = getKraTotalWeight();
+    const part1AWeight = Number(activeTemplate.formulaConfig.eligibilityWeight || 0);
     const kraValidationErrors = activeTemplate.kraCategories.map(kra => {
       const kpiTotal = getKpiTotal(kra);
       const kraWeight = Number(kra.categoryWeightPercent) || 0;
@@ -258,6 +270,13 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       }
       return null;
     }).filter((msg): msg is string => msg !== null);
+
+    if (kraTotal > part1AWeight) {
+      const error = `KRA weights exceed the Part 1A weight of ${part1AWeight}%. Current total: ${kraTotal.toFixed(2)}%. Please adjust the KRA weights before saving.`;
+      setValidationErrors([error]);
+      showToast('KRA weight allocation exceeded. Fix errors before saving.');
+      return;
+    }
 
     if (kraValidationErrors.length > 0) {
       setValidationErrors(kraValidationErrors);
@@ -536,6 +555,20 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               </button>
             </div>
 
+            <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${
+              isPart1AWeightValid()
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
+                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-800 dark:text-rose-300'
+            }`}>
+              <div className="flex items-center space-x-2">
+                {isPart1AWeightValid() ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                <span>Part 1A Total: {getKraTotalWeight().toFixed(2)}% / {eligibilityWeight}%</span>
+              </div>
+              {!isPart1AWeightValid() && (
+                <span className="text-[11px] font-normal">KRA weights exceed the Part 1A weight of {eligibilityWeight}%.</span>
+              )}
+            </div>
+
             {activeTemplate.kraCategories.map((kra, kraIdx) => (
               <div key={kra.id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
                 
@@ -550,13 +583,22 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                       }}
                       className="font-bold text-slate-900 dark:text-white text-sm bg-transparent border-b border-brand-300 focus:border-brand-500 outline-none flex-1 min-w-0"
                     />
-                    <div className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
-                      isKraValid(kra)
-                        ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
-                        : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-800 dark:text-rose-300'
-                    }`}>
-                      {kra.categoryWeightPercent}%
-                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={getWeightInputValue(`kra_${kra.id}`, kra.categoryWeightPercent)}
+                      onChange={(e) => handleWeightInputChange(`kra_${kra.id}`, e.target.value)}
+                      onBlur={() => {
+                        const numVal = commitWeightInput(`kra_${kra.id}`, kra.categoryWeightPercent);
+                        const updated = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, categoryWeightPercent: numVal } : k);
+                        setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+                      }}
+                      className={`shrink-0 w-14 px-2 py-1 rounded-lg text-[11px] font-bold border text-center ${
+                        isKraValid(kra)
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
+                          : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-800 dark:text-rose-300'
+                      }`}
+                    />
                   </div>
                   <div className="flex items-center space-x-2">
                     <button

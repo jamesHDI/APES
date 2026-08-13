@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS public.evaluation_templates (
     evaluation_period VARCHAR(100) NOT NULL,
     eligibility_weight NUMERIC(5,2) DEFAULT 85.00,
     core_values_weight NUMERIC(5,2) DEFAULT 15.00,
+    kra_weights JSONB,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

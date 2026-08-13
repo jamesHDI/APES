@@ -2089,6 +2089,10 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       evaluation_period: (template.evaluationPeriod || 'Annual 2026').substring(0, 100),
       eligibility_weight: Number(template.formulaConfig?.eligibilityWeight ?? 85.00),
       core_values_weight: Number(template.formulaConfig?.coreValuesWeight ?? 15.00),
+      kra_weights: (template.kraCategories || []).reduce((acc, kra) => {
+        acc[kra.name] = Number(kra.categoryWeightPercent || 0);
+        return acc;
+      }, {} as Record<string, number>),
       is_active: template.isActive ?? true,
     };
 
@@ -2192,10 +2196,11 @@ export const fetchEvaluationTemplatesFromSupabase = async (): Promise<Evaluation
           });
         }
 
+        const storedKraWeights = row.kra_weights || {};
         kraCategories = Array.from(kraMap.entries()).map(([kraName, kpis], idx) => ({
           id: `kra_${row.id}_${idx}`,
           name: kraName,
-          categoryWeightPercent: kpis.reduce((sum, item) => sum + item.weightPercent, 0),
+          categoryWeightPercent: storedKraWeights[kraName] ?? kpis.reduce((sum, item) => sum + item.weightPercent, 0),
           kpis: kpis
         }));
       } else {
