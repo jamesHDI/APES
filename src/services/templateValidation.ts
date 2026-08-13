@@ -50,6 +50,14 @@ export function validateEvaluationTemplate(template: EvaluationTemplate): Templa
       if (!kra.kpis || kra.kpis.length === 0) {
         errors.push(`KRA Section "${kra.name || idx + 1}" has no KPI performance indicators defined.`);
       } else {
+        const kpiTotal = (kra.kpis || []).reduce((sum, kpi) => sum + (Number(kpi.weightPercent) || 0), 0);
+        const kraWeight = Number(kra.categoryWeightPercent) || 0;
+        if (kpiTotal > kraWeight) {
+          errors.push(
+            `KRA Allocation Error: "${kra.name || `KRA #${idx + 1}`}" KPI total (${kpiTotal.toFixed(2)}%) exceeds its allocated weight (${kraWeight}%).`
+          );
+        }
+
         kra.kpis.forEach((kpi, kpiIdx) => {
           if (!kpi.name || !kpi.name.trim()) {
             errors.push(`KPI #${kpiIdx + 1} in "${kra.name}" is missing a title.`);

@@ -239,7 +239,32 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const totalCoreValueWeight = (activeTemplate.coreValues || []).reduce((sum, cv) => sum + (Number(cv.weightPercent) || 0), 0);
   const isCoreValuesValid = Math.abs(totalCoreValueWeight - (activeTemplate.formulaConfig.coreValuesWeight || 0)) < 0.01;
 
+  const getKpiTotal = (kra: KRACategory): number => {
+    return (kra.kpis || []).reduce((sum, kpi) => sum + (Number(kpi.weightPercent) || 0), 0);
+  };
+
+  const isKraValid = (kra: KRACategory): boolean => {
+    const kpiTotal = getKpiTotal(kra);
+    const kraWeight = Number(kra.categoryWeightPercent) || 0;
+    return kpiTotal <= kraWeight;
+  };
+
   const handleSave = () => {
+    const kraValidationErrors = activeTemplate.kraCategories.map(kra => {
+      const kpiTotal = getKpiTotal(kra);
+      const kraWeight = Number(kra.categoryWeightPercent) || 0;
+      if (kpiTotal > kraWeight) {
+        return `KRA "${kra.name || 'Unnamed'}": KPI weights total ${kpiTotal.toFixed(2)}%, which exceeds the KRA weight of ${kraWeight}%.`;
+      }
+      return null;
+    }).filter((msg): msg is string => msg !== null);
+
+    if (kraValidationErrors.length > 0) {
+      setValidationErrors(kraValidationErrors);
+      showToast('KRA weight allocation exceeded. Fix errors before saving.');
+      return;
+    }
+
     const valResult = validateEvaluationTemplate(activeTemplate);
     if (!valResult.isValid) {
       setValidationErrors(valResult.errors);
@@ -515,15 +540,24 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               <div key={kra.id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
                 
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
-                  <input
-                    type="text"
-                    value={kra.name}
-                    onChange={(e) => {
-                      const updated = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, name: e.target.value } : k);
-                      setActiveTemplate({ ...activeTemplate, kraCategories: updated });
-                    }}
-                    className="font-bold text-slate-900 dark:text-white text-sm bg-transparent border-b border-brand-300 focus:border-brand-500 outline-none w-full max-w-md"
-                  />
+                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                    <input
+                      type="text"
+                      value={kra.name}
+                      onChange={(e) => {
+                        const updated = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, name: e.target.value } : k);
+                        setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+                      }}
+                      className="font-bold text-slate-900 dark:text-white text-sm bg-transparent border-b border-brand-300 focus:border-brand-500 outline-none flex-1 min-w-0"
+                    />
+                    <div className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
+                      isKraValid(kra)
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
+                        : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-800 dark:text-rose-300'
+                    }`}>
+                      {kra.categoryWeightPercent}%
+                    </div>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleAddKPI(kra.id)}
@@ -539,6 +573,20 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {!isKraValid(kra) && (
+                  <div className="text-[11px] text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-lg p-2">
+                    <div className="flex items-center space-x-1 font-bold">
+                      <AlertTriangle className="w-3 h-3" />
+                      <span>KPI weights exceed the KRA weight.</span>
+                    </div>
+                    <div className="mt-1 space-y-0.5">
+                      <div>Assigned KRA weight: {kra.categoryWeightPercent}%</div>
+                      <div>Current KPI total: {getKpiTotal(kra).toFixed(2)}%</div>
+                      <div>Excess: {(getKpiTotal(kra) - kra.categoryWeightPercent).toFixed(2)}%</div>
+                    </div>
+                  </div>
+                )}
                 {/* KPI List under KRA */}
                 <div className="space-y-3">
                   {kra.kpis.map((kpi) => (
