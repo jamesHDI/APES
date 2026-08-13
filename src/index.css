@@ -309,30 +309,18 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm 8mm;
+    margin: 8mm;
   }
 
-  /* ── 1. Preserve exact colors / backgrounds in print ── */
+  /* ── 1. Force ALL elements to print exact colors / backgrounds ── */
   html, body, *, *::before, *::after {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
   }
 
-  /* ── 2. Hide all non-printable shell elements ── */
-  .no-print,
-  nav,
-  aside,
-  header,
-  footer,
-  button,
-  [role="dialog"],
-  [role="alertdialog"] {
-    display: none !important;
-  }
-
-  /* ── 3. Reset root/shell containers ── */
-  html, body, #root, #app-container, #apes-print-shell {
+  /* ── 2. Strip the app shell bloat that creates blank pages ── */
+  html, body, #root {
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
@@ -342,11 +330,32 @@
     padding: 0 !important;
   }
 
-  /* ── 4. Position scorecard wrapper absolute at top left of document ── */
+  /* ── 3. The print shell: remove min-h-screen + padding (biggest cause of extra pages) ── */
+  #apes-print-shell {
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    display: block !important;
+  }
+
+  /* ── 4. The space-y-6 wrapper inside the shell ── */
+  #apes-print-shell > * {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  /* ── 5. Hide the top action bar (buttons, back link) ── */
+  .no-print {
+    display: none !important;
+  }
+
+  /* ── 6. Scorecard content: normal static flow, full width ── */
   #printable-scorecard-content {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+    position: static !important;
+    display: block !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -354,43 +363,44 @@
     border: none !important;
     box-shadow: none !important;
     background: #ffffff !important;
-    visibility: visible !important;
   }
 
-  #printable-scorecard-content * {
-    visibility: visible !important;
-  }
-
-  /* Remove Tailwind space-y gap between page divs in print */
-  #printable-scorecard-content > * + * {
+  /* Remove space-y gaps between page divs */
+  #printable-scorecard-content > * {
     margin-top: 0 !important;
   }
 
-  /* ── 5. Page 1: clean A4 flow ── */
+  /* ── 7. Page 1: normal flow → force page break AFTER ── */
   #scorecard-page-1 {
+    display: block !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 4mm 2mm !important;
+    padding: 6mm 4mm !important;
     border: none !important;
     box-shadow: none !important;
     background: #ffffff !important;
     page-break-after: always !important;
     break-after: page !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
   }
 
-  /* ── 6. Page 2: starts on page 2 ── */
+  /* ── 8. Page 2: force page break BEFORE, normal flow after ── */
   #scorecard-page-2 {
+    display: block !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 4mm 2mm !important;
+    padding: 6mm 4mm !important;
     border: none !important;
     box-shadow: none !important;
     background: #ffffff !important;
     page-break-before: always !important;
     break-before: page !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
   }
 
-  /* ── 7. .page-break div: hidden spacer ── */
+  /* ── 9. .page-break spacer: completely hidden ── */
   .page-break {
     display: none !important;
     height: 0 !important;
@@ -398,7 +408,7 @@
     padding: 0 !important;
   }
 
-  /* ── 8. Tables: natural multi-page flow ── */
+  /* ── 10. Tables: flow naturally across print pages ── */
   #printable-scorecard-content table {
     width: 100% !important;
     border-collapse: collapse !important;
@@ -406,41 +416,37 @@
     break-inside: auto !important;
   }
 
-  /* ── 9. Individual table rows: never split a single row ── */
+  /* ── 11. Rows: never split a row across a page break ── */
   #printable-scorecard-content tr {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
 
-  #printable-scorecard-content td,
-  #printable-scorecard-content th {
-    padding: 4px 6px !important;
-    font-size: 10px !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* ── 10. Enforce background colors on headers and summary rows ── */
-  #printable-scorecard-content .bg-slate-100 {
-    background-color: #f1f5f9 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  #printable-scorecard-content .bg-slate-200 {
-    background-color: #e2e8f0 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  #printable-scorecard-content .bg-amber-50 {
-    background-color: #fffbeb !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* ── 11. Section headers: stay with table content ── */
+  /* ── 12. Section headers: stay glued to the content that follows ── */
   #printable-scorecard-content thead {
     page-break-after: avoid !important;
     break-after: avoid !important;
+  }
+
+  /* ── 13. Explicit background colors — critical for Chrome/Edge print ── */
+  /* Slate-100 section headers */
+  #printable-scorecard-content .bg-slate-100 {
+    background-color: #f1f5f9 !important;
+  }
+  /* Slate-200 table column headers */
+  #printable-scorecard-content .bg-slate-200 {
+    background-color: #e2e8f0 !important;
+  }
+  /* Amber-50 summary/total rows */
+  #printable-scorecard-content .bg-amber-50 {
+    background-color: #fffbeb !important;
+  }
+  /* Brand-colored text in cells */
+  #printable-scorecard-content .text-hdi-red {
+    color: #cc0000 !important;
+  }
+  #printable-scorecard-content .text-brand-700 {
+    color: #c2440f !important;
   }
 }
 
