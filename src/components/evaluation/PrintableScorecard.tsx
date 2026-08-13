@@ -240,7 +240,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
           <table className="w-full border-collapse border border-slate-400 text-[10.5px] mb-4">
             <thead>
               <tr className="bg-slate-200 text-center font-bold">
-                <th className="border border-slate-400 p-2 w-[35%]">CORE VALUES PRACTICE</th>
+                <th className="border border-slate-400 p-2 w-[35%]">EVALUATION ON SUITABILITY FACTORS</th>
                 <th className="border border-slate-400 p-2 w-[15%]">ASSESSOR</th>
                 <th className="border border-slate-400 p-2 w-[15%]">RATING</th>
                 <th className="border border-slate-400 p-2 w-[15%]">WEIGHT</th>

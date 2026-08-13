@@ -1693,7 +1693,7 @@ export const generateScorecardPdfBlob = async (evaluation: Evaluation, formulaCo
         <table style="width:100%;border-collapse:collapse;border:1px solid #94a3b8;font-size:10.5px;margin-bottom:10px;">
           <thead>
             <tr style="background:#e2e8f0;text-align:center;font-weight:700;">
-              <th style="border:1px solid #94a3b8;padding:6px;width:35%;">CORE VALUES PRACTICE</th>
+              <th style="border:1px solid #94a3b8;padding:6px;width:35%;">EVALUATION ON SUITABILITY FACTORS</th>
               <th style="border:1px solid #94a3b8;padding:6px;width:15%;">ASSESSOR</th>
               <th style="border:1px solid #94a3b8;padding:6px;width:15%;">RATING</th>
               <th style="border:1px solid #94a3b8;padding:6px;width:15%;">WEIGHT</th>
