@@ -21,7 +21,88 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
   const coreValuesWeight = formulaConfig?.coreValuesWeight ?? 15;
 
   const handlePrint = () => {
-    window.print();
+    const content = document.getElementById('printable-scorecard-content');
+    if (!content) { window.print(); return; }
+
+    // Gather all stylesheets from the parent document
+    const styleLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+      .map((el) => el.outerHTML)
+      .join('\n');
+    const styleTags = Array.from(document.querySelectorAll('style'))
+      .map((el) => `<style>${el.innerHTML}</style>`)
+      .join('\n');
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { window.print(); return; }
+
+    const employeeName = evaluation.employeeName || 'Employee';
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>APES Scorecard \u2014 ${employeeName}</title>
+  ${styleLinks}
+  ${styleTags}
+  <style>
+    @page { size: A4 portrait; margin: 8mm; }
+    html, body {
+      margin: 0; padding: 0; background: #ffffff;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    *, *::before, *::after {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .no-print { display: none !important; }
+    .page-break { display: none !important; }
+    #printable-scorecard-content {
+      width: 100% !important; max-width: 100% !important;
+      margin: 0 !important; padding: 0 !important;
+    }
+    #printable-scorecard-content > * { margin: 0 !important; }
+    #scorecard-page-1 {
+      display: block !important; width: 100% !important;
+      margin: 0 !important; padding: 6mm 4mm !important;
+      border: none !important; box-shadow: none !important;
+      background: #ffffff !important;
+      page-break-after: always !important; break-after: page !important;
+    }
+    #scorecard-page-2 {
+      display: block !important; width: 100% !important;
+      margin: 0 !important; padding: 6mm 4mm !important;
+      border: none !important; box-shadow: none !important;
+      background: #ffffff !important;
+      page-break-before: always !important; break-before: page !important;
+    }
+    table { page-break-inside: auto !important; }
+    tr    { page-break-inside: avoid !important; }
+    thead { page-break-after:  avoid !important; }
+    .bg-slate-100 { background-color: #f1f5f9 !important; }
+    .bg-slate-200 { background-color: #e2e8f0 !important; }
+    .bg-amber-50  { background-color: #fffbeb !important; }
+    .text-hdi-red   { color: #cc0000 !important; }
+    .text-brand-700 { color: #c2440f !important; }
+  </style>
+</head>
+<body>${content.outerHTML}</body>
+</html>`);
+
+    printWindow.document.close();
+
+    const doPrint = () => {
+      printWindow.focus();
+      printWindow.print();
+      setTimeout(() => { if (!printWindow.closed) printWindow.close(); }, 2000);
+    };
+
+    if (printWindow.document.readyState === 'complete') {
+      setTimeout(doPrint, 400);
+    } else {
+      printWindow.addEventListener('load', () => setTimeout(doPrint, 300));
+      setTimeout(doPrint, 1500); // hard fallback
+    }
   };
 
   const handleDownloadPDF = async () => {

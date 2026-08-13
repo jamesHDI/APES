@@ -302,9 +302,11 @@
 }
 
 /* =============================================
-   PRINT STYLES — Official Scorecard only
-   Scoped strictly to #printable-scorecard-content.
-   Must NOT affect any normal APES UI.
+   PRINT STYLES — Official Scorecard only.
+   Works for both:
+     1. Full-page print shell (#apes-print-shell)
+     2. TemplateBuilder preview modal (PrintableScorecard inside overflow:hidden)
+   Must NOT affect any normal APES screen UI.
 ============================================= */
 @media print {
   @page {
@@ -312,16 +314,17 @@
     margin: 8mm;
   }
 
-  /* ── 1. Force ALL elements to print exact colors / backgrounds ── */
+  /* ── 1. Exact color/background printing for all browsers ── */
   html, body, *, *::before, *::after {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
   }
 
-  /* ── 2. Strip the app shell bloat that creates blank pages ── */
-  html, body, #root {
-    height: auto !important;
+  /* ── 2. Collapse body height: prevents invisible app shell from
+          generating extra blank pages ── */
+  html, body {
+    height: 0 !important;
     min-height: 0 !important;
     max-height: none !important;
     overflow: visible !important;
@@ -330,32 +333,24 @@
     padding: 0 !important;
   }
 
-  /* ── 3. The print shell: remove min-h-screen + padding (biggest cause of extra pages) ── */
-  #apes-print-shell {
-    min-height: 0 !important;
-    height: auto !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    background: #ffffff !important;
-    display: block !important;
+  /* ── 3. Hide EVERYTHING in the page ── */
+  body * {
+    visibility: hidden !important;
   }
 
-  /* ── 4. The space-y-6 wrapper inside the shell ── */
-  #apes-print-shell > * {
-    margin: 0 !important;
-    padding: 0 !important;
-    display: block !important;
+  /* ── 4. Reveal ONLY the printable scorecard content ── */
+  #printable-scorecard-content,
+  #printable-scorecard-content * {
+    visibility: visible !important;
   }
 
-  /* ── 5. Hide the top action bar (buttons, back link) ── */
-  .no-print {
-    display: none !important;
-  }
-
-  /* ── 6. Scorecard content: normal static flow, full width ── */
+  /* ── 5. Lift the scorecard to the document origin.
+          position:absolute escapes ANY modal overflow:hidden ancestor,
+          while still allowing child elements to flow normally inside it. ── */
   #printable-scorecard-content {
-    position: static !important;
-    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -365,12 +360,12 @@
     background: #ffffff !important;
   }
 
-  /* Remove space-y gaps between page divs */
+  /* Remove space-y gaps between the two page divs */
   #printable-scorecard-content > * {
-    margin-top: 0 !important;
+    margin: 0 !important;
   }
 
-  /* ── 7. Page 1: normal flow → force page break AFTER ── */
+  /* ── 6. Page 1: render content, then force a new print page AFTER ── */
   #scorecard-page-1 {
     display: block !important;
     width: 100% !important;
@@ -385,7 +380,7 @@
     break-inside: auto !important;
   }
 
-  /* ── 8. Page 2: force page break BEFORE, normal flow after ── */
+  /* ── 7. Page 2: force a new print page BEFORE ── */
   #scorecard-page-2 {
     display: block !important;
     width: 100% !important;
@@ -400,7 +395,7 @@
     break-inside: auto !important;
   }
 
-  /* ── 9. .page-break spacer: completely hidden ── */
+  /* ── 8. Hidden spacer div between pages ── */
   .page-break {
     display: none !important;
     height: 0 !important;
@@ -408,7 +403,7 @@
     padding: 0 !important;
   }
 
-  /* ── 10. Tables: flow naturally across print pages ── */
+  /* ── 9. Tables: flow naturally across print pages ── */
   #printable-scorecard-content table {
     width: 100% !important;
     border-collapse: collapse !important;
@@ -416,39 +411,27 @@
     break-inside: auto !important;
   }
 
-  /* ── 11. Rows: never split a row across a page break ── */
+  /* ── 10. Rows: never split a single row across a page ── */
   #printable-scorecard-content tr {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
 
-  /* ── 12. Section headers: stay glued to the content that follows ── */
+  /* ── 11. Section headers: stay attached to the content that follows ── */
   #printable-scorecard-content thead {
     page-break-after: avoid !important;
     break-after: avoid !important;
   }
 
-  /* ── 13. Explicit background colors — critical for Chrome/Edge print ── */
-  /* Slate-100 section headers */
-  #printable-scorecard-content .bg-slate-100 {
-    background-color: #f1f5f9 !important;
-  }
-  /* Slate-200 table column headers */
-  #printable-scorecard-content .bg-slate-200 {
-    background-color: #e2e8f0 !important;
-  }
-  /* Amber-50 summary/total rows */
-  #printable-scorecard-content .bg-amber-50 {
-    background-color: #fffbeb !important;
-  }
-  /* Brand-colored text in cells */
-  #printable-scorecard-content .text-hdi-red {
-    color: #cc0000 !important;
-  }
-  #printable-scorecard-content .text-brand-700 {
-    color: #c2440f !important;
-  }
+  /* ── 12. Explicit background colors — required for Chrome/Edge print ── */
+  #printable-scorecard-content .bg-slate-100 { background-color: #f1f5f9 !important; }
+  #printable-scorecard-content .bg-slate-200 { background-color: #e2e8f0 !important; }
+  #printable-scorecard-content .bg-amber-50  { background-color: #fffbeb !important; }
+  #printable-scorecard-content .text-hdi-red   { color: #cc0000 !important; }
+  #printable-scorecard-content .text-brand-700 { color: #c2440f !important; }
 }
+
+
 
 /* =============================================
    CUSTOM SCROLLBARS
