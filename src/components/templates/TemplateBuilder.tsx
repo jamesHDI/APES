@@ -602,9 +602,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             ))}
           </div>
 
-        </div>
 
-      </div>
 
 
             {/* Part 1B - EVALUATION ON SUITABILITY FACTORS */}
@@ -696,6 +694,8 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               </div>
             </div>
           </div>
+        </div>
+      </div>
       {/* Live Master Scorecard PDF Preview Modal */}
       {showPreviewModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
