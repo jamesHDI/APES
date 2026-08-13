@@ -16,6 +16,12 @@ export const MASTER_SALES_EVALUATION_TEMPLATE: EvaluationTemplate = {
     eligibilityWeight: 85,
     coreValuesWeight: 15,
   },
+  coreValues: [
+    { id: 'cv_integrity', name: 'Integrity & Ethics', description: 'Upholds highest standards of honesty, fairness, and business ethics.', weightPercent: 3.75, sortOrder: 1 },
+    { id: 'cv_excellence', name: 'Excellence & Performance', description: 'Consistently delivers top-tier results and strives for continuous improvement.', weightPercent: 3.75, sortOrder: 2 },
+    { id: 'cv_teamwork', name: 'Teamwork & Collaboration', description: 'Fosters positive collaboration across departments and supports team goals.', weightPercent: 3.75, sortOrder: 3 },
+    { id: 'cv_accountability', name: 'Accountability & Ownership', description: 'Takes full ownership of duties, commitments, and professional conduct.', weightPercent: 3.75, sortOrder: 4 }
+  ],
   classificationRanges: [
     { min: 3.51, max: 4.00, label: 'Exceeds Expectations (EE)', code: 'EE', color: 'emerald' },
     { min: 3.00, max: 3.50, label: 'Meets Expectations (ME)', code: 'ME', color: 'blue' },
@@ -216,6 +222,12 @@ export const createMasterBasedTemplate = (
     }))
   }));
 
+  const clonedCoreValues = MASTER_SALES_EVALUATION_TEMPLATE.coreValues.map((cv, cvIdx) => ({
+    ...cv,
+    id: `cv_${timestamp}_${cvIdx}`,
+    sortOrder: cvIdx + 1
+  }));
+
   return {
     ...MASTER_SALES_EVALUATION_TEMPLATE,
     id: templateId,
@@ -224,6 +236,7 @@ export const createMasterBasedTemplate = (
     departmentName,
     evaluationPeriod: period,
     kraCategories: clonedKraCategories,
+    coreValues: clonedCoreValues,
     createdAt: new Date().toISOString().substring(0, 10),
     isActive: true,
   };

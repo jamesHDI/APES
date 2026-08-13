@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Evaluation, Department } from '../../types';
+import { Evaluation, Department, EvaluationTemplate } from '../../types';
 import { 
   BarChart3, 
   Download, 
@@ -17,9 +17,10 @@ import * as XLSX from 'xlsx';
 interface ReportsCenterProps {
   evaluations: Evaluation[];
   departments: Department[];
+  templates: EvaluationTemplate[];
 }
 
-export const ReportsCenter: React.FC<ReportsCenterProps> = ({ evaluations, departments }) => {
+export const ReportsCenter: React.FC<ReportsCenterProps> = ({ evaluations, departments, templates }) => {
   const [selectedReportType, setSelectedReportType] = useState<
     'employee' | 'department' | 'core_values' | 'training' | 'personnel_action'
   >('employee');
@@ -33,22 +34,32 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ evaluations, depar
     return matchesSearch && matchesDept;
   });
 
+  const getWeightsForEvaluation = (evaluation: Evaluation) => {
+    const template = templates.find(t => t.id === evaluation.templateId);
+    const eligibilityWeight = template?.formulaConfig?.eligibilityWeight ?? 85;
+    const coreValuesWeight = template?.formulaConfig?.coreValuesWeight ?? 15;
+    return { eligibilityWeight, coreValuesWeight };
+  };
+
   const exportToExcel = () => {
     let exportData: any[] = [];
 
     if (selectedReportType === 'employee') {
-      exportData = filteredEvaluations.map(e => ({
-        'Employee ID': e.employeeId,
-        'Employee Name': e.employeeName,
-        'Department': e.departmentName,
-        'Position': e.position,
-        'Appraisal Period': e.appraisalPeriod,
-        'Eligibility Score (85%)': e.eligibilityScore,
-        'Core Values Score (15%)': e.totalCoreValuesWeightedRating,
-        'Total Rating': e.finalRating,
-        'Rating Classification': e.ratingClassification,
-        'Status': e.status
-      }));
+      exportData = filteredEvaluations.map(e => {
+        const { eligibilityWeight, coreValuesWeight } = getWeightsForEvaluation(e);
+        return {
+          'Employee ID': e.employeeId,
+          'Employee Name': e.employeeName,
+          'Department': e.departmentName,
+          'Position': e.position,
+          'Appraisal Period': e.appraisalPeriod,
+          [`Eligibility Score (${eligibilityWeight}%)`]: e.eligibilityScore,
+          [`Core Values Score (${coreValuesWeight}%)`]: e.totalCoreValuesWeightedRating,
+          'Total Rating': e.finalRating,
+          'Rating Classification': e.ratingClassification,
+          'Status': e.status
+        };
+      });
     } else if (selectedReportType === 'training') {
       filteredEvaluations.forEach(e => {
         e.developmentPlan.learningNeeds.forEach(ln => {
@@ -158,8 +169,17 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ evaluations, depar
               <tr>
                 <th className="apes-th">Employee</th>
                 <th className="apes-th">Department</th>
-                <th className="apes-th">Eligibility Score (85%)</th>
-                <th className="apes-th">Core Values (15%)</th>
+                {(() => {
+                  const { eligibilityWeight, coreValuesWeight } = filteredEvaluations.length > 0
+                    ? getWeightsForEvaluation(filteredEvaluations[0])
+                    : { eligibilityWeight: 85, coreValuesWeight: 15 };
+                  return (
+                    <>
+                      <th className="apes-th">Eligibility Score ({eligibilityWeight}%)</th>
+                      <th className="apes-th">Core Values ({coreValuesWeight}%)</th>
+                    </>
+                  );
+                })()}
                 <th className="apes-th">Total Rating</th>
                 <th className="apes-th">Classification</th>
                 <th className="apes-th">Status</th>

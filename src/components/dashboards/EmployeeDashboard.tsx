@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Evaluation } from '../../types';
+import { User, Evaluation, EvaluationTemplate } from '../../types';
 import {
   FileSpreadsheet,
   CheckCircle2,
@@ -17,6 +17,7 @@ import { getUserActiveEvaluation, getUserLatestEvaluation, isEvaluationCompleted
 interface EmployeeDashboardProps {
   currentUser: User;
   evaluations: Evaluation[];
+  templates?: EvaluationTemplate[];
   onOpenEvaluation: (evalId: string) => void;
 }
 
@@ -30,11 +31,16 @@ const getGreeting = () => {
 export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
   currentUser,
   evaluations,
+  templates,
   onOpenEvaluation,
 }) => {
   const activeEvaluation = getUserActiveEvaluation(currentUser, evaluations);
   const latestEvaluation = getUserLatestEvaluation(currentUser, evaluations);
   const displayEvaluation = activeEvaluation || latestEvaluation;
+
+  const currentTemplate = templates?.find(t => t.id === displayEvaluation?.templateId);
+  const eligibilityWeight = currentTemplate?.formulaConfig?.eligibilityWeight ?? 85;
+  const coreValuesWeight = currentTemplate?.formulaConfig?.coreValuesWeight ?? 15;
 
   const statusMessages: Partial<Record<string, string>> = {
     draft: 'Your evaluation is ready. Please complete and submit it.',
@@ -187,7 +193,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
             <Award className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">KPI Score (85%)</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">KPI Score ({eligibilityWeight}%)</p>
             <p className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
               {displayEvaluation?.eligibilityScore ? displayEvaluation.eligibilityScore.toFixed(2) : '0.00'}
               <span className="text-xs text-slate-400 font-normal"> / 3.40</span>
@@ -200,7 +206,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
             <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
           </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Core Values (15%)</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Core Values ({coreValuesWeight}%)</p>
             <p className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
               {displayEvaluation?.totalCoreValuesWeightedRating ? displayEvaluation.totalCoreValuesWeightedRating.toFixed(2) : '0.00'}
               <span className="text-xs text-slate-400 font-normal"> / 0.60</span>

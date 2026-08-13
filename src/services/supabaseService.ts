@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './supabaseClient';
-import { User, Department, Evaluation, Notification, EvaluationHistory, EvaluationScorecardArchive, EvidenceFile, EvaluationTemplate, KRACategory, KPITemplateItem } from '../types';
+import { User, Department, Evaluation, Notification, EvaluationHistory, EvaluationScorecardArchive, EvidenceFile, EvaluationTemplate, KRACategory, KPITemplateItem, CoreValue } from '../types';
 import { hashPassword, isHashedPassword } from '../utils/crypto';
 import { MASTER_SALES_EVALUATION_TEMPLATE, createMasterBasedTemplate } from '../constants/masterSalesTemplate';
 
@@ -1605,10 +1605,13 @@ export const uploadFileToSupabaseStorage = async (
 // 6. SCORECARD PDF GENERATION & STORAGE
 // ==============================================================================
 
-export const generateScorecardPdfBlob = async (evaluation: Evaluation): Promise<Blob | null> => {
+export const generateScorecardPdfBlob = async (evaluation: Evaluation, formulaConfig?: { eligibilityWeight: number; coreValuesWeight: number }): Promise<Blob | null> => {
   try {
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
+
+    const eligibilityWeight = formulaConfig?.eligibilityWeight ?? 85;
+    const coreValuesWeight = formulaConfig?.coreValuesWeight ?? 15;
 
     const container = document.createElement('div');
     container.style.cssText = 'position:fixed;left:-9999px;top:0;width:1200px;background:#fff;font-family:Inter,system-ui,sans-serif;';
@@ -1631,7 +1634,7 @@ export const generateScorecardPdfBlob = async (evaluation: Evaluation): Promise<
         </div>
 
         <div style="background:#f1f5f9;padding:6px;font-weight:700;text-align:center;border:1px solid #94a3b8;text-transform:uppercase;font-size:11px;margin-bottom:8px;">
-          PART 1A: EVALUATION ON ELIGIBILITY FACTORS (WEIGHT: 85%)
+          PART 1A: EVALUATION ON ELIGIBILITY FACTORS (WEIGHT: ${eligibilityWeight}%)
           <div style="font-weight:400;font-size:9.5px;font-style:italic;color:#475569;margin-top:2px;">STANDARD: 1- Did not Meet Expectations; 2- Barely Meets Expectations; 3- Meets Expectations; 4- Exceeds Expectations</div>
         </div>
 
@@ -1673,7 +1676,7 @@ export const generateScorecardPdfBlob = async (evaluation: Evaluation): Promise<
             }).join('')}
             <tr style="background:#fef3c7;font-weight:700;border-top:2px solid #475569;font-size:12px;">
               <td colspan="3" style="border:1px solid #94a3b8;padding:6px;text-align:right;text-transform:uppercase;">TOTAL WEIGHTED ELIGIBILITY RATING (PART 1A):</td>
-              <td style="border:1px solid #94a3b8;padding:6px;text-align:center;color:#c2410c;font-weight:700;">85%</td>
+              <td style="border:1px solid #94a3b8;padding:6px;text-align:center;color:#c2410c;font-weight:700;">${eligibilityWeight}%</td>
               <td style="border:1px solid #94a3b8;padding:6px;"></td>
               <td style="border:1px solid #94a3b8;padding:6px;text-align:center;color:#c8102e;font-weight:900;">${(evaluation.eligibilityScore || 0).toFixed(2)}</td>
             </tr>
@@ -1683,7 +1686,7 @@ export const generateScorecardPdfBlob = async (evaluation: Evaluation): Promise<
         <div style="margin-top:10px;page-break-before:always;"></div>
 
         <div style="background:#f1f5f9;padding:6px;font-weight:700;text-align:center;border:1px solid #94a3b8;text-transform:uppercase;font-size:11px;margin-bottom:8px;">
-          PART 1B: EVALUATION ON SUITABILITY FACTORS (CORE VALUES - WEIGHT: 15%)
+          PART 1B: EVALUATION ON SUITABILITY FACTORS (CORE VALUES - WEIGHT: ${coreValuesWeight}%)
           <div style="font-weight:400;font-size:9.5px;font-style:italic;color:#475569;margin-top:2px;">(4): Category A Actively promotes core values | (3): Category B Actively supports core values | (2): Category C Not consistent</div>
         </div>
 
@@ -1706,7 +1709,7 @@ export const generateScorecardPdfBlob = async (evaluation: Evaluation): Promise<
                 </td>
                 <td style="border:1px solid #94a3b8;padding:6px;text-align:center;">POD</td>
                 <td style="border:1px solid #94a3b8;padding:6px;text-align:center;font-weight:700;">${cv.podRating || 0}</td>
-                <td rowSpan="3" style="border:1px solid #94a3b8;padding:6px;text-align:center;vertical-align:middle;font-weight:700;">15%</td>
+                <td rowSpan="3" style="border:1px solid #94a3b8;padding:6px;text-align:center;vertical-align:middle;font-weight:700;">${coreValuesWeight}%</td>
                 <td rowSpan="3" style="border:1px solid #94a3b8;padding:6px;text-align:center;vertical-align:middle;font-weight:700;font-size:13px;">${(cv.weightedScore || 0).toFixed(2)}</td>
               </tr>
               <tr>
@@ -1738,13 +1741,13 @@ export const generateScorecardPdfBlob = async (evaluation: Evaluation): Promise<
             <tbody>
               <tr>
                 <td style="border:1px solid #94a3b8;padding:6px;font-weight:700;">ELIGIBILITY (Part 1A)</td>
-                <td style="border:1px solid #94a3b8;padding:6px;text-align:center;">85%</td>
+                <td style="border:1px solid #94a3b8;padding:6px;text-align:center;">${eligibilityWeight}%</td>
                 <td style="border:1px solid #94a3b8;padding:6px;text-align:center;font-weight:700;">${(evaluation.eligibilityScore || 0).toFixed(2)}</td>
                 <td rowSpan="2" style="border:1px solid #94a3b8;padding:6px;text-align:center;vertical-align:middle;font-weight:900;font-size:16px;background:#ecfdf5;color:#065f46;">${(evaluation.finalRating || 0).toFixed(2)}</td>
               </tr>
               <tr>
                 <td style="border:1px solid #94a3b8;padding:6px;font-weight:700;">SUITABILITY (Part 1B)</td>
-                <td style="border:1px solid #94a3b8;padding:6px;text-align:center;">15%</td>
+                <td style="border:1px solid #94a3b8;padding:6px;text-align:center;">${coreValuesWeight}%</td>
                 <td style="border:1px solid #94a3b8;padding:6px;text-align:center;font-weight:700;">${(evaluation.totalCoreValuesWeightedRating || 0).toFixed(2)}</td>
               </tr>
             </tbody>
@@ -1835,7 +1838,7 @@ export const generateScorecardPdfBlob = async (evaluation: Evaluation): Promise<
         <div style="border:1px solid #94a3b8;padding:10px;background:#f8fafc;page-break-inside:avoid;">
           <div style="font-weight:700;font-size:10px;text-transform:uppercase;text-align:center;border-bottom:1px solid #cbd5e1;padding-bottom:4px;margin-bottom:10px;color:#1e293b;">PART 4: POD / HR EVALUATION & DIGITAL SIGNATURE VERIFICATION</div>
           <div style="font-size:10px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px;background:#fff;padding:8px;border:1px solid #e2e8f0;">
-            <div><strong>POD Core Values Validation Rating:</strong> ${(evaluation.totalCoreValuesWeightedRating || 0).toFixed(2)} (15%)</div>
+            <div><strong>POD Core Values Validation Rating:</strong> ${(evaluation.totalCoreValuesWeightedRating || 0).toFixed(2)} (${coreValuesWeight}%)</div>
             <div><strong>POD / HR Remarks & Comments:</strong> ${evaluation.podValidationComment || 'Validated by People Operations Development (POD).'}</div>
             <div><strong>Personnel Action Final Status:</strong> ${evaluation.personnelAction?.isApproved ? 'Approved & Enforced' : 'Pending Final HR Enforcement'}</div>
           </div>
@@ -2100,6 +2103,23 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       return false;
     }
 
+    // Save Core Values associated with this template
+    if (template.coreValues && template.coreValues.length > 0) {
+      await supabase.from('core_values').delete().eq('template_id', templateUuid).catch(() => {});
+      const coreValueRows = template.coreValues.map((cv) => ({
+        id: isValidUuid(cv.id) ? cv.id : ensureUuid(cv.id || `${templateUuid}_cv_${cv.sortOrder || 0}`),
+        template_id: templateUuid,
+        name: (cv.name || 'Core Value').substring(0, 150),
+        description: (cv.description || '').substring(0, 500),
+        weight_percent: Number(cv.weightPercent || 0),
+        sort_order: Number(cv.sortOrder || 0)
+      }));
+      const { error: cvError } = await supabase.from('core_values').upsert(coreValueRows, { onConflict: 'id' });
+      if (cvError) {
+        console.warn('[Template Cloud Sync] Could not upsert core_values to Supabase:', cvError.message);
+      }
+    }
+
     // Save KPIs associated with this template if kraCategories exists
     if (template.kraCategories && template.kraCategories.length > 0) {
       for (const kra of template.kraCategories) {
@@ -2142,9 +2162,16 @@ export const fetchEvaluationTemplatesFromSupabase = async (): Promise<Evaluation
       if (kps) kpiRows = kps;
     } catch {}
 
+    let coreValueRows: any[] = [];
+    try {
+      const { data: cvs } = await supabase.from('core_values').select('*');
+      if (cvs) coreValueRows = cvs;
+    } catch {}
+
     const templates: EvaluationTemplate[] = rows.map((row: any) => {
       const deptName = row.department_name || 'Sales';
       const tmplKpis = kpiRows.filter((k: any) => k.template_id === row.id);
+      const tmplCoreValues = coreValueRows.filter((cv: any) => cv.template_id === row.id);
 
       let kraCategories: KRACategory[] = [];
 
@@ -2176,6 +2203,16 @@ export const fetchEvaluationTemplatesFromSupabase = async (): Promise<Evaluation
         kraCategories = built.kraCategories;
       }
 
+      const coreValues: CoreValue[] = tmplCoreValues.length > 0
+        ? tmplCoreValues.map((cv: any) => ({
+            id: cv.id,
+            name: cv.name,
+            description: cv.description || '',
+            weightPercent: Number(cv.weight_percent || 0),
+            sortOrder: Number(cv.sort_order || 0)
+          }))
+        : MASTER_SALES_EVALUATION_TEMPLATE.coreValues;
+
       return {
         id: row.id,
         title: row.title || `${deptName} Performance Evaluation Scorecard Template`,
@@ -2186,6 +2223,7 @@ export const fetchEvaluationTemplatesFromSupabase = async (): Promise<Evaluation
           eligibilityWeight: Number(row.eligibility_weight || 85),
           coreValuesWeight: Number(row.core_values_weight || 15)
         },
+        coreValues: coreValues,
         classificationRanges: MASTER_SALES_EVALUATION_TEMPLATE.classificationRanges,
         kraCategories,
         isActive: row.is_active ?? true,

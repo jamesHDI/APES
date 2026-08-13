@@ -810,9 +810,11 @@ export const App: React.FC = () => {
     if (viewMode === 'printable') {
       const targetForPrint = printableEvaluation || currentEvaluation;
       if (targetForPrint) {
+        const printTemplate = templates.find(t => t.id === targetForPrint.templateId);
         return (
           <PrintableScorecard
             evaluation={targetForPrint}
+            formulaConfig={printTemplate?.formulaConfig}
             onBack={() => setViewMode('normal')}
           />
         );
@@ -839,6 +841,7 @@ export const App: React.FC = () => {
           evaluation={currentEvaluation}
           currentUser={currentUser}
           allUsers={users}
+          templates={templates}
           onSave={handleSaveEvaluation}
           onViewPrintable={() => setViewMode('printable')}
         />
@@ -922,6 +925,7 @@ export const App: React.FC = () => {
         <ReportsCenter
           evaluations={evaluations}
           departments={departments}
+          templates={templates}
         />
       );
     }
@@ -1019,6 +1023,7 @@ export const App: React.FC = () => {
           <EmployeeDashboard
             currentUser={currentUser}
             evaluations={evaluations}
+            templates={templates}
             onOpenEvaluation={(id) => {
               setSelectedEvalId(id);
               setActiveTab('evaluations');
@@ -1117,6 +1122,7 @@ export const App: React.FC = () => {
           <EmployeeDashboard
             currentUser={currentUser}
             evaluations={evaluations}
+            templates={templates}
             onOpenEvaluation={(id) => {
               setSelectedEvalId(id);
               setActiveTab('evaluations');

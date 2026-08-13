@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Evaluation, User, Role, DigitalSignature, EvidenceFile, PersonnelAction, ActionType } from '../../types';
+import { Evaluation, User, Role, DigitalSignature, EvidenceFile, PersonnelAction, ActionType, EvaluationTemplate } from '../../types';
 import { 
   computeKPIWeightedScore, 
   computeEligibilityScore,
@@ -12,6 +12,7 @@ import { validateEvaluationForSubmission } from '../../services/validationServic
 import { triggerWorkflowNotification } from '../../services/notificationService';
 import { uploadFileToSupabaseStorage } from '../../services/supabaseService';
 import { archiveEvaluationTransaction, ArchiveTransactionResult } from '../../services/storage';
+import { MASTER_SALES_EVALUATION_TEMPLATE } from '../../constants/masterSalesTemplate';
 import { WorkflowProgressBar } from '../workflow/WorkflowProgressBar';
 import { EvaluationProgressCard } from '../workflow/EvaluationProgressCard';
 import { EvaluationTimeline } from '../workflow/EvaluationTimeline';
@@ -41,6 +42,7 @@ interface EvaluationFormProps {
   evaluation: Evaluation;
   currentUser: User;
   allUsers: User[];
+  templates: EvaluationTemplate[];
   onSave: (updatedEvaluation: Evaluation) => void;
   onViewPrintable: () => void;
 }
@@ -49,6 +51,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   evaluation: initialEvaluation,
   currentUser,
   allUsers,
+  templates,
   onSave,
   onViewPrintable,
 }) => {
@@ -77,6 +80,10 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     (evalData.employeeEmail && currentUser.email && evalData.employeeEmail.toLowerCase().trim() === currentUser.email.toLowerCase().trim()) ||
     (evalData.employeeName && currentUser.name && evalData.employeeName.toLowerCase().trim() === currentUser.name.toLowerCase().trim())
   );
+
+  const currentTemplate = templates.find(t => t.id === evalData.templateId) || MASTER_SALES_EVALUATION_TEMPLATE;
+  const eligibilityWeight = currentTemplate.formulaConfig.eligibilityWeight || 85;
+  const coreValuesWeight = currentTemplate.formulaConfig.coreValuesWeight || 15;
 
   // Strict Role-Based Section Locking Permissions
   const canEditEmployeeSection = !isReadOnly && isSelfEval && (evalData.status === 'draft' || evalData.status === 'reopened');
@@ -211,7 +218,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         if (is > 0) { sum += is; count++; }
         
         const avgRating = count > 0 ? Number((sum / count).toFixed(2)) : 0;
-        const weightedScore = computeCoreValuesWeightedScore(avgRating, 15);
+        const weightedScore = computeCoreValuesWeightedScore(avgRating, coreValuesWeight);
         return {
           ...cv,
           podRating: pod,
@@ -230,7 +237,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   const recalculateAndSetState = (kpiRatings = evalData.kpiRatings, coreValueRatings = evalData.coreValueRatings) => {
     const eligibilityScore = computeEligibilityScore(kpiRatings);
     const coreValuesAvg = computeCoreValuesAverage(coreValueRatings);
-    const coreValuesWeightedScore = computeCoreValuesWeightedScore(coreValuesAvg, 15);
+    const coreValuesWeightedScore = computeCoreValuesWeightedScore(coreValuesAvg, coreValuesWeight);
     const finalRating = computeFinalPerformanceRating(eligibilityScore, coreValuesWeightedScore);
     const classification = getRatingClassification(finalRating);
 
@@ -767,8 +774,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       {/* Numbered Tab Stepper */}
       {(() => {
         const tabs = [
-          { id: 'part1a' as const, step: 1, label: '1. KPI Evaluation (85%)', sub: 'Performance indicators' },
-          { id: 'part1b' as const, step: 2, label: '2. Core Values (15%)', sub: 'Suitability factors' },
+          { id: 'part1a' as const, step: 1, label: `1. KPI Evaluation (${eligibilityWeight}%)`, sub: 'Performance indicators' },
+          { id: 'part1b' as const, step: 2, label: `2. Core Values (${coreValuesWeight}%)`, sub: 'Suitability factors' },
           { id: 'part2' as const, step: 3, label: '3. Development Plan', sub: 'Employee Self Section' },
           { id: 'part3' as const, step: 4, label: '4. Personnel Action', sub: 'Dept Head / President' },
           { id: 'part4' as const, step: 5, label: '5. POD Evaluation', sub: 'POD / HR Section' },
@@ -804,7 +811,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-base">
-                PART 1A: EVALUATION ON ELIGIBILITY FACTORS (KPIs - 85%)
+                PART 1A: EVALUATION ON ELIGIBILITY FACTORS (KPIs - {eligibilityWeight}%)
               </h3>
               <p className="text-xs text-slate-500">
                 Scale: 4 = Exceeds Expectations, 3 = Meets Expectations, 2 = Barely Meets, 1 = Did Not Meet
@@ -956,7 +963,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-base">
-                PART 1B: EVALUATION ON SUITABILITY FACTORS (CORE VALUES - 15%)
+                PART 1B: EVALUATION ON SUITABILITY FACTORS (CORE VALUES - {coreValuesWeight}%)
               </h3>
               <p className="text-xs text-slate-500">
                 Integrity, Respect, Accountability, Innovation, Customer Focus, Teamwork, Leadership
@@ -979,7 +986,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                     <p className="text-xs text-slate-500 dark:text-slate-300">{cv.description}</p>
                   </div>
                   <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-brand-600 dark:text-brand-400">
-                    Weighted Score: {cv.weightedScore.toFixed(2)} (15%)
+                     Weighted Score: {cv.weightedScore.toFixed(2)} ({coreValuesWeight}%)
                   </div>
                 </div>
 
@@ -1231,7 +1238,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 POD Suitability & Quality Validation
               </h4>
               <p className="text-xs text-indigo-700 dark:text-indigo-300">
-                Overall Core Values Weighted Rating: <strong>{evalData.totalCoreValuesWeightedRating.toFixed(2)}</strong> / 15.00%
+                Overall Core Values Weighted Rating: <strong>{evalData.totalCoreValuesWeightedRating.toFixed(2)}</strong> / {coreValuesWeight.toFixed(2)}%
               </p>
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">

@@ -61,7 +61,7 @@ export function computeCoreValuesAverage(coreValueRatings: CoreValueRating[]): n
  * Computes Suitability Factor / Core Values Weighted Score:
  * (Core Values Weight / 100) * Core Values Average Rating
  */
-export function computeCoreValuesWeightedScore(coreValuesAvg: number, coreValuesWeightPercent: number = 15): number {
+export function computeCoreValuesWeightedScore(coreValuesAvg: number, coreValuesWeightPercent: number): number {
   if (!coreValuesAvg) return 0;
   const score = (coreValuesWeightPercent / 100) * coreValuesAvg;
   return Number(score.toFixed(2));

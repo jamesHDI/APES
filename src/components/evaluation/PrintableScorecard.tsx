@@ -4,14 +4,21 @@ import { Printer, Download, ArrowLeft, FileText } from 'lucide-react';
 
 interface PrintableScorecardProps {
   evaluation: Evaluation;
+  formulaConfig?: {
+    eligibilityWeight: number;
+    coreValuesWeight: number;
+  };
   onBack: () => void;
 }
 
 type PaperSize = 'a4' | 'letter';
 
-export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluation, onBack }) => {
+export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluation, formulaConfig, onBack }) => {
   const [paperSize, setPaperSize] = useState<PaperSize>('a4');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const eligibilityWeight = formulaConfig?.eligibilityWeight ?? 85;
+  const coreValuesWeight = formulaConfig?.coreValuesWeight ?? 15;
 
   const handlePrint = () => {
     window.print();
@@ -138,7 +145,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
 
           {/* PART 1A HEADER */}
           <div className="bg-slate-100 p-2 font-bold text-center border border-slate-400 uppercase text-[11px] mb-2">
-            PART 1A: EVALUATION ON ELIGIBILITY FACTORS (WEIGHT: 85%)
+            PART 1A: EVALUATION ON ELIGIBILITY FACTORS (WEIGHT: {eligibilityWeight}%)
             <div className="font-normal text-[10px] lowercase italic text-slate-600 mt-0.5">
               STANDARD: 1- Did not Meet Expectations; 2- Barely Meets Expectations; 3- Meets Expectations; 4- Exceeds Expectations
             </div>
@@ -203,7 +210,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                 <td colSpan={3} className="border border-slate-400 p-2 text-right uppercase">
                   TOTAL WEIGHTED ELIGIBILITY RATING (PART 1A):
                 </td>
-                <td className="border border-slate-400 p-2 text-center text-brand-700">85%</td>
+                <td className="border border-slate-400 p-2 text-center text-brand-700">{eligibilityWeight}%</td>
                 <td className="border border-slate-400 p-2"></td>
                 <td className="border border-slate-400 p-2 text-center text-hdi-red font-black">
                   {evaluation.eligibilityScore.toFixed(2)}
@@ -224,7 +231,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
           
           {/* PART 1B: CORE VALUES */}
           <div className="bg-slate-100 p-2 font-bold text-center border border-slate-400 uppercase text-[11px] mb-2">
-            PART 1B: EVALUATION ON SUITABILITY FACTORS (CORE VALUES - WEIGHT: 15%)
+            PART 1B: EVALUATION ON SUITABILITY FACTORS (CORE VALUES - WEIGHT: {coreValuesWeight}%)
             <div className="font-normal text-[10px] lowercase italic text-slate-600 mt-0.5">
               (4): Category A Actively promotes core values | (3): Category B Actively supports core values | (2): Category C Not consistent
             </div>
@@ -250,7 +257,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                     </td>
                     <td className="border border-slate-400 p-1.5 text-center">POD</td>
                     <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.podRating}</td>
-                    <td rowSpan={3} className="border border-slate-400 p-2 text-center align-middle font-bold">15%</td>
+                    <td rowSpan={3} className="border border-slate-400 p-2 text-center align-middle font-bold">{coreValuesWeight}%</td>
                     <td rowSpan={3} className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">
                       {cv.weightedScore.toFixed(2)}
                     </td>
@@ -286,7 +293,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
               <tbody>
                 <tr>
                   <td className="border border-slate-400 p-2 font-bold">ELIGIBILITY (Part 1A)</td>
-                  <td className="border border-slate-400 p-2 text-center">85%</td>
+                  <td className="border border-slate-400 p-2 text-center">{eligibilityWeight}%</td>
                   <td className="border border-slate-400 p-2 text-center font-bold">{evaluation.eligibilityScore.toFixed(2)}</td>
                   <td rowSpan={2} className="border border-slate-400 p-2 text-center align-middle font-black text-lg bg-emerald-50 text-emerald-800">
                     {evaluation.finalRating.toFixed(2)}
@@ -294,7 +301,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                 </tr>
                 <tr>
                   <td className="border border-slate-400 p-2 font-bold">SUITABILITY (Part 1B)</td>
-                  <td className="border border-slate-400 p-2 text-center">15%</td>
+                  <td className="border border-slate-400 p-2 text-center">{coreValuesWeight}%</td>
                   <td className="border border-slate-400 p-2 text-center font-bold">{evaluation.totalCoreValuesWeightedRating.toFixed(2)}</td>
                 </tr>
               </tbody>
@@ -446,7 +453,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
             
             {/* POD Remarks & Validation summary */}
             <div className="text-[10px] space-y-1 bg-white p-2 border border-slate-200">
-              <p><strong>POD Core Values Validation Rating:</strong> {evaluation.totalCoreValuesWeightedRating.toFixed(2)} (15%)</p>
+              <p><strong>POD Core Values Validation Rating:</strong> {evaluation.totalCoreValuesWeightedRating.toFixed(2)} ({coreValuesWeight}%)</p>
               <p><strong>POD / HR Remarks & Comments:</strong> {evaluation.podValidationComment || 'Validated by People Operations Development (POD).'}</p>
               <p><strong>Personnel Action Final Status:</strong> {evaluation.personnelAction?.isApproved ? 'Approved & Enforced' : 'Pending Final HR Enforcement'}</p>
             </div>

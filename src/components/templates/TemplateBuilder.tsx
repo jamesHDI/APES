@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { EvaluationTemplate, KRACategory, KPITemplateItem, Department, User, Evaluation } from '../../types';
+import { EvaluationTemplate, KRACategory, KPITemplateItem, CoreValue, Department, User, Evaluation } from '../../types';
 import { createMasterBasedTemplate, MASTER_SALES_EVALUATION_TEMPLATE } from '../../constants/masterSalesTemplate';
 import { validateEvaluationTemplate } from '../../services/templateValidation';
 import { assignNewEvaluationToEmployee, createDraftEvaluationInMemory } from '../../services/storage';
@@ -167,6 +167,57 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
   };
 
+  const handleAddCoreValue = () => {
+    const newCoreValue: CoreValue = {
+      id: `cv_${Date.now()}`,
+      name: 'New Core Value',
+      description: 'Core value description.',
+      weightPercent: 0,
+      sortOrder: (activeTemplate.coreValues?.length || 0) + 1
+    };
+    setActiveTemplate({
+      ...activeTemplate,
+      coreValues: [...(activeTemplate.coreValues || []), newCoreValue]
+    });
+  };
+
+  const handleRemoveCoreValue = (coreValueId: string) => {
+    if (!window.confirm('Are you sure you want to remove this Core Value?')) return;
+    setActiveTemplate({
+      ...activeTemplate,
+      coreValues: (activeTemplate.coreValues || []).filter(cv => cv.id !== coreValueId)
+    });
+  };
+
+  const handleUpdateCoreValue = (coreValueId: string, field: keyof CoreValue, value: string | number) => {
+    setActiveTemplate({
+      ...activeTemplate,
+      coreValues: (activeTemplate.coreValues || []).map(cv =>
+        cv.id === coreValueId ? { ...cv, [field]: value } : cv
+      )
+    });
+  };
+
+  const recalculateCoreValueWeights = () => {
+    const cvCount = activeTemplate.coreValues?.length || 0;
+    if (cvCount === 0) return;
+    const part1bWeight = activeTemplate.formulaConfig.coreValuesWeight || 0;
+    const weightPerCV = Number((part1bWeight / cvCount).toFixed(4));
+    setActiveTemplate({
+      ...activeTemplate,
+      coreValues: (activeTemplate.coreValues || []).map((cv, idx) => ({
+        ...cv,
+        weightPercent: Number(weightPerCV.toFixed(2)),
+        sortOrder: idx + 1
+      }))
+    });
+  };
+
+  const formulaTotal = (activeTemplate.formulaConfig.eligibilityWeight || 0) + (activeTemplate.formulaConfig.coreValuesWeight || 0);
+  const isFormulaValid = Math.abs(formulaTotal - 100) < 0.01;
+  const totalCoreValueWeight = (activeTemplate.coreValues || []).reduce((sum, cv) => sum + (Number(cv.weightPercent) || 0), 0);
+  const isCoreValuesValid = Math.abs(totalCoreValueWeight - (activeTemplate.formulaConfig.coreValuesWeight || 0)) < 0.01;
+
   const handleSave = () => {
     const valResult = validateEvaluationTemplate(activeTemplate);
     if (!valResult.isValid) {
@@ -188,6 +239,8 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const totalKPIWeight = activeTemplate.kraCategories.reduce((acc, kra) => {
     return acc + (kra.kpis ? kra.kpis.reduce((kAcc, kpi) => kAcc + (kpi.weightPercent || 0), 0) : 0);
   }, 0);
+  const eligibilityTarget = activeTemplate.formulaConfig.eligibilityWeight || 85;
+  const isKpiTotalValid = Math.abs(totalKPIWeight - eligibilityTarget) < 0.01;
 
   return (
     <div className="space-y-6 pb-12">
@@ -397,19 +450,140 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               </div>
             </div>
 
-            {/* Weight Validation Indicator */}
-            <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${
-              totalKPIWeight === 85
-                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
-                : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 text-amber-800 dark:text-amber-300'
-            }`}>
-              <div className="flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Total KPI Weights: {totalKPIWeight}% (Target: 85%)</span>
+            {/* Formula Weight Configuration */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Formula Weights</span>
+                  <p className="text-[11px] text-slate-500">Part 1A Eligibility vs Part 1B Core Values</p>
+                </div>
+                <div className="flex items-center space-x-3 text-xs font-bold">
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 mr-1">Part 1A:</span>
+                    <input
+                      type="number"
+                      value={activeTemplate.formulaConfig.eligibilityWeight}
+                      onChange={(e) => setActiveTemplate({
+                        ...activeTemplate,
+                        formulaConfig: { ...activeTemplate.formulaConfig, eligibilityWeight: Number(e.target.value) }
+                      })}
+                      className="w-14 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center font-bold"
+                    />
+                    <span className="text-slate-600 dark:text-slate-400 ml-1">%</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 mr-1">Part 1B:</span>
+                    <input
+                      type="number"
+                      value={activeTemplate.formulaConfig.coreValuesWeight}
+                      onChange={(e) => setActiveTemplate({
+                        ...activeTemplate,
+                        formulaConfig: { ...activeTemplate.formulaConfig, coreValuesWeight: Number(e.target.value) }
+                      })}
+                      className="w-14 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center font-bold"
+                    />
+                    <span className="text-slate-600 dark:text-slate-400 ml-1">%</span>
+                  </div>
+                </div>
               </div>
-              {totalKPIWeight !== 85 && (
-                <span className="text-[11px] font-normal">Adjust KPI weights to total exactly 85%.</span>
-              )}
+              <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${
+                isFormulaValid
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-800 dark:text-rose-300'
+              }`}>
+                <div className="flex items-center space-x-2">
+                  {isFormulaValid ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                  <span>Formula Total: {Number(formulaTotal.toFixed(2))}%</span>
+                </div>
+                {!isFormulaValid && (
+                  <span className="text-[11px] font-normal">Part 1A + Part 1B must total exactly 100%.</span>
+                )}
+              </div>
+            </div>
+
+            {/* Part 1B - Core Values Configuration */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Part 1B – Core Values</span>
+                  <p className="text-[11px] text-slate-500">Subdivisions of the Part 1B total weight</p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={recalculateCoreValueWeights}
+                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200"
+                    title="Redistribute Part 1B weight equally among all Core Values"
+                  >
+                    Recalculate Equally
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddCoreValue}
+                    className="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-sm flex items-center space-x-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Core Value</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${
+                isCoreValuesValid
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 text-amber-800 dark:text-amber-300'
+              }`}>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Part 1B Total: {activeTemplate.formulaConfig.coreValuesWeight || 0}% • Core Values: {activeTemplate.coreValues?.length || 0} • Sum: {Number(totalCoreValueWeight.toFixed(2))}%</span>
+                </div>
+                {!isCoreValuesValid && (
+                  <span className="text-[11px] font-normal">Core Values must total exactly Part 1B weight.</span>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {(activeTemplate.coreValues || []).map((cv) => (
+                  <div key={cv.id} className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={cv.name}
+                          onChange={(e) => handleUpdateCoreValue(cv.id, 'name', e.target.value)}
+                          className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs font-bold"
+                          placeholder="Core Value Name"
+                        />
+                        <input
+                          type="number"
+                          value={cv.weightPercent || 0}
+                          onChange={(e) => handleUpdateCoreValue(cv.id, 'weightPercent', Number(e.target.value))}
+                          className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs font-bold"
+                          placeholder="Weight %"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCoreValue(cv.id)}
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded shrink-0"
+                        title="Remove Core Value"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={cv.description || ''}
+                      onChange={(e) => handleUpdateCoreValue(cv.id, 'description', e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 text-xs"
+                      placeholder="Core Value description"
+                    />
+                  </div>
+                ))}
+                {(activeTemplate.coreValues?.length || 0) === 0 && (
+                  <p className="text-[11px] text-slate-500 italic">No Core Values defined. Click "Add Core Value" to create one.</p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -569,6 +743,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   activeTemplate,
                   activeTemplate.evaluationPeriod
                 )}
+                formulaConfig={activeTemplate.formulaConfig}
                 onBack={() => setShowPreviewModal(false)}
               />
             </div>

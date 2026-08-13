@@ -8,8 +8,8 @@ export interface TemplateValidationResult {
 }
 
 /**
- * Validates an Evaluation Template against APES Master Layout rules before saving.
- * Ensures formula weights sum to 85%, required sections exist, and scales are complete.
+ * Validates an Evaluation Template against APES rules before saving.
+ * Ensures formula weights sum to 100%, required sections exist, and scales are complete.
  */
 export function validateEvaluationTemplate(template: EvaluationTemplate): TemplateValidationResult {
   const errors: string[] = [];
@@ -25,7 +25,20 @@ export function validateEvaluationTemplate(template: EvaluationTemplate): Templa
     errors.push('Department assignment is required for this template.');
   }
 
-  // 2. Required Sections Verification
+  // 2. Formula Config Verification
+  const eligibilityWeight = Number(template.formulaConfig?.eligibilityWeight ?? 0);
+  const coreValuesWeight = Number(template.formulaConfig?.coreValuesWeight ?? 0);
+  const formulaTotal = Number((eligibilityWeight + coreValuesWeight).toFixed(2));
+
+  if (!Number.isFinite(eligibilityWeight) || !Number.isFinite(coreValuesWeight)) {
+    errors.push('Formula weights must be valid numbers.');
+  } else if (Math.abs(formulaTotal - 100) > 0.01) {
+    errors.push(`Formula weights must total exactly 100%. Current total: ${formulaTotal}%.`);
+  } else if (eligibilityWeight <= 0 || coreValuesWeight <= 0) {
+    errors.push('Formula weights must be greater than 0.');
+  }
+
+  // 3. Required Sections Verification
   if (!template.kraCategories || template.kraCategories.length === 0) {
     errors.push('Required Section Missing: At least one Key Result Area (KRA) category must exist in Part 1A.');
   } else {
@@ -47,7 +60,7 @@ export function validateEvaluationTemplate(template: EvaluationTemplate): Templa
             totalKpiWeight += kpi.weightPercent;
           }
 
-          // 3. Rating Scale (1-4) Standards Verification
+          // 4. Rating Scale (1-4) Standards Verification
           if (!kpi.standards || kpi.standards.length !== 4) {
             errors.push(`Rating Scale Error: KPI "${kpi.name || kpiIdx + 1}" must have complete 4-point rating standards (1, 2, 3, 4).`);
           } else {
@@ -60,22 +73,30 @@ export function validateEvaluationTemplate(template: EvaluationTemplate): Templa
       }
     });
 
-    // 4. Formula Definitions & Weight Total Validation (Must equal 85%)
-    if (totalKpiWeight !== 85) {
+    // 5. KPI weights must equal the configured Part 1A eligibility weight
+    if (Math.abs(totalKpiWeight - eligibilityWeight) > 0.01) {
       errors.push(
-        `KPI Weight Total Mismatch: Part 1A KPI weights total ${totalKpiWeight}%. Master formula requires exactly 85% for Part 1A Eligibility Factors.`
+        `KPI Weight Total Mismatch: Part 1A KPI weights total ${Number(totalKpiWeight.toFixed(2))}%, but the template's configured Part 1A weight is ${eligibilityWeight}%.`
       );
     }
   }
 
-  // 5. Formula Config Verification
-  if (!template.formulaConfig || template.formulaConfig.eligibilityWeight !== 85 || template.formulaConfig.coreValuesWeight !== 15) {
-    errors.push('Formula Definitions Error: Master formula weights must be set to 85% Eligibility and 15% Core Values.');
+  // 6. Core Values Verification (Part 1B)
+  const coreValues = template.coreValues || [];
+  if (coreValues.length === 0) {
+    errors.push('Part 1B Core Values: At least one Core Value must be defined.');
+  } else {
+    const totalCoreValueWeight = coreValues.reduce((sum, cv) => sum + (Number(cv.weightPercent) || 0), 0);
+    if (Math.abs(totalCoreValueWeight - coreValuesWeight) > 0.01) {
+      errors.push(
+        `Core Value Weight Mismatch: Core Values total ${Number(totalCoreValueWeight.toFixed(2))}%, but the template's configured Part 1B weight is ${coreValuesWeight}%.`
+      );
+    }
   }
 
-  // 6. Rating Classification Ranges Verification
+  // 7. Rating Classification Ranges Verification
   if (!template.classificationRanges || template.classificationRanges.length < 4) {
-    errors.push('Summary Error: Rating Classification ranges (DME 1.00-1.99, BME 2.00-2.99, ME 3.00-3.50, EE 3.51-4.00) must be defined.');
+    errors.push('Summary Error: Rating Classification ranges must be defined.');
   }
 
   return {

@@ -96,6 +96,19 @@ CREATE TABLE IF NOT EXISTS public.evaluation_templates (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 5B. CORE VALUES TABLE (template-scoped Part 1B definitions)
+CREATE TABLE IF NOT EXISTS public.core_values (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    template_id UUID NOT NULL REFERENCES public.evaluation_templates(id) ON DELETE CASCADE,
+    name VARCHAR(150) NOT NULL,
+    description TEXT,
+    weight_percent NUMERIC(5,2) NOT NULL DEFAULT 0.00,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_core_values_template_id ON public.core_values(template_id);
+
 -- 6. KRA CATEGORIES & KPIS TABLE
 CREATE TABLE IF NOT EXISTS public.kpis (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -427,23 +440,22 @@ CREATE POLICY "Allow public departments select" ON public.departments FOR SELECT
 CREATE POLICY "Allow public departments update" ON public.departments FOR UPDATE USING (true);
 
 -- 5. CHILD RELATIONAL TABLES RLS
-ALTER TABLE public.kpi_ratings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.core_value_ratings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.digital_signatures ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.evidence_files ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.kpis ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.core_values ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow public kpi_ratings all" ON public.kpi_ratings;
 DROP POLICY IF EXISTS "Allow public core_value_ratings all" ON public.core_value_ratings;
 DROP POLICY IF EXISTS "Allow public digital_signatures all" ON public.digital_signatures;
 DROP POLICY IF EXISTS "Allow public evidence_files all" ON public.evidence_files;
 DROP POLICY IF EXISTS "Allow public kpis all" ON public.kpis;
+DROP POLICY IF EXISTS "Allow public core_values all" ON public.core_values;
 
 CREATE POLICY "Allow public kpi_ratings all" ON public.kpi_ratings FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public core_value_ratings all" ON public.core_value_ratings FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public digital_signatures all" ON public.digital_signatures FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public evidence_files all" ON public.evidence_files FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public kpis all" ON public.kpis FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public core_values all" ON public.core_values FOR ALL USING (true) WITH CHECK (true);
 
 -- ==============================================================================
 -- SUPABASE REALTIME PUBLICATION SETUP
@@ -458,6 +470,7 @@ BEGIN
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.audit_logs; EXCEPTION WHEN duplicate_object THEN NULL; END;
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluation_history; EXCEPTION WHEN duplicate_object THEN NULL; END;
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluation_scorecard_archives; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.core_values; EXCEPTION WHEN duplicate_object THEN NULL; END;
 END $$;
 
 -- STORAGE BUCKETS SETUP & STORAGE RLS POLICIES

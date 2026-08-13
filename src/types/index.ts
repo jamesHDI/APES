@@ -116,6 +116,7 @@ export interface EvaluationTemplate {
     eligibilityWeight: number;
     coreValuesWeight: number;
   };
+  coreValues: CoreValue[];
   classificationRanges: {
     min: number;
     max: number;
@@ -181,6 +182,8 @@ export interface CoreValue {
   id: string;
   name: string;
   description: string;
+  weightPercent?: number;
+  sortOrder?: number;
 }
 
 export interface CoreValueRating {
