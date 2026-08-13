@@ -707,15 +707,12 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               <span>Print Official Scorecard PDF</span>
             </button>
             <button onClick={() => setShowEvidenceModal(true)} className="btn btn-secondary btn-sm">
-              <Paperclip className="w-3.5 h-3.5 text-brand-500" />
               Evidence ({evalData.evidenceFiles.length})
             </button>
             <button onClick={() => setShowTimeline(!showTimeline)} className={`btn btn-sm ${showTimeline ? 'btn-primary' : 'btn-secondary'}`}>
-              <History className="w-3.5 h-3.5 text-brand-500" />
               {showTimeline ? 'Hide Timeline' : 'View Timeline'}
             </button>
             <button onClick={() => setShowAuditModal(true)} className="btn btn-secondary btn-sm">
-              <Sparkles className="w-3.5 h-3.5 text-purple-500" />
               Audit Trail
             </button>
           </div>
