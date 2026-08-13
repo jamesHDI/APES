@@ -1008,7 +1008,7 @@ export const syncChildTablesToSupabase = async (evaluation: Evaluation): Promise
         kpi_id: isValidUuid(kpi.kpiId) ? kpi.kpiId : null,
         kra_name: kpi.kraName || 'KRA',
         kpi_name: kpi.name || kpi.kpiName || 'KPI Item',
-        weight_percent: kpi.weightPercent || 0,
+        weight_percent: Number(kpi.weightPercent || 0),
         self_rating: kpi.selfRating ?? null,
         supervisor_rating: kpi.supervisorRating ?? null,
         president_rating: kpi.presidentRating ?? null,
@@ -1098,7 +1098,7 @@ export const syncChildTablesToSupabase = async (evaluation: Evaluation): Promise
         kra_name: kpi.kraName || 'General',
         kpi_name: kpi.name || kpi.kpiName || 'KPI Item',
         description: kpi.comments || null,
-        weight_percent: kpi.weightPercent || 0,
+        weight_percent: Number(kpi.weightPercent || 0),
         evidence_required: kpi.evidenceRequired || false
       }));
 
@@ -2087,8 +2087,8 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       title: (template.title || 'Evaluation Template').substring(0, 150),
       department_name: (template.departmentName || 'General').substring(0, 100),
       evaluation_period: (template.evaluationPeriod || 'Annual 2026').substring(0, 100),
-      eligibility_weight: template.formulaConfig?.eligibilityWeight ?? 85.00,
-      core_values_weight: template.formulaConfig?.coreValuesWeight ?? 15.00,
+      eligibility_weight: Number(template.formulaConfig?.eligibilityWeight ?? 85.00),
+      core_values_weight: Number(template.formulaConfig?.coreValuesWeight ?? 15.00),
       is_active: template.isActive ?? true,
     };
 
@@ -2132,7 +2132,7 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
               kra_name: (kra.name || 'KRA').substring(0, 150),
               kpi_name: (kpi.name || 'KPI Item').substring(0, 200),
               description: kpi.description || '',
-              weight_percent: kpi.weightPercent || 0,
+              weight_percent: Number(kpi.weightPercent || 0),
               evidence_required: Boolean(kpi.evidenceRequired),
             };
             await supabase.from('kpis').upsert(kpiPayload, { onConflict: 'id' }).catch(() => {});

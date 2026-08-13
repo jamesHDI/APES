@@ -82,8 +82,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   );
 
   const currentTemplate = templates.find(t => t.id === evalData.templateId) || MASTER_SALES_EVALUATION_TEMPLATE;
-  const eligibilityWeight = currentTemplate.formulaConfig.eligibilityWeight || 85;
-  const coreValuesWeight = currentTemplate.formulaConfig.coreValuesWeight || 15;
+  const eligibilityWeight = Number(currentTemplate.formulaConfig.eligibilityWeight || 85);
+  const coreValuesWeight = Number(currentTemplate.formulaConfig.coreValuesWeight || 15);
 
   // Strict Role-Based Section Locking Permissions
   const canEditEmployeeSection = !isReadOnly && isSelfEval && (evalData.status === 'draft' || evalData.status === 'reopened');

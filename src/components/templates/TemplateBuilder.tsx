@@ -47,6 +47,27 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
+
+  const getWeightInputValue = (id: string, defaultValue: number | string): string => {
+    return weightInputs[id] ?? String(defaultValue);
+  };
+
+  const handleWeightInputChange = (id: string, rawValue: string) => {
+    const sanitized = rawValue.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
+    setWeightInputs(prev => ({ ...prev, [id]: sanitized }));
+  };
+
+  const commitWeightInput = (id: string, defaultValue: number): number => {
+    const raw = weightInputs[id];
+    const numVal = raw === '' || raw === undefined ? defaultValue : Number(raw);
+    setWeightInputs(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    return numVal;
+  };
 
   const canDelete = currentUser?.role === 'system_admin' || currentUser?.role === 'hr_admin' || currentUser?.role === 'pod';
 
@@ -427,12 +448,13 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     <input
                       type="text"
                       inputMode="numeric"
-                      value={activeTemplate.formulaConfig.eligibilityWeight}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
+                      value={getWeightInputValue('formula_eligibility', activeTemplate.formulaConfig.eligibilityWeight)}
+                      onChange={(e) => handleWeightInputChange('formula_eligibility', e.target.value)}
+                      onBlur={() => {
+                        const numVal = commitWeightInput('formula_eligibility', activeTemplate.formulaConfig.eligibilityWeight);
                         setActiveTemplate({
                           ...activeTemplate,
-                          formulaConfig: { ...activeTemplate.formulaConfig, eligibilityWeight: val === '' ? 0 : Number(val) }
+                          formulaConfig: { ...activeTemplate.formulaConfig, eligibilityWeight: numVal }
                         });
                       }}
                       className="w-14 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center font-bold"
@@ -444,12 +466,13 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     <input
                       type="text"
                       inputMode="numeric"
-                      value={activeTemplate.formulaConfig.coreValuesWeight}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
+                      value={getWeightInputValue('formula_coreValues', activeTemplate.formulaConfig.coreValuesWeight)}
+                      onChange={(e) => handleWeightInputChange('formula_coreValues', e.target.value)}
+                      onBlur={() => {
+                        const numVal = commitWeightInput('formula_coreValues', activeTemplate.formulaConfig.coreValuesWeight);
                         setActiveTemplate({
                           ...activeTemplate,
-                          formulaConfig: { ...activeTemplate.formulaConfig, coreValuesWeight: val === '' ? 0 : Number(val) }
+                          formulaConfig: { ...activeTemplate.formulaConfig, coreValuesWeight: numVal }
                         });
                       }}
                       className="w-14 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center font-bold"
@@ -552,10 +575,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                             <input
                               type="text"
                               inputMode="numeric"
-                              value={kpi.weightPercent}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
-                                const numVal = val === '' ? 0 : Number(val);
+                              value={getWeightInputValue(`kpi_${kpi.id}`, kpi.weightPercent)}
+                              onChange={(e) => handleWeightInputChange(`kpi_${kpi.id}`, e.target.value)}
+                              onBlur={() => {
+                                const numVal = commitWeightInput(`kpi_${kpi.id}`, kpi.weightPercent);
                                 const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, weightPercent: numVal } : item);
                                 const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
                                 setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
@@ -661,11 +684,12 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                         <input
                           type="text"
                           inputMode="numeric"
-                          value={cv.weightPercent || 0}
-                            onChange={(e) => {
-                              const val = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
-                              handleUpdateCoreValue(cv.id, 'weightPercent', val === '' ? 0 : Number(val));
-                            }}
+                          value={getWeightInputValue(`cv_${cv.id}`, cv.weightPercent || 0)}
+                          onChange={(e) => handleWeightInputChange(`cv_${cv.id}`, e.target.value)}
+                          onBlur={() => {
+                            const numVal = commitWeightInput(`cv_${cv.id}`, cv.weightPercent || 0);
+                            handleUpdateCoreValue(cv.id, 'weightPercent', numVal);
+                          }}
                           className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs font-bold"
                           placeholder="Weight %"
                         />
