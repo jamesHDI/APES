@@ -2100,6 +2100,12 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
   try {
     const templateUuid = isValidUuid(template.id) ? template.id : ensureUuid(template.id || `tmpl_${Date.now()}`);
 
+    const kraCategories = template.kraCategories || [];
+    const kraWeights = kraCategories.reduce((acc, kra) => {
+      acc[kra.name] = Number(kra.categoryWeightPercent || 0);
+      return acc;
+    }, {} as Record<string, number>);
+
     const payload: Record<string, any> = {
       id: templateUuid,
       title: (template.title || 'Evaluation Template').substring(0, 150),
@@ -2107,16 +2113,25 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       evaluation_period: (template.evaluationPeriod || 'Annual 2026').substring(0, 100),
       eligibility_weight: Number(template.formulaConfig?.eligibilityWeight ?? 85.00),
       core_values_weight: Number(template.formulaConfig?.coreValuesWeight ?? 15.00),
-      kra_weights: (template.kraCategories || []).reduce((acc, kra) => {
-        acc[kra.name] = Number(kra.categoryWeightPercent || 0);
-        return acc;
-      }, {} as Record<string, number>),
       is_active: template.isActive ?? true,
+      created_at: new Date().toISOString(),
     };
+
+    if (Object.keys(kraWeights).length > 0) {
+      payload.kra_weights = kraWeights;
+    }
 
     if (isValidUuid(template.departmentId)) {
       payload.department_id = template.departmentId;
     }
+
+    console.log('[Template Cloud Sync] Upserting template payload:', {
+      id: payload.id,
+      title: payload.title,
+      department: payload.department_name,
+      hasKraWeights: !!payload.kra_weights,
+      payloadKeys: Object.keys(payload),
+    });
 
     const { error } = await supabase.from('evaluation_templates').upsert(payload, { onConflict: 'id' });
 
@@ -2127,6 +2142,17 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
         hint: error.hint,
         code: error.code,
         payloadKeys: Object.keys(payload),
+        payloadSample: {
+          id: payload.id,
+          title: payload.title,
+          department_name: payload.department_name,
+          evaluation_period: payload.evaluation_period,
+          eligibility_weight: payload.eligibility_weight,
+          core_values_weight: payload.core_values_weight,
+          is_active: payload.is_active,
+          has_kra_weights: !!payload.kra_weights,
+          has_department_id: !!payload.department_id,
+        },
       });
       return false;
     }
