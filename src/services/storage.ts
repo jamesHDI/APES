@@ -363,16 +363,9 @@ export const getStoredTemplates = (): EvaluationTemplate[] => {
     } catch {}
   }
 
-  // Ensure MASTER_SALES_EVALUATION_TEMPLATE is ALWAYS included and intact
-  const masterSalesIdx = templates.findIndex(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales');
-  if (masterSalesIdx === -1) {
+  // Ensure at least one template exists; only inject the master template if the list is completely empty
+  if (templates.length === 0) {
     templates.unshift(MASTER_SALES_EVALUATION_TEMPLATE);
-  } else {
-    // If master sales template exists but lost its KRAs/KPIs, restore it to full MASTER_SALES_EVALUATION_TEMPLATE
-    const masterT = templates[masterSalesIdx];
-    if (!masterT.kraCategories || masterT.kraCategories.length === 0) {
-      templates[masterSalesIdx] = MASTER_SALES_EVALUATION_TEMPLATE;
-    }
   }
 
   localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));

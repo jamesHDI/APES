@@ -2121,7 +2121,13 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
     const { error } = await supabase.from('evaluation_templates').upsert(payload, { onConflict: 'id' });
 
     if (error) {
-      console.warn('[Template Cloud Sync] Could not upsert template to Supabase:', error.message);
+      console.warn('[Template Cloud Sync] Could not upsert template to Supabase:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        payloadKeys: Object.keys(payload),
+      });
       return false;
     }
 
@@ -2281,9 +2287,14 @@ export const deleteEvaluationTemplateFromSupabase = async (templateId: string): 
   if (!isSupabaseConfigured || !supabase || !templateId) return false;
   try {
     const uuid = isValidUuid(templateId) ? templateId : ensureUuid(templateId);
-    await supabase.from('evaluation_templates').delete().eq('id', uuid).catch(() => {});
+    const { error } = await supabase.from('evaluation_templates').delete().eq('id', uuid);
+    if (error) {
+      console.warn('[Template Cloud Sync] Could not delete template from Supabase:', error.message);
+      return false;
+    }
     return true;
   } catch (err) {
+    console.warn('[Template Cloud Sync] Exception deleting template from Supabase:', err);
     return false;
   }
 };

@@ -233,12 +233,6 @@ export const App: React.FC = () => {
         try {
           const sbTemplates = await fetchEvaluationTemplatesFromSupabase();
           if (sbTemplates !== null) {
-            // Auto-push Sales template to Supabase if it doesn't exist in cloud DB yet
-            const hasSalesInDb = sbTemplates.some(t => t.id === 'template_sales' || t.departmentName === 'Sales');
-            if (!hasSalesInDb) {
-              saveEvaluationTemplateToSupabase(MASTER_SALES_EVALUATION_TEMPLATE).catch(() => {});
-            }
-
             setTemplates(prev => {
               const masterSales = prev.find(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
               const result: EvaluationTemplate[] = [masterSales];
@@ -734,15 +728,42 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleDeleteTemplate = (templateId: string) => {
+  const handleDeleteTemplate = async (templateId: string) => {
     const updated = templates.filter((t) => t.id !== templateId);
     setTemplates(updated);
     saveTemplates(updated);
 
     if (isSupabaseConfigured) {
-      deleteEvaluationTemplateFromSupabase(templateId).then(() => {
+      const deleted = await deleteEvaluationTemplateFromSupabase(templateId);
+      if (deleted) {
         triggerRealtimeBroadcast('data_changed', { type: 'template_deleted' });
-      }).catch(() => {});
+      } else {
+        console.warn('[App] Template removed locally but cloud delete failed. Refreshing templates from cloud...');
+        fetchEvaluationTemplatesFromSupabase().then(sbTemplates => {
+          if (sbTemplates !== null) {
+            setTemplates(prev => {
+              const masterSales = prev.find(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
+              const result: EvaluationTemplate[] = [masterSales];
+              for (const remoteT of sbTemplates) {
+                if (!remoteT || !remoteT.id) continue;
+                if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales') continue;
+                if (!result.some(t => t.id === remoteT.id)) {
+                  result.push(remoteT);
+                }
+              }
+              for (const localT of prev) {
+                if (!localT || !localT.id) continue;
+                if (localT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || localT.id === 'template_sales') continue;
+                if (!result.some(t => t.id === localT.id)) {
+                  result.push(localT);
+                }
+              }
+              saveTemplates(result);
+              return result;
+            });
+          }
+        }).catch(() => {});
+      }
     }
   };
 

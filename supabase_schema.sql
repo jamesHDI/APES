@@ -98,12 +98,16 @@ CREATE TABLE IF NOT EXISTS public.evaluation_templates (
 );
 
 ALTER TABLE public.evaluation_templates ENABLE ROW LEVEL SECURITY;
+
 DROP POLICY IF EXISTS "Allow public evaluation_templates insert" ON public.evaluation_templates;
 DROP POLICY IF EXISTS "Allow public evaluation_templates select" ON public.evaluation_templates;
 DROP POLICY IF EXISTS "Allow public evaluation_templates update" ON public.evaluation_templates;
+DROP POLICY IF EXISTS "Allow public evaluation_templates delete" ON public.evaluation_templates;
+
 CREATE POLICY "Allow public evaluation_templates insert" ON public.evaluation_templates FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public evaluation_templates select" ON public.evaluation_templates FOR SELECT USING (true);
 CREATE POLICY "Allow public evaluation_templates update" ON public.evaluation_templates FOR UPDATE USING (true);
+CREATE POLICY "Allow public evaluation_templates delete" ON public.evaluation_templates FOR DELETE USING (true);
 
 -- 5B. CORE VALUES TABLE (template-scoped Part 1B definitions)
 CREATE TABLE IF NOT EXISTS public.core_values (
