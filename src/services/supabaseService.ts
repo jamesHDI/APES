@@ -968,11 +968,11 @@ export const syncEvaluationTemplateToSupabase = async (evaluation: Evaluation): 
 
     const { data: existing } = await supabase
       .from('evaluation_templates')
-      .select('id, kra_weights, department_id')
+      .select('id, full_payload, department_id')
       .eq('id', templateUuid)
       .maybeSingle();
 
-    if (existing && (existing.kra_weights || existing.department_id)) {
+    if (existing && (existing.full_payload || existing.department_id)) {
       return templateUuid;
     }
 
@@ -2106,6 +2106,34 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       return acc;
     }, {} as Record<string, number>);
 
+    const fullPayload = {
+      title: (template.title || 'Evaluation Template').substring(0, 150),
+      departmentName: (template.departmentName || 'General').substring(0, 100),
+      evaluationPeriod: (template.evaluationPeriod || 'Annual 2026').substring(0, 100),
+      formulaConfig: {
+        eligibilityWeight: Number(template.formulaConfig?.eligibilityWeight ?? 85.00),
+        coreValuesWeight: Number(template.formulaConfig?.coreValuesWeight ?? 15.00),
+      },
+      kraCategories: kraCategories.map(kra => ({
+        name: kra.name,
+        categoryWeightPercent: Number(kra.categoryWeightPercent || 0),
+        kpis: (kra.kpis || []).map(kpi => ({
+          name: kpi.name,
+          description: kpi.description || '',
+          weightPercent: Number(kpi.weightPercent || 0),
+          evidenceRequired: Boolean(kpi.evidenceRequired),
+        })),
+      })),
+      coreValues: (template.coreValues || []).map(cv => ({
+        name: cv.name,
+        description: cv.description || '',
+        weightPercent: Number(cv.weightPercent || 0),
+        sortOrder: Number(cv.sortOrder || 0),
+      })),
+      classificationRanges: template.classificationRanges || [],
+      kraWeights,
+    };
+
     const payload: Record<string, any> = {
       id: templateUuid,
       title: (template.title || 'Evaluation Template').substring(0, 150),
@@ -2115,11 +2143,9 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       core_values_weight: Number(template.formulaConfig?.coreValuesWeight ?? 15.00),
       is_active: template.isActive ?? true,
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      full_payload: fullPayload,
     };
-
-    if (Object.keys(kraWeights).length > 0) {
-      payload.kra_weights = kraWeights;
-    }
 
     if (isValidUuid(template.departmentId)) {
       payload.department_id = template.departmentId;
@@ -2130,6 +2156,7 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       title: payload.title,
       department: payload.department_name,
       hasKraWeights: !!payload.kra_weights,
+      hasFullPayload: !!payload.full_payload,
       payloadKeys: Object.keys(payload),
     });
 
@@ -2151,6 +2178,7 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
           core_values_weight: payload.core_values_weight,
           is_active: payload.is_active,
           has_kra_weights: !!payload.kra_weights,
+          has_full_payload: !!payload.full_payload,
           has_department_id: !!payload.department_id,
         },
       });
@@ -2251,7 +2279,7 @@ export const fetchEvaluationTemplatesFromSupabase = async (): Promise<Evaluation
           });
         }
 
-        const storedKraWeights = row.kra_weights || {};
+        const storedKraWeights = (row as any).kra_weights || (row as any).full_payload?.kra_weights || {};
         kraCategories = Array.from(kraMap.entries()).map(([kraName, kpis], idx) => ({
           id: `kra_${row.id}_${idx}`,
           name: kraName,
