@@ -97,6 +97,14 @@ CREATE TABLE IF NOT EXISTS public.evaluation_templates (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE public.evaluation_templates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public evaluation_templates insert" ON public.evaluation_templates;
+DROP POLICY IF EXISTS "Allow public evaluation_templates select" ON public.evaluation_templates;
+DROP POLICY IF EXISTS "Allow public evaluation_templates update" ON public.evaluation_templates;
+CREATE POLICY "Allow public evaluation_templates insert" ON public.evaluation_templates FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public evaluation_templates select" ON public.evaluation_templates FOR SELECT USING (true);
+CREATE POLICY "Allow public evaluation_templates update" ON public.evaluation_templates FOR UPDATE USING (true);
+
 -- 5B. CORE VALUES TABLE (template-scoped Part 1B definitions)
 CREATE TABLE IF NOT EXISTS public.core_values (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -109,6 +117,7 @@ CREATE TABLE IF NOT EXISTS public.core_values (
 );
 
 CREATE INDEX IF NOT EXISTS idx_core_values_template_id ON public.core_values(template_id);
+CREATE INDEX IF NOT EXISTS idx_kpis_template_id ON public.kpis(template_id);
 
 -- 6. KRA CATEGORIES & KPIS TABLE
 CREATE TABLE IF NOT EXISTS public.kpis (
@@ -472,6 +481,7 @@ BEGIN
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluation_history; EXCEPTION WHEN duplicate_object THEN NULL; END;
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluation_scorecard_archives; EXCEPTION WHEN duplicate_object THEN NULL; END;
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.core_values; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluation_templates; EXCEPTION WHEN duplicate_object THEN NULL; END;
 END $$;
 
 -- STORAGE BUCKETS SETUP & STORAGE RLS POLICIES

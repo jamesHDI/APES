@@ -966,6 +966,16 @@ export const syncEvaluationTemplateToSupabase = async (evaluation: Evaluation): 
       ? evaluation.templateId
       : ensureUuid(evaluation.templateId || `tmpl_${evaluation.departmentName || 'general'}`);
 
+    const { data: existing } = await supabase
+      .from('evaluation_templates')
+      .select('id, kra_weights, department_id')
+      .eq('id', templateUuid)
+      .maybeSingle();
+
+    if (existing && (existing.kra_weights || existing.department_id)) {
+      return templateUuid;
+    }
+
     const templatePayload = {
       id: templateUuid,
       title: `${evaluation.departmentName || 'General'} Performance Evaluation Template`,
@@ -2090,7 +2100,7 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
   try {
     const templateUuid = isValidUuid(template.id) ? template.id : ensureUuid(template.id || `tmpl_${Date.now()}`);
 
-    const payload = {
+    const payload: Record<string, any> = {
       id: templateUuid,
       title: (template.title || 'Evaluation Template').substring(0, 150),
       department_name: (template.departmentName || 'General').substring(0, 100),
@@ -2105,7 +2115,7 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
     };
 
     if (isValidUuid(template.departmentId)) {
-      (payload as any).department_id = template.departmentId;
+      payload.department_id = template.departmentId;
     }
 
     const { error } = await supabase.from('evaluation_templates').upsert(payload, { onConflict: 'id' });
@@ -2115,25 +2125,30 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       return false;
     }
 
-    // Save Core Values associated with this template
-    if (template.coreValues && template.coreValues.length > 0) {
+    const coreValueRows = (template.coreValues || []).map((cv, idx) => ({
+      id: isValidUuid(cv.id) ? cv.id : ensureUuid(cv.id || `${templateUuid}_cv_${cv.sortOrder ?? idx}`),
+      template_id: templateUuid,
+      name: (cv.name || 'Core Value').substring(0, 150),
+      description: (cv.description || '').substring(0, 500),
+      weight_percent: Number(cv.weightPercent || 0),
+      sort_order: Number(cv.sortOrder ?? idx)
+    }));
+
+    if (coreValueRows.length > 0) {
       await supabase.from('core_values').delete().eq('template_id', templateUuid).catch(() => {});
-      const coreValueRows = template.coreValues.map((cv) => ({
-        id: isValidUuid(cv.id) ? cv.id : ensureUuid(cv.id || `${templateUuid}_cv_${cv.sortOrder || 0}`),
-        template_id: templateUuid,
-        name: (cv.name || 'Core Value').substring(0, 150),
-        description: (cv.description || '').substring(0, 500),
-        weight_percent: Number(cv.weightPercent || 0),
-        sort_order: Number(cv.sortOrder || 0)
-      }));
       const { error: cvError } = await supabase.from('core_values').upsert(coreValueRows, { onConflict: 'id' });
       if (cvError) {
         console.warn('[Template Cloud Sync] Could not upsert core_values to Supabase:', cvError.message);
       }
     }
 
-    // Save KPIs associated with this template if kraCategories exists
     if (template.kraCategories && template.kraCategories.length > 0) {
+      const existingKpiIds = new Set(
+        (template.kraCategories.flatMap(kra => kra.kpis || [])).map(kpi => kpi.id).filter(Boolean)
+      );
+
+      await supabase.from('kpis').delete().eq('template_id', templateUuid).catch(() => {});
+
       for (const kra of template.kraCategories) {
         if (kra.kpis && kra.kpis.length > 0) {
           for (const kpi of kra.kpis) {
@@ -2212,8 +2227,18 @@ export const fetchEvaluationTemplatesFromSupabase = async (): Promise<Evaluation
           kpis: kpis
         }));
       } else {
-        const built = createMasterBasedTemplate(row.department_id || 'dept_acc', deptName, row.title, row.evaluation_period);
-        kraCategories = built.kraCategories;
+        const seed = row.id || 'default';
+        const masterKras = MASTER_SALES_EVALUATION_TEMPLATE.kraCategories;
+        kraCategories = masterKras.map((kra, kraIdx) => ({
+          ...kra,
+          id: `kra_${seed}_${kraIdx}`,
+          kpis: kra.kpis.map((kpi, kpiIdx) => ({
+            ...kpi,
+            id: `kpi_${seed}_${kraIdx}_${kpiIdx}`,
+            kraId: `kra_${seed}_${kraIdx}`,
+            standards: [...kpi.standards]
+          }))
+        }));
       }
 
       const coreValues: CoreValue[] = tmplCoreValues.length > 0
@@ -2224,7 +2249,7 @@ export const fetchEvaluationTemplatesFromSupabase = async (): Promise<Evaluation
             weightPercent: Number(cv.weight_percent || 0),
             sortOrder: Number(cv.sort_order || 0)
           }))
-        : MASTER_SALES_EVALUATION_TEMPLATE.coreValues;
+        : MASTER_SALES_EVALUATION_TEMPLATE.coreValues.map(cv => ({ ...cv }));
 
       return {
         id: row.id,

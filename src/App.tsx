@@ -245,11 +245,20 @@ export const App: React.FC = () => {
 
               for (const remoteT of sbTemplates) {
                 if (!remoteT || !remoteT.id) continue;
-                if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales' || remoteT.departmentName === 'Sales') continue;
+                if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales') continue;
                 if (!result.some(t => t.id === remoteT.id)) {
                   result.push(remoteT);
                 }
               }
+
+              for (const localT of prev) {
+                if (!localT || !localT.id) continue;
+                if (localT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || localT.id === 'template_sales') continue;
+                if (!result.some(t => t.id === localT.id)) {
+                  result.push(localT);
+                }
+              }
+
               saveTemplates(result);
               return result;
             });
@@ -369,16 +378,14 @@ export const App: React.FC = () => {
                   const result: EvaluationTemplate[] = [masterSales];
                   for (const remoteT of sbTemplates) {
                     if (!remoteT || !remoteT.id) continue;
-                    if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales' || remoteT.departmentName === 'Sales') continue;
+                    if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales') continue;
                     if (!result.some(t => t.id === remoteT.id)) {
                       result.push(remoteT);
                     }
                   }
-                  // Guard against race condition: preserve locally-created templates
-                  // that may not yet be committed to Supabase when this event fires.
                   for (const localT of prev) {
                     if (!localT || !localT.id) continue;
-                    if (localT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || localT.id === 'template_sales' || localT.departmentName === 'Sales') continue;
+                    if (localT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || localT.id === 'template_sales') continue;
                     if (!result.some(t => t.id === localT.id)) {
                       result.push(localT);
                     }
@@ -402,16 +409,14 @@ export const App: React.FC = () => {
                   const result: EvaluationTemplate[] = [masterSales];
                   for (const remoteT of sbTemplates) {
                     if (!remoteT || !remoteT.id) continue;
-                    if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales' || remoteT.departmentName === 'Sales') continue;
+                    if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales') continue;
                     if (!result.some(t => t.id === remoteT.id)) {
                       result.push(remoteT);
                     }
                   }
-                  // Guard against race condition: preserve locally-created templates
-                  // that may not yet be committed to Supabase when this broadcast fires.
                   for (const localT of prev) {
                     if (!localT || !localT.id) continue;
-                    if (localT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || localT.id === 'template_sales' || localT.departmentName === 'Sales') continue;
+                    if (localT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || localT.id === 'template_sales') continue;
                     if (!result.some(t => t.id === localT.id)) {
                       result.push(localT);
                     }
@@ -717,9 +722,15 @@ export const App: React.FC = () => {
     saveTemplates(newTemplates);
 
     if (isSupabaseConfigured) {
-      saveEvaluationTemplateToSupabase(updatedTemplate).then(() => {
-        triggerRealtimeBroadcast('data_changed', { type: 'template' });
-      }).catch(() => {});
+      saveEvaluationTemplateToSupabase(updatedTemplate).then((success) => {
+        if (success) {
+          triggerRealtimeBroadcast('data_changed', { type: 'template' });
+        } else {
+          console.warn('[App] Template saved locally but cloud sync failed. Template will persist locally.');
+        }
+      }).catch((err) => {
+        console.warn('[App] Template saved locally but cloud sync encountered an error:', err);
+      });
     }
   };
 
