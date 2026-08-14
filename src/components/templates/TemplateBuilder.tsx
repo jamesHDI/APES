@@ -5,9 +5,8 @@ import { validateEvaluationTemplate } from '../../services/templateValidation';
 import { assignNewEvaluationToEmployee, createDraftEvaluationInMemory } from '../../services/storage';
 import { PrintableScorecard } from '../evaluation/PrintableScorecard';
 import { 
-  SlidersHorizontal, 
-  Plus, 
-  Trash2, 
+  Plus,
+  Trash2,
   Save, 
   CheckCircle2, 
   Building2, 
@@ -337,7 +336,6 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
         <div>
           <div className="flex items-center space-x-2">
-            <SlidersHorizontal className="w-6 h-6 text-brand-600 dark:text-brand-400" />
             <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">Dynamic HR Evaluation Template & KPI Builder</h2>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">

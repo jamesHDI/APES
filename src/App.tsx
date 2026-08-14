@@ -374,6 +374,15 @@ export const App: React.FC = () => {
                       result.push(remoteT);
                     }
                   }
+                  // Guard against race condition: preserve locally-created templates
+                  // that may not yet be committed to Supabase when this event fires.
+                  for (const localT of prev) {
+                    if (!localT || !localT.id) continue;
+                    if (localT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || localT.id === 'template_sales' || localT.departmentName === 'Sales') continue;
+                    if (!result.some(t => t.id === localT.id)) {
+                      result.push(localT);
+                    }
+                  }
                   saveTemplates(result);
                   return result;
                 });
@@ -396,6 +405,15 @@ export const App: React.FC = () => {
                     if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales' || remoteT.departmentName === 'Sales') continue;
                     if (!result.some(t => t.id === remoteT.id)) {
                       result.push(remoteT);
+                    }
+                  }
+                  // Guard against race condition: preserve locally-created templates
+                  // that may not yet be committed to Supabase when this broadcast fires.
+                  for (const localT of prev) {
+                    if (!localT || !localT.id) continue;
+                    if (localT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || localT.id === 'template_sales' || localT.departmentName === 'Sales') continue;
+                    if (!result.some(t => t.id === localT.id)) {
+                      result.push(localT);
                     }
                   }
                   saveTemplates(result);
