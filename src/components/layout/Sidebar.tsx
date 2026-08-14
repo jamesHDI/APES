@@ -361,12 +361,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside
-        className={`no-print fixed top-16 left-4 bottom-0 z-40
+        className={`no-print fixed top-16 left-0 bottom-0 z-40
           bg-gradient-to-b from-[#FFFAF6] via-[#FFF8F3] to-[#FFF6EF]
           dark:from-slate-900 dark:via-slate-900 dark:to-slate-900
           border-r border-[#EFE4D6] dark:border-slate-800
           flex flex-col transition-all duration-300 ease-in-out overflow-hidden
-          lg:sticky lg:top-0 lg:left-5 lg:h-[calc(100vh-6rem)]
+          lg:static lg:top-0 lg:left-0 lg:h-full
           ${isOpen 
             ? 'w-64 translate-x-0 opacity-100' 
             : '-translate-x-full opacity-0 w-0 lg:translate-x-0 lg:opacity-100 lg:w-[72px]'}
