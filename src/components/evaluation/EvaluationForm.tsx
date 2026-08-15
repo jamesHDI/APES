@@ -657,7 +657,6 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
           <EvaluationTimeline evaluation={evalData} allUsers={allUsers} />
         </div>
       )}
-
       {/* Header Info Card */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -669,13 +668,24 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               <span className="text-xs px-3 py-1 rounded-full font-bold bg-brand-100 text-brand-700 dark:bg-brand-950 dark:text-brand-300 uppercase">
                 {evalData.departmentName}
               </span>
-              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-300">
+              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-300 dark:border-orange-800 uppercase">
                 {evalData.workflowType.replace('WORKFLOW_', '')}
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-              {evalData.position} • Period: <strong className="text-slate-800 dark:text-slate-200">{evalData.appraisalPeriod}</strong> • Date: {evalData.appraisalDate}
-            </p>
+            <div className="mt-2 space-y-0.5 text-xs text-slate-600 dark:text-slate-400">
+              <p className="font-semibold text-slate-700 dark:text-slate-300">
+                {evalData.position}
+              </p>
+              <p className="font-medium">
+                <strong className="font-bold text-slate-900 dark:text-white">PERIOD:</strong> <span className="font-bold text-slate-800 dark:text-slate-200">{evalData.appraisalPeriod}</span> • <strong className="font-bold text-slate-900 dark:text-white">Date:</strong> {evalData.appraisalDate}
+              </p>
+              <p className="font-medium">
+                <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TITLE:</strong> <span className="font-bold text-slate-800 dark:text-slate-200">{currentTemplate.title}</span>
+              </p>
+              <p className="font-medium">
+                <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TEMPLATE:</strong> <span className="font-bold text-slate-800 dark:text-slate-200">{currentTemplate.departmentName || evalData.departmentName}</span>
+              </p>
+            </div>
           </div>
 
           {/* Computed Score Pill */}
