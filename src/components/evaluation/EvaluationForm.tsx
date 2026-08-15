@@ -680,7 +680,10 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 {evalData.position}
               </p>
               <p className="font-normal text-slate-700 dark:text-slate-300">
-                <strong className="font-bold text-slate-900 dark:text-white">PERIOD:</strong> {evalData.appraisalPeriod} • <strong className="font-bold text-slate-900 dark:text-white">Date:</strong> {evalData.appraisalDate}
+                <strong className="font-bold text-slate-900 dark:text-white">PERIOD:</strong> {evalData.appraisalPeriod}
+              </p>
+              <p className="font-normal text-slate-700 dark:text-slate-300">
+                <strong className="font-bold text-slate-900 dark:text-white">DATE:</strong> {evalData.appraisalDate}
               </p>
               <p className="font-normal text-slate-700 dark:text-slate-300">
                 <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TITLE:</strong> {currentTemplate.title}
