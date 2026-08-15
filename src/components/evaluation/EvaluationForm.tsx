@@ -81,9 +81,12 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     (evalData.employeeName && currentUser.name && evalData.employeeName.toLowerCase().trim() === currentUser.name.toLowerCase().trim())
   );
 
-  const currentTemplate = templates.find(t => t.id === evalData.templateId) || MASTER_SALES_EVALUATION_TEMPLATE;
-  const eligibilityWeight = Number(currentTemplate.formulaConfig.eligibilityWeight || 85);
-  const coreValuesWeight = Number(currentTemplate.formulaConfig.coreValuesWeight || 15);
+  const currentTemplate = (templates || []).find(t => t.id === evalData.templateId) || 
+    (templates || []).find(t => t.departmentName?.toLowerCase().trim() === evalData.departmentName?.toLowerCase().trim()) || 
+    (templates || []).find(t => t.departmentId && evalData.departmentId && t.departmentId === evalData.departmentId) ||
+    MASTER_SALES_EVALUATION_TEMPLATE;
+  const eligibilityWeight = Number(currentTemplate.formulaConfig?.eligibilityWeight || 85);
+  const coreValuesWeight = Number(currentTemplate.formulaConfig?.coreValuesWeight || 15);
 
   // Strict Role-Based Section Locking Permissions
   const canEditEmployeeSection = !isReadOnly && isSelfEval && (evalData.status === 'draft' || evalData.status === 'reopened');
@@ -676,14 +679,14 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               <p className="font-semibold text-slate-700 dark:text-slate-300">
                 {evalData.position}
               </p>
-              <p className="font-medium">
-                <strong className="font-bold text-slate-900 dark:text-white">PERIOD:</strong> <span className="font-bold text-slate-800 dark:text-slate-200">{evalData.appraisalPeriod}</span> • <strong className="font-bold text-slate-900 dark:text-white">Date:</strong> {evalData.appraisalDate}
+              <p className="font-normal text-slate-700 dark:text-slate-300">
+                <strong className="font-bold text-slate-900 dark:text-white">PERIOD:</strong> {evalData.appraisalPeriod} • <strong className="font-bold text-slate-900 dark:text-white">Date:</strong> {evalData.appraisalDate}
               </p>
-              <p className="font-medium">
-                <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TITLE:</strong> <span className="font-bold text-slate-800 dark:text-slate-200">{currentTemplate.title}</span>
+              <p className="font-normal text-slate-700 dark:text-slate-300">
+                <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TITLE:</strong> {currentTemplate.title}
               </p>
-              <p className="font-medium">
-                <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TEMPLATE:</strong> <span className="font-bold text-slate-800 dark:text-slate-200">{currentTemplate.departmentName || evalData.departmentName}</span>
+              <p className="font-normal text-slate-700 dark:text-slate-300">
+                <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TEMPLATE:</strong> {currentTemplate.departmentName || evalData.departmentName}
               </p>
             </div>
           </div>
