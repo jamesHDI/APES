@@ -44,6 +44,7 @@ export const WorkflowMonitoring: React.FC<WorkflowMonitoringProps> = ({
   
   const getEmployeeCount = (deptId: string, deptName?: string): number => {
     return users.filter(u => 
+      u.role !== 'system_admin' &&
       u.isActive !== false && 
       u.isApproved !== false && 
       u.approvalStatus !== 'pending' &&
@@ -118,7 +119,7 @@ export const WorkflowMonitoring: React.FC<WorkflowMonitoringProps> = ({
         alert('Please select a department.');
         return;
       }
-      const deptEmployees = users.filter(u => u.departmentId === targetDept.id || u.departmentName === targetDept.name);
+      const deptEmployees = users.filter(u => u.role !== 'system_admin' && (u.departmentId === targetDept.id || u.departmentName === targetDept.name));
       if (deptEmployees.length === 0) {
         alert(`No active employees found in department ${targetDept.name}.`);
         return;
@@ -414,7 +415,7 @@ export const WorkflowMonitoring: React.FC<WorkflowMonitoringProps> = ({
                     onChange={(e) => setTargetEmployeeId(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white"
                   >
-                    {users.map((u) => (
+                    {users.filter(u => u.role !== 'system_admin').map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.name} — {u.position} ({u.departmentName})
                       </option>

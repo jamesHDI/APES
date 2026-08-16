@@ -81,13 +81,13 @@ export const getRoleBasedNotifications = (
   if (!currentUser || !notifications) return [];
 
   const filtered = notifications.filter((n) => {
-    // 1. Administrative / Account / System Alerts (STRICTLY for System Admin or HR Admin)
+    // 1. Administrative / Account / System Alerts (STRICTLY for System Admin, HR Admin, or POD)
     if (
       n.category === 'account' || 
       n.category === 'system' || 
       n.status === 'pending_approval'
     ) {
-      return currentUser.role === 'system_admin' || currentUser.role === 'hr_admin';
+      return currentUser.role === 'system_admin' || currentUser.role === 'hr_admin' || currentUser.role === 'pod';
     }
 
     // 2. Direct User ID match (Private alert targeted to specific user)
@@ -102,7 +102,7 @@ export const getRoleBasedNotifications = (
 
     // 4. Admin Broadcast target
     if ((n.recipientRole as string) === 'ALL_ADMINS') {
-      return currentUser.role === 'system_admin' || currentUser.role === 'hr_admin';
+      return currentUser.role === 'system_admin' || currentUser.role === 'hr_admin' || currentUser.role === 'pod';
     }
 
     // 5. Targeted Role Broadcast or Workflow match

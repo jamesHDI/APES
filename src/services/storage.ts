@@ -648,6 +648,10 @@ export const assignNewEvaluationToEmployee = async (
   appraisalPeriod: string = 'January - December 2026',
   assignedByName: string = 'People Operations (POD)'
 ): Promise<Evaluation> => {
+  if (employee && employee.role === 'system_admin') {
+    throw new Error(`[Assign Evaluation] System Administrator accounts are administrative-only and cannot be assigned evaluation scorecards.`);
+  }
+
   // Resolve permanent Supabase UUID for the employee to ensure cross-device consistency
   let permanentEmpId = employee.id;
   let resolvedEmployee = employee;

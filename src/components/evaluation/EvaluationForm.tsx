@@ -76,9 +76,11 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   const currentRole = currentUser.role;
   const isReadOnly = isEvaluationCompleted(evalData);
   const isSelfEval = Boolean(
-    (evalData.employeeId && (currentUser.id === evalData.employeeId || currentUser.employeeNumber === evalData.employeeId)) ||
-    (evalData.employeeEmail && currentUser.email && evalData.employeeEmail.toLowerCase().trim() === currentUser.email.toLowerCase().trim()) ||
-    (evalData.employeeName && currentUser.name && evalData.employeeName.toLowerCase().trim() === currentUser.name.toLowerCase().trim())
+    currentUser.role !== 'system_admin' && (
+      (evalData.employeeId && (currentUser.id === evalData.employeeId || currentUser.employeeNumber === evalData.employeeId)) ||
+      (evalData.employeeEmail && currentUser.email && evalData.employeeEmail.toLowerCase().trim() === currentUser.email.toLowerCase().trim()) ||
+      (evalData.employeeName && currentUser.name && evalData.employeeName.toLowerCase().trim() === currentUser.name.toLowerCase().trim())
+    )
   );
 
   const currentTemplate = (templates || []).find(t => t.id === evalData.templateId) || 
@@ -735,7 +737,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
           {/* Primary Actions */}
           <div className="flex flex-wrap items-center gap-2">
-            {!isReadOnly && (
+            {!isReadOnly && currentUser.role !== 'system_admin' && (
               <button onClick={handleSaveDraft} className="btn btn-secondary btn-sm">
                 <Save className="w-3.5 h-3.5" />
                 Save Draft

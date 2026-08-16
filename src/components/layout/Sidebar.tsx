@@ -112,19 +112,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ...common,
         { id: 'pod_validation', label: 'POD Governance', icon: ShieldCheck },
         {
-          id: 'pod_people',
+          id: 'management',
           label: 'People Management',
           icon: Users,
           children: [
             { id: 'employee_mgmt', label: 'Employee Directory', icon: Users },
             { id: 'pending_approvals', label: 'Pending Approvals', icon: UserCheck, badge: pendingAccountCount },
+            { id: 'dept_mgmt', label: 'Departments', icon: Building2 },
+            { id: 'org_hierarchy', label: 'Org Chart', icon: GitBranch },
           ],
         },
-        { id: 'workflow_monitoring', label: 'Workflow Monitoring', icon: GitBranch },
-        { id: 'evaluation_deployment', label: 'Evaluation Deployment', icon: Rocket },
-        { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal },
+        {
+          id: 'config',
+          label: 'System Configuration',
+          icon: Settings,
+          children: [
+            { id: 'workflow_monitoring', label: 'Workflow Monitoring', icon: GitBranch },
+            { id: 'evaluation_deployment', label: 'Evaluation Deployment', icon: Rocket },
+            { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal },
+            { id: 'admin_panel', label: 'Users, Roles & Config', icon: Settings },
+          ],
+        },
         { id: 'my_history', label: 'Evaluation History', icon: History },
-        { id: 'reports', label: 'Analytics', icon: BarChart3 },
+        { id: 'reports', label: 'Audit & Reports', icon: BarChart3 },
         { id: 'my_profile', label: 'My Profile', icon: UserCircle },
       ];
     } else if (currentRole === 'hr_admin') {
@@ -158,7 +168,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ];
     } else if (currentRole === 'system_admin') {
       items = [
-        ...common,
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         {
           id: 'management',
           label: 'User Management',

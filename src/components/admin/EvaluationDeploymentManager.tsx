@@ -67,6 +67,7 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
     // Determine target employees
     const isEligibleUser = (u: User) => {
       if (!u) return false;
+      if (u.role === 'system_admin') return false; // System Administrators are administrative-only and not evaluated
       if (u.isActive === false) return false;
       if (u.approvalStatus === 'rejected') return false;
       if (u.isApproved === false) return false;
