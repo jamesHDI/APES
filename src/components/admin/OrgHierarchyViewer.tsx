@@ -1,6 +1,6 @@
 import React from 'react';
 import { User, Department } from '../../types';
-import { Building2, ChevronRight, ShieldCheck, UserCheck, Hexagon } from 'lucide-react';
+import { ChevronRight, UserCheck, Hexagon } from 'lucide-react';
 
 interface OrgHierarchyViewerProps {
   users: User[];
@@ -33,7 +33,7 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
       </div>
 
       {/* Main Tree Visualizer with Honeycomb Styling */}
-      <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-sm space-y-8 relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
         
         {/* Tier 1: President (Centered HDI Hive Hexagon Card) */}
         <div className="flex flex-col items-center">
@@ -54,19 +54,19 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
             </div>
           </div>
           
-          {/* Honeycomb Connector Line */}
+          {/* Honeycomb Connector Line - Connected directly to Dept Heads Routing Nodes */}
           <div className="flex flex-col items-center my-0">
-            <div className="w-0.5 h-6 bg-gradient-to-b from-amber-500 to-amber-400" />
-            <div className="w-3 h-3 rotate-45 border-2 border-amber-400 bg-amber-500 shadow-sm z-10" />
-            <div className="w-0.5 h-6 bg-amber-400" />
+            <div className="w-0.5 h-8 bg-gradient-to-b from-amber-500 to-amber-400" />
+            <div className="w-3.5 h-3.5 rotate-45 border-2 border-amber-400 bg-amber-500 shadow-md z-10 -my-0.5" />
+            <div className="w-0.5 h-8 bg-amber-400" />
           </div>
         </div>
 
         {/* Tier 2: Department Heads (HDI Hive Grid) */}
-        <div className="space-y-5 -mt-2">
+        <div className="space-y-6">
           <div className="flex items-center justify-center space-x-2">
             <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1" />
-            <span className="font-extrabold text-xs text-amber-600 dark:text-amber-400 uppercase tracking-widest px-3.5 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 flex items-center space-x-1.5 shadow-sm">
+            <span className="font-extrabold text-xs text-amber-600 dark:text-amber-400 uppercase tracking-widest px-3.5 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 flex items-center space-x-1.5 shadow-sm z-10">
               <Hexagon className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
               <span>Department Heads Routing Nodes</span>
             </span>
@@ -81,11 +81,10 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
               return (
                 <div key={dept.id} className="group relative p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700/80 hover:border-amber-400 dark:hover:border-amber-500 transition-all duration-300 space-y-4 shadow-sm hover:shadow-md">
                   
-                  {/* Department Title Header */}
+                  {/* Department Title Header (No building icon) */}
                   <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-3">
-                    <span className="font-bold text-sm text-slate-900 dark:text-white flex items-center space-x-2">
-                      <Building2 className="w-4.5 h-4.5 text-amber-500" />
-                      <span>{dept.name}</span>
+                    <span className="font-bold text-sm text-slate-900 dark:text-white">
+                      {dept.name}
                     </span>
                     
                     {/* Hexagon Department Code Badge */}
