@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { User, EmploymentStatus } from '../../types';
 import { changeUserPassword } from '../../services/authService';
+import { verifyPassword } from '../../utils/crypto';
 import {
   Camera,
   Eye,
@@ -209,9 +210,12 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
   };
 
   const handleChangePassword = async () => {
-    if (currentUser.password && currentPassword !== currentUser.password) {
-      showPasswordFeedback('error', 'Current password is incorrect.');
-      return;
+    if (currentUser.password) {
+      const isCurrentValid = await verifyPassword(currentPassword, currentUser.password);
+      if (!isCurrentValid) {
+        showPasswordFeedback('error', 'Current password is incorrect.');
+        return;
+      }
     }
     if (newPassword.length < 6) {
       showPasswordFeedback('error', 'New password must be at least 6 characters.');

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Key, Eye, EyeOff, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { changeUserPassword } from '../../services/authService';
+import { verifyPassword } from '../../utils/crypto';
 import { User } from '../../types';
 
 interface ChangePasswordModalProps {
@@ -33,9 +34,12 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
     setError(null);
 
     // Validate current password if not a forced change from the default
-    if (!isForced && user.password && currentPassword !== user.password) {
-      setError('Current password is incorrect.');
-      return;
+    if (!isForced && user.password) {
+      const isCurrentValid = await verifyPassword(currentPassword, user.password);
+      if (!isCurrentValid) {
+        setError('Current password is incorrect.');
+        return;
+      }
     }
     if (newPassword.length < 6) {
       setError('New password must be at least 6 characters.');
