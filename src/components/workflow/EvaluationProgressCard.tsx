@@ -115,19 +115,6 @@ export const EvaluationProgressCard: React.FC<EvaluationProgressCardProps> = ({
           </div>
         </div>
 
-        {/* Current Reviewer */}
-        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Current Reviewer
-          </p>
-          <p className="text-sm font-bold text-slate-900 dark:text-white truncate mt-1">
-            {info.reviewerName}
-          </p>
-          <p className="text-xs font-semibold text-[#E96B1A] dark:text-brand-300 mt-0.5">
-            {info.reviewerRole}
-          </p>
-        </div>
-
         {/* Next Step */}
         <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">

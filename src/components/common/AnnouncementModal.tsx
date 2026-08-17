@@ -90,13 +90,13 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
               onChange={(e) => setRecipientRole(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none"
             >
-              <option value="ALL">📢 Entire Organization (All Roles)</option>
-              <option value="ALL_ADMINS">🛡️ System & HR Administrators Only</option>
-              <option value="dept_head">👑 Department Heads Only</option>
-              <option value="supervisor">📋 Immediate Supervisors (IS) Only</option>
-              <option value="employee">👥 Regular Employees / Appraisees Only</option>
-              <option value="pod">🔬 POD Governance Reviewers Only</option>
-              <option value="president">🏛️ President & Executive Officer Only</option>
+              <option value="ALL">Entire Organization (All Roles)</option>
+              <option value="ALL_ADMINS">System & HR Administrators Only</option>
+              <option value="dept_head">Department Heads Only</option>
+              <option value="supervisor">Immediate Supervisors (IS) Only</option>
+              <option value="employee">Regular Employees / Appraisees Only</option>
+              <option value="pod">POD Governance Reviewers Only</option>
+              <option value="president">President & Executive Officer Only</option>
             </select>
           </div>
 
