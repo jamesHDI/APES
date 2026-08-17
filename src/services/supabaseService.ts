@@ -1665,7 +1665,7 @@ export const generateScorecardPdfBlob = async (evaluation: Evaluation, formulaCo
               <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">HDI HIVE • STRICTLY CONFIDENTIAL</div>
             </div>
           </div>
-          <div style="text-align:right;font-size:11px;">
+          <div style="text-align:left;font-size:11px;">
             <div><strong style="text-transform:uppercase;">Department/Subsidiary:</strong> ${evaluation.departmentName}</div>
             <div><strong style="text-transform:uppercase;">Name of Employee:</strong> ${evaluation.employeeName}</div>
             <div><strong style="text-transform:uppercase;">Appraisal Period:</strong> ${evaluation.appraisalPeriod}</div>

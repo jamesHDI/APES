@@ -267,7 +267,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                 </p>
               </div>
             </div>
-            <div className="text-right text-[11px]">
+            <div className="text-left text-[11px] shrink-0">
               <p><strong className="uppercase">DEPARTMENT/SUBSIDIARY:</strong> {evaluation.departmentName}</p>
               <p><strong className="uppercase">NAME OF EMPLOYEE:</strong> {evaluation.employeeName}</p>
               <p><strong className="uppercase">APPRAISAL PERIOD:</strong> {evaluation.appraisalPeriod}</p>
