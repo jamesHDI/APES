@@ -199,7 +199,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
       setUserList(updated);
       try {
         await onSaveUsers(updated);
-        await deleteEmployeeFromSupabase(user.id);
+        await deleteEmployeeFromSupabase(user.id, user.email, user.employeeNumber);
         showToast(`Deleted account for ${user.name}`);
       } catch (err) {
         showToast('Failed to delete account. Please try again.');

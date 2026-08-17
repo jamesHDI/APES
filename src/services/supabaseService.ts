@@ -319,7 +319,18 @@ export const fetchEmployeesFromSupabase = async (): Promise<User[] | null> => {
       return (retryData || []).map(mapRowToUser);
     }
 
-    return data.map(mapRowToUser);
+    const isExcluded = (u: User) =>
+      !u ||
+      u.name === 'Maritess Bacle' ||
+      u.name === 'Grazie Esguerra' ||
+      u.name === 'Juan Dela Cruz' ||
+      u.id === 'usr_emp_sales_01' ||
+      u.id === 'usr_dh_sls' ||
+      u.id === 'usr_sup_sales_01' ||
+      (u.email && u.email.toLowerCase().trim() === 'supervisor.sales@hdiadventures.com') ||
+      u.employeeNumber === 'SUP-SLS-01';
+
+    return data.map(mapRowToUser).filter((u: User) => !isExcluded(u));
   } catch (err) {
     console.warn('Error fetching employees from Supabase:', err);
     return null;
@@ -631,16 +642,35 @@ export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
   return result.success;
 };
 
-export const deleteEmployeeFromSupabase = async (userId: string): Promise<boolean> => {
+export const deleteEmployeeFromSupabase = async (
+  userId: string,
+  email?: string,
+  employeeNumber?: string
+): Promise<boolean> => {
   if (!isSupabaseConfigured || !supabase) return false;
 
   try {
     const uuid = ensureUuid(userId);
-    const { error } = await supabase.from('employees').delete().eq('id', uuid);
-    if (error) {
-      console.warn('Error deleting employee from Supabase:', error);
+    
+    // Delete by UUID
+    await supabase.from('employees').delete().eq('id', uuid);
+    
+    // Delete by raw ID
+    if (userId && userId !== uuid) {
+      await supabase.from('employees').delete().eq('id', userId);
     }
-    return !error;
+
+    // Delete by email
+    if (email) {
+      await supabase.from('employees').delete().ilike('email', email.trim());
+    }
+
+    // Delete by employee_number
+    if (employeeNumber) {
+      await supabase.from('employees').delete().eq('employee_number', employeeNumber.trim());
+    }
+
+    return true;
   } catch (err) {
     console.warn('Error deleting employee from Supabase:', err);
     return false;

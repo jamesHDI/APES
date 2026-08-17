@@ -39,7 +39,8 @@ import {
   ensureUuid,
   saveEvaluationTemplateToSupabase,
   fetchEvaluationTemplatesFromSupabase,
-  deleteEvaluationTemplateFromSupabase
+  deleteEvaluationTemplateFromSupabase,
+  deleteEmployeeFromSupabase
 } from './services/supabaseService';
 import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './services/supabaseClient';
 import { 
@@ -220,6 +221,9 @@ export const App: React.FC = () => {
       setScorecardArchives(getStoredScorecardArchives());
 
       if (isSupabaseConfigured) {
+        // Proactively purge deprecated hardcoded accounts from Supabase cloud
+        deleteEmployeeFromSupabase('usr_sup_sales_01', 'supervisor.sales@hdiadventures.com', 'SUP-SLS-01').catch(() => {});
+
         try {
           const sbHistory = await fetchEvaluationHistoryFromSupabase();
           if (sbHistory && sbHistory.length > 0) setEvaluationHistory(sbHistory);

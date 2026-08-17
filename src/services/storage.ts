@@ -224,29 +224,6 @@ export const SEED_USERS: User[] = [
     isApproved: true,
     approvalStatus: 'approved',
     avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-  },
-  // ── DEMO REGULAR EMPLOYEES & SUPERVISORS ──────────────────────────────────────
-  {
-    id: 'usr_sup_sales_01',
-    employeeNumber: 'SUP-SLS-01',
-    firstName: 'Juan',
-    lastName: 'Dela Cruz',
-    name: 'Juan Dela Cruz',
-    email: 'supervisor.sales@hdiadventures.com',
-    username: 'supervisor.sales',
-    password: 'password',
-    contactNumber: '',
-    role: 'supervisor',
-    departmentId: 'dept_sls',
-    departmentName: 'Sales',
-    position: 'Sales Team Lead / Immediate Supervisor',
-    employmentStatus: 'Regular',
-    dateHired: '2023-05-10',
-    avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
-    isActive: true,
-    isApproved: true,
-    approvalStatus: 'approved',
-    requiresPasswordChange: false,
   }
 ];
 
@@ -282,17 +259,28 @@ export const SEED_TEMPLATES: EvaluationTemplate[] = [
 
 export const SEED_EVALUATIONS: Evaluation[] = [];
 
+const isExcludedUser = (u: User) =>
+  !u ||
+  u.name === 'Maritess Bacle' ||
+  u.name === 'Grazie Esguerra' ||
+  u.name === 'Juan Dela Cruz' ||
+  u.id === 'usr_emp_sales_01' ||
+  u.id === 'usr_dh_sls' ||
+  u.id === 'usr_sup_sales_01' ||
+  (u.email && u.email.toLowerCase().trim() === 'supervisor.sales@hdiadventures.com') ||
+  u.employeeNumber === 'SUP-SLS-01';
+
 export const getStoredUsers = (): User[] => {
   const data = localStorage.getItem(USERS_KEY);
   if (data) {
     try {
       const users: User[] = JSON.parse(data);
       if (users && users.length > 0) {
-        return users.filter(u => u.name !== 'Maritess Bacle' && u.name !== 'Grazie Esguerra' && u.id !== 'usr_emp_sales_01' && u.id !== 'usr_dh_sls');
+        return users.filter(u => !isExcludedUser(u));
       }
     } catch {}
   }
-  return SEED_USERS.filter(u => u.name !== 'Maritess Bacle' && u.name !== 'Grazie Esguerra' && u.id !== 'usr_emp_sales_01' && u.id !== 'usr_dh_sls');
+  return SEED_USERS.filter(u => !isExcludedUser(u));
 };
 
 export const saveUsers = (users: User[]) => {
