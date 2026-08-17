@@ -11,7 +11,7 @@ import {
 import { validateEvaluationForSubmission } from '../../services/validationService';
 import { triggerWorkflowNotification } from '../../services/notificationService';
 import { uploadFileToSupabaseStorage } from '../../services/supabaseService';
-import { archiveEvaluationTransaction, ArchiveTransactionResult } from '../../services/storage';
+import { archiveEvaluationTransaction, ArchiveTransactionResult, getStoredDeployments } from '../../services/storage';
 import { MASTER_SALES_EVALUATION_TEMPLATE } from '../../constants/masterSalesTemplate';
 import { WorkflowProgressBar } from '../workflow/WorkflowProgressBar';
 import { EvaluationProgressCard } from '../workflow/EvaluationProgressCard';
@@ -90,6 +90,14 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     (templates || []).find(t => evalData.departmentName && t.title?.toLowerCase().includes(evalData.departmentName.toLowerCase().trim())) ||
     templates?.[0] ||
     MASTER_SALES_EVALUATION_TEMPLATE;
+
+  const matchingDeployment = evalData.deploymentId 
+    ? getStoredDeployments().find(d => d.id === evalData.deploymentId)
+    : getStoredDeployments().find(d => (d.period && evalData.appraisalPeriod && d.period.toLowerCase().trim() === evalData.appraisalPeriod.toLowerCase().trim()) || (d.title && evalData.title && d.title.toLowerCase().trim() === evalData.title.toLowerCase().trim()));
+
+  const evaluationTitle = evalData.title || matchingDeployment?.title || evalData.appraisalPeriod || currentTemplate.title;
+  const evaluationTemplateName = evalData.templateTitle || matchingDeployment?.templateTitle || currentTemplate.title;
+
   const eligibilityWeight = Number(currentTemplate.formulaConfig?.eligibilityWeight || 85);
   const coreValuesWeight = Number(currentTemplate.formulaConfig?.coreValuesWeight || 15);
 
@@ -691,10 +699,10 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 <strong className="font-bold text-slate-900 dark:text-white">DATE:</strong> {evalData.appraisalDate}
               </p>
               <p className="font-normal text-slate-700 dark:text-slate-300">
-                <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TITLE:</strong> {evalData.title || currentTemplate.title}
+                <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TITLE:</strong> {evaluationTitle}
               </p>
               <p className="font-normal text-slate-700 dark:text-slate-300">
-                <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TEMPLATE:</strong> {evalData.templateTitle || currentTemplate.title}
+                <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TEMPLATE:</strong> {evaluationTemplateName}
               </p>
             </div>
           </div>
