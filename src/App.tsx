@@ -80,6 +80,44 @@ import { ShieldAlert } from 'lucide-react';
 
 import { determineWorkflowType, isUserDepartmentHead, getUserActiveEvaluation, getUserLatestEvaluation, isEvaluationCompleted } from './utils/workflowUtils';
 
+const mergeEvaluationTemplates = (remote: EvaluationTemplate[] | null, local: EvaluationTemplate[]): EvaluationTemplate[] => {
+  const result: EvaluationTemplate[] = [];
+  const seenIds = new Set<string>();
+
+  if (remote && remote.length > 0) {
+    for (const r of remote) {
+      if (r && r.id && !seenIds.has(r.id)) {
+        seenIds.add(r.id);
+        result.push(r);
+      }
+    }
+  }
+
+  for (const l of local) {
+    if (l && l.id && !seenIds.has(l.id)) {
+      seenIds.add(l.id);
+      result.push(l);
+    }
+  }
+
+  // Deduplicate by department + title to prevent duplicate identical templates
+  const deduped: EvaluationTemplate[] = [];
+  const seenKeys = new Set<string>();
+  for (const t of result) {
+    const key = `${t.departmentId}_${t.title}`.toLowerCase();
+    if (!seenKeys.has(key)) {
+      seenKeys.add(key);
+      deduped.push(t);
+    }
+  }
+
+  if (deduped.length === 0) {
+    deduped.push(MASTER_SALES_EVALUATION_TEMPLATE);
+  }
+
+  return deduped;
+};
+
 export const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>(getStoredUsers());
   const [currentUser, setCurrentUser] = useState<User>(() => getStoredCurrentUser() || SEED_USERS[0]);
@@ -238,25 +276,7 @@ export const App: React.FC = () => {
           const sbTemplates = await fetchEvaluationTemplatesFromSupabase();
           if (sbTemplates !== null) {
             setTemplates(prev => {
-              const masterSales = prev.find(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
-              const result: EvaluationTemplate[] = [masterSales];
-
-              for (const remoteT of sbTemplates) {
-                if (!remoteT || !remoteT.id) continue;
-                if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales') continue;
-                if (!result.some(t => t.id === remoteT.id)) {
-                  result.push(remoteT);
-                }
-              }
-
-              for (const localT of prev) {
-                if (!localT || !localT.id) continue;
-                if (localT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || localT.id === 'template_sales') continue;
-                if (!result.some(t => t.id === localT.id)) {
-                  result.push(localT);
-                }
-              }
-
+              const result = mergeEvaluationTemplates(sbTemplates, prev);
               saveTemplates(result);
               return result;
             });
@@ -385,22 +405,7 @@ export const App: React.FC = () => {
             fetchEvaluationTemplatesFromSupabase().then(sbTemplates => {
               if (sbTemplates !== null && isMounted) {
                 setTemplates(prev => {
-                  const masterSales = prev.find(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
-                  const result: EvaluationTemplate[] = [masterSales];
-                  for (const remoteT of sbTemplates) {
-                    if (!remoteT || !remoteT.id) continue;
-                    if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales') continue;
-                    if (!result.some(t => t.id === remoteT.id)) {
-                      result.push(remoteT);
-                    }
-                  }
-                  for (const localT of prev) {
-                    if (!localT || !localT.id) continue;
-                    if (localT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || localT.id === 'template_sales') continue;
-                    if (!result.some(t => t.id === localT.id)) {
-                      result.push(localT);
-                    }
-                  }
+                  const result = mergeEvaluationTemplates(sbTemplates, prev);
                   saveTemplates(result);
                   return result;
                 });
@@ -724,33 +729,7 @@ export const App: React.FC = () => {
     if (isSupabaseConfigured) {
       const deleted = await deleteEvaluationTemplateFromSupabase(templateId);
       if (deleted) {
-        triggerRealtimeBroadcast('data_changed', { type: 'template_deleted' });
-      } else {
-        console.warn('[App] Template removed locally but cloud delete failed. Refreshing templates from cloud...');
-        fetchEvaluationTemplatesFromSupabase().then(sbTemplates => {
-          if (sbTemplates !== null) {
-            setTemplates(prev => {
-              const masterSales = prev.find(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
-              const result: EvaluationTemplate[] = [masterSales];
-              for (const remoteT of sbTemplates) {
-                if (!remoteT || !remoteT.id) continue;
-                if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales') continue;
-                if (!result.some(t => t.id === remoteT.id)) {
-                  result.push(remoteT);
-                }
-              }
-              for (const localT of prev) {
-                if (!localT || !localT.id) continue;
-                if (localT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || localT.id === 'template_sales') continue;
-                if (!result.some(t => t.id === localT.id)) {
-                  result.push(localT);
-                }
-              }
-              saveTemplates(result);
-              return result;
-            });
-          }
-        }).catch(() => {});
+        triggerRealtimeBroadcast('data_changed', { type: 'template_deleted', templateId });
       }
     }
   };

@@ -345,19 +345,34 @@ export const getStoredTemplates = (): EvaluationTemplate[] => {
   if (data) {
     try {
       const parsed: EvaluationTemplate[] = JSON.parse(data);
-      if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+      if (parsed && Array.isArray(parsed)) {
         templates = parsed;
       }
     } catch {}
   }
 
-  // Ensure at least one template exists; only inject the master template if the list is completely empty
-  if (templates.length === 0) {
-    templates.unshift(MASTER_SALES_EVALUATION_TEMPLATE);
+  // Deduplicate by ID and (department + title)
+  const deduped: EvaluationTemplate[] = [];
+  const seenIds = new Set<string>();
+  const seenKeys = new Set<string>();
+
+  for (const t of templates) {
+    if (!t || !t.id) continue;
+    const key = `${t.departmentId}_${t.title}`.toLowerCase();
+    if (!seenIds.has(t.id) && !seenKeys.has(key)) {
+      seenIds.add(t.id);
+      seenKeys.add(key);
+      deduped.push(t);
+    }
   }
 
-  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
-  return templates;
+  // Ensure at least one template exists if list is completely empty
+  if (deduped.length === 0) {
+    deduped.push(MASTER_SALES_EVALUATION_TEMPLATE);
+  }
+
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(deduped));
+  return deduped;
 };
 
 export const saveTemplates = (templates: EvaluationTemplate[]) => {

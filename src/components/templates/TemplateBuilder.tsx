@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { EvaluationTemplate, KRACategory, KPITemplateItem, CoreValue, Department, User, Evaluation } from '../../types';
 import { createMasterBasedTemplate, MASTER_SALES_EVALUATION_TEMPLATE } from '../../constants/masterSalesTemplate';
 import { validateEvaluationTemplate } from '../../services/templateValidation';
@@ -47,6 +47,15 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (templates && templates.length > 0) {
+      if (!templates.some(t => t.id === selectedTemplateId)) {
+        setSelectedTemplateId(templates[0].id);
+        setActiveTemplate(templates[0]);
+      }
+    }
+  }, [templates, selectedTemplateId]);
 
   const getWeightInputValue = (id: string, defaultValue: number | string): string => {
     return weightInputs[id] ?? String(defaultValue);
