@@ -750,7 +750,7 @@ export const fetchNotificationsFromSupabase = async (userId?: string, userRole?:
       }
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+    const { data, error } = await query.order('created_at', { ascending: false }).limit(50);
 
     if (error) {
       console.error('Supabase fetchNotifications error:', error.message, error.details);
