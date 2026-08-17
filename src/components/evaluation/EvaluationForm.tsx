@@ -1193,7 +1193,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                   { type: 'salary_adjustment', label: 'Salary Adjustment', desc: 'Merit-based annual increase' },
                   { type: 'regularization', label: 'Regularization', desc: 'Confirm permanent status' },
                   { type: 'transfer', label: 'Transfer', desc: 'Reassignment to another unit' },
-                  { type: 'pip', label: 'Performance Improvement Plan (PIP)', desc: 'Required for NI/Satisfactory rating' },
+                  { type: 'pip', label: 'Performance/ Values Improvement Plan ( PIP/VIP)', desc: 'Required for NI/Satisfactory rating' },
                   { type: 'termination', label: 'Termination', desc: 'Separation of employment' },
                   { type: 'no_action', label: 'No Action Required', desc: 'Maintain current status' },
                 ].map((item) => (

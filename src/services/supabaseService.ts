@@ -1872,7 +1872,7 @@ export const generateScorecardPdfBlob = async (evaluation: Evaluation, formulaCo
             </div>
             <div>
               <label style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><input type="checkbox" ${evaluation.personnelAction?.actionType === 'transfer' ? 'checked' : ''} readonly /> Transfer</label>
-              <label style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><input type="checkbox" ${evaluation.personnelAction?.actionType === 'pip' ? 'checked' : ''} readonly /> Performance Improvement Plan (PIP for BME 2.00-2.99)</label>
+              <label style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><input type="checkbox" ${evaluation.personnelAction?.actionType === 'pip' ? 'checked' : ''} readonly /> Performance/ Values Improvement Plan ( PIP/VIP)</label>
               <label style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><input type="checkbox" ${evaluation.personnelAction?.actionType === 'termination' ? 'checked' : ''} readonly /> Termination</label>
             </div>
           </div>

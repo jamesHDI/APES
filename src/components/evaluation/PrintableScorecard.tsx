@@ -570,7 +570,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                 </label>
                 <label className="flex items-center space-x-1.5 mt-1">
                   <input type="checkbox" checked={evaluation.personnelAction.actionType === 'pip'} readOnly />
-                  <span>Performance Improvement Plan (PIP for BME 2.00-2.99)</span>
+                  <span>Performance/ Values Improvement Plan ( PIP/VIP)</span>
                 </label>
                 <label className="flex items-center space-x-1.5 mt-1">
                   <input type="checkbox" checked={evaluation.personnelAction.actionType === 'termination'} readOnly />
