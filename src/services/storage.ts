@@ -644,12 +644,12 @@ export const archiveEvaluationTransaction = async (
   }
 };
 
-
 export const assignNewEvaluationToEmployee = async (
   employee: User,
   template: EvaluationTemplate,
   appraisalPeriod: string = 'January - December 2026',
-  assignedByName: string = 'People Operations (POD)'
+  assignedByName: string = 'People Operations (POD)',
+  deploymentTitle?: string
 ): Promise<Evaluation> => {
   if (employee && employee.role === 'system_admin') {
     throw new Error(`[Assign Evaluation] System Administrator accounts are administrative-only and cannot be assigned evaluation scorecards.`);
@@ -663,7 +663,15 @@ export const assignNewEvaluationToEmployee = async (
       const sbUser = await findEmployeeInSupabase(employee.id) || await findEmployeeInSupabase(employee.email);
       if (sbUser && sbUser.id) {
         permanentEmpId = sbUser.id;
-        resolvedEmployee = { ...employee, id: sbUser.id, email: sbUser.email || employee.email, name: sbUser.name || employee.name, employeeNumber: sbUser.employeeNumber || employee.employeeNumber };
+        resolvedEmployee = {
+          ...employee,
+          id: sbUser.id,
+          email: sbUser.email || employee.email,
+          name: sbUser.name || employee.name,
+          employeeNumber: sbUser.employeeNumber || employee.employeeNumber,
+          departmentName: sbUser.departmentName || employee.departmentName || template.departmentName,
+          departmentId: sbUser.departmentId || employee.departmentId || template.departmentId
+        };
       } else {
         const provisionResult = await saveEmployeeToSupabaseDetailed(employee);
         if (provisionResult.success && provisionResult.id) {
@@ -761,13 +769,16 @@ export const assignNewEvaluationToEmployee = async (
   const newEval: Evaluation = {
     id: generateUuid(),
     cycleId: 'cycle_2026_annual',
+    title: deploymentTitle || `${template.title || 'Performance Evaluation'} (${appraisalPeriod})`,
     templateId: template.id,
+    templateTitle: template.title,
     workflowType,
     employeeId: permanentEmpId,
     userId: permanentEmpId,
     employeeName: resolvedEmployee.name,
     employeeEmail: resolvedEmployee.email,
     departmentName: resolvedEmployee.departmentName || template.departmentName || 'General',
+    departmentId: resolvedEmployee.departmentId || template.departmentId,
     position: resolvedEmployee.position || 'Staff Specialist',
     isDepartmentHead: isDeptHeadTrack,
     appraisalPeriod,

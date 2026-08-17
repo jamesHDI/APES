@@ -84,8 +84,11 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   );
 
   const currentTemplate = (templates || []).find(t => t.id === evalData.templateId) || 
-    (templates || []).find(t => t.departmentName?.toLowerCase().trim() === evalData.departmentName?.toLowerCase().trim()) || 
+    (templates || []).find(t => evalData.templateTitle && (t.title?.toLowerCase().trim() === evalData.templateTitle.toLowerCase().trim())) ||
+    (templates || []).find(t => t.departmentName && evalData.departmentName && t.departmentName.toLowerCase().trim() === evalData.departmentName.toLowerCase().trim()) || 
     (templates || []).find(t => t.departmentId && evalData.departmentId && t.departmentId === evalData.departmentId) ||
+    (templates || []).find(t => evalData.departmentName && t.title?.toLowerCase().includes(evalData.departmentName.toLowerCase().trim())) ||
+    templates?.[0] ||
     MASTER_SALES_EVALUATION_TEMPLATE;
   const eligibilityWeight = Number(currentTemplate.formulaConfig?.eligibilityWeight || 85);
   const coreValuesWeight = Number(currentTemplate.formulaConfig?.coreValuesWeight || 15);
@@ -688,10 +691,10 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 <strong className="font-bold text-slate-900 dark:text-white">DATE:</strong> {evalData.appraisalDate}
               </p>
               <p className="font-normal text-slate-700 dark:text-slate-300">
-                <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TITLE:</strong> {currentTemplate.title}
+                <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TITLE:</strong> {evalData.title || currentTemplate.title}
               </p>
               <p className="font-normal text-slate-700 dark:text-slate-300">
-                <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TEMPLATE:</strong> {currentTemplate.departmentName || evalData.departmentName}
+                <strong className="font-bold text-slate-900 dark:text-white">EVALUATION TEMPLATE:</strong> {evalData.templateTitle || currentTemplate.title}
               </p>
             </div>
           </div>

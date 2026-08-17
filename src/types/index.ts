@@ -374,7 +374,9 @@ export interface EvaluationScorecardArchive {
 export interface Evaluation {
   id: string;
   cycleId: string;
+  title?: string;
   templateId: string;
+  templateTitle?: string;
   workflowType: EvaluationWorkflowType;
   employeeId: string;
   userId: string;

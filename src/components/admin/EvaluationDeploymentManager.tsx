@@ -152,9 +152,13 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
       const errors: string[] = [];
       for (const u of targetUsers) {
         try {
-          const newEval = await assignNewEvaluationToEmployee(u, template, period, currentUser.name);
+          const newEval = await assignNewEvaluationToEmployee(u, template, period, currentUser.name, title);
           newEval.deploymentId = deploymentId;
           newEval.deadline = endDate;
+          newEval.title = title;
+          newEval.templateId = template.id;
+          newEval.templateTitle = template.title;
+          newEval.departmentName = u.departmentName || template.departmentName || 'Admin';
           // Re-save so deploymentId & deadline are persisted to storage & Supabase
           await saveSingleEvaluation(newEval);
 
