@@ -17,8 +17,24 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
   const [paperSize, setPaperSize] = useState<PaperSize>('a4');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
-  const eligibilityWeight = formulaConfig?.eligibilityWeight ?? 85;
-  const coreValuesWeight = formulaConfig?.coreValuesWeight ?? 15;
+  const eligibilityWeight = Number(formulaConfig?.eligibilityWeight ?? 85);
+  const coreValuesWeight = Number(formulaConfig?.coreValuesWeight ?? 15);
+
+  const safeEvaluation = evaluation || ({} as Evaluation);
+  const departmentName = safeEvaluation.departmentName || 'General';
+  const employeeName = safeEvaluation.employeeName || 'Employee';
+  const position = safeEvaluation.position || 'Staff Specialist';
+  const appraisalPeriod = safeEvaluation.appraisalPeriod || 'Annual Appraisal';
+  const appraisalDate = safeEvaluation.appraisalDate || new Date().toISOString().substring(0, 10);
+  const eligibilityScore = Number(safeEvaluation.eligibilityScore || 0);
+  const finalRating = Number(safeEvaluation.finalRating || 0);
+  const totalCoreValuesWeightedRating = Number(safeEvaluation.totalCoreValuesWeightedRating || 0);
+  const kpiRatings = Array.isArray(safeEvaluation.kpiRatings) ? safeEvaluation.kpiRatings : [];
+  const coreValueRatings = Array.isArray(safeEvaluation.coreValueRatings) ? safeEvaluation.coreValueRatings : [];
+  const devPlan = safeEvaluation.developmentPlan || { strengths: '', areasForImprovement: '', learningNeeds: [] };
+  const learningNeeds = Array.isArray(devPlan.learningNeeds) ? devPlan.learningNeeds : [];
+  const personnelAction = safeEvaluation.personnelAction || { actionType: 'no_action' };
+  const signatures = safeEvaluation.signatures || {};
 
   const handlePrint = () => {
     const content = document.getElementById('printable-scorecard-content');
@@ -68,14 +84,14 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
     const printWindow = window.open('', '_blank');
     if (!printWindow) { window.print(); return; }
 
-    const employeeName = evaluation.employeeName || 'Employee';
+    const safePrintName = employeeName;
     const html = clone.outerHTML;
 
     printWindow.document.write(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>APES Scorecard \u2014 ${employeeName}</title>
+  <title>APES Scorecard — ${safePrintName}</title>
   <style>
     @page { size: A4 portrait; margin: 8mm; }
     html, body {
@@ -98,28 +114,48 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
     .italic { font-style: italic; }
     .text-center { text-align: center; }
     .text-right { text-align: right; }
-    .text-left { text-align: left; }
-    .text-sm { font-size: 12px; }
-    .text-xs { font-size: 10px; }
-    /* Layout */
+    .underline { text-decoration: underline; }
+    /* Grid & Flex */
     .flex { display: flex; }
+    .flex-col { flex-direction: column; }
     .items-center { align-items: center; }
     .justify-between { justify-content: space-between; }
-    .space-x-3 > * + * { margin-left: 12px; }
-    .w-full { width: 100%; }
-    /* Borders */
-    .border { border: 1px solid #94a3b8; }
-    .border-collapse { border-collapse: collapse; }
-    .border-b-2 { border-bottom: 2px solid; }
-    /* Spacing */
-    .p-1 { padding: 4px; }
-    .p-2 { padding: 8px; }
-    .p-1\.5 { padding: 6px; }
-    .pb-3 { padding-bottom: 12px; }
-    .mb-2 { margin-bottom: 8px; }
-    .mb-4 { margin-bottom: 16px; }
-    .mt-1 { margin-top: 4px; }
-    .mt-0\.5 { margin-top: 2px; }
+    .space-y-6 > * + * { margin-top: 16px; }
+    .space-y-3 > * + * { margin-top: 8px; }
+    .space-y-2 > * + * { margin-top: 6px; }
+    .space-y-1 > * + * { margin-top: 3px; }
+    .space-x-3 > * + * { margin-left: 8px; }
+    .space-x-1\\.5 > * + * { margin-left: 4px; }
+    .grid { display: grid; }
+    .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-cols-12 { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    .col-span-8 { grid-column: span 8 / span 8; }
+    .col-span-4 { grid-column: span 4 / span 4; }
+    .gap-4 { gap: 10px; }
+    .gap-3 { gap: 8px; }
+    .gap-2 { gap: 6px; }
+    /* Borders & padding */
+    .border { border-style: solid; border-width: 1px; }
+    .border-b-2 { border-bottom-width: 2px; }
+    .border-t-2 { border-top-width: 2px; }
+    .border-b { border-bottom-width: 1px; }
+    .border-t { border-top-width: 1px; }
+    .p-8 { padding: 12px; }
+    .p-3 { padding: 6px 8px; }
+    .p-2 { padding: 4px 6px; }
+    .p-1\\.5 { padding: 3px 5px; }
+    .p-1 { padding: 2px 4px; }
+    .pb-3 { padding-bottom: 6px; }
+    .pt-4 { padding-top: 8px; }
+    .pt-2 { padding-top: 4px; }
+    .mb-4 { margin-bottom: 8px; }
+    .mb-2 { margin-bottom: 4px; }
+    .mt-1 { margin-top: 2px; }
+    .mt-0\\.5 { margin-top: 1px; }
+    .list-disc { list-style-type: disc; }
+    .pl-4 { padding-left: 12px; }
+    .shrink-0 { flex-shrink: 0; }
     /* Page layout */
     #printable-scorecard-content { width: 100%; max-width: 100%; margin: 0; padding: 0; }
     #printable-scorecard-content > * { margin: 0 !important; }
@@ -194,8 +230,8 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
         pdf.addImage(imgData2, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight2, pdfHeight));
       }
 
-      const safeName = (evaluation.employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_');
-      const safePeriod = (evaluation.appraisalPeriod || 'Scorecard').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const safeName = (employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const safePeriod = (appraisalPeriod || 'Scorecard').replace(/[^a-zA-Z0-9_-]/g, '_');
       pdf.save(`APES_Scorecard_${safeName}_${safePeriod}.pdf`);
     } catch (err) {
       console.error('PDF Generation failed:', err);
@@ -203,11 +239,6 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
     } finally {
       setIsGeneratingPdf(false);
     }
-  };
-
-  const paperSizeLabels: Record<PaperSize, string> = {
-    a4: 'A4',
-    letter: 'Letter',
   };
 
   return (
@@ -268,10 +299,10 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
               </div>
             </div>
             <div className="text-left text-[11px] shrink-0">
-              <p><strong className="uppercase">DEPARTMENT/SUBSIDIARY:</strong> {evaluation.departmentName}</p>
-              <p><strong className="uppercase">NAME OF EMPLOYEE:</strong> {evaluation.employeeName}</p>
-              <p><strong className="uppercase">APPRAISAL PERIOD:</strong> {evaluation.appraisalPeriod}</p>
-              <p><strong className="uppercase">APPRAISAL DATE:</strong> {evaluation.appraisalDate}</p>
+              <p><strong className="uppercase">DEPARTMENT/SUBSIDIARY:</strong> {departmentName}</p>
+              <p><strong className="uppercase">NAME OF EMPLOYEE:</strong> {employeeName}</p>
+              <p><strong className="uppercase">APPRAISAL PERIOD:</strong> {appraisalPeriod}</p>
+              <p><strong className="uppercase">APPRAISAL DATE:</strong> {appraisalDate}</p>
             </div>
           </div>
 
@@ -296,19 +327,22 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
               </tr>
             </thead>
             <tbody>
-              {evaluation.kpiRatings.map((kpi, idx) => {
-                const isFirstInKra = idx === 0 || evaluation.kpiRatings[idx - 1].kraName !== kpi.kraName;
-                const kraKpis = evaluation.kpiRatings.filter(k => k.kraName === kpi.kraName);
-                const kraWeightSum = kraKpis.reduce((acc, k) => acc + k.weightPercent, 0);
-                const kraWeightedScoreSum = kraKpis.reduce((acc, k) => acc + k.weightedScore, 0).toFixed(2);
+              {kpiRatings.map((kpi, idx) => {
+                const isFirstInKra = idx === 0 || kpiRatings[idx - 1]?.kraName !== kpi.kraName;
+                const kraKpis = kpiRatings.filter(k => k.kraName === kpi.kraName);
+                const kraWeightSum = kraKpis.reduce((acc, k) => acc + (Number(k.weightPercent) || 0), 0);
+                const kraWeightedScoreSum = kraKpis.reduce((acc, k) => acc + (Number(k.weightedScore) || 0), 0).toFixed(2);
+                const standards = Array.isArray(kpi.standards) ? kpi.standards : [];
+                const weightPercent = Number(kpi.weightPercent || 0);
+                const weightedScore = Number(kpi.weightedScore || 0).toFixed(2);
 
                 return (
-                  <React.Fragment key={kpi.kpiId}>
+                  <React.Fragment key={kpi.kpiId || `kpi_${idx}`}>
                     {/* Category Subheader */}
                     {isFirstInKra && (
                       <tr className="bg-slate-100 font-bold border-t border-b border-slate-400">
                         <td colSpan={3} className="border border-slate-400 p-1.5 uppercase bg-slate-100">
-                          {kpi.kraName}
+                          {kpi.kraName || 'GENERAL'}
                         </td>
                         <td className="border border-slate-400 p-1.5 text-center font-bold">{kraWeightSum}%</td>
                         <td className="border border-slate-400 p-1.5"></td>
@@ -323,15 +357,15 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                         {kpi.comments || kpi.name}
                       </td>
                       <td className="border border-slate-400 p-1.5 align-top text-[9.5px]">
-                        {kpi.standards.map((st) => (
+                        {standards.map((st) => (
                           <div key={st.rating} className={`py-0.5 ${kpi.supervisorRating === st.rating ? 'font-bold text-brand-700 underline' : ''}`}>
                             {st.description} ({st.rating})
                           </div>
                         ))}
                       </td>
-                      <td className="border border-slate-400 p-2 text-center align-middle font-medium">{kpi.weightPercent}%</td>
+                      <td className="border border-slate-400 p-2 text-center align-middle font-medium">{weightPercent}%</td>
                       <td className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">{kpi.supervisorRating || kpi.selfRating || '-'}</td>
-                      <td className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">{kpi.weightedScore.toFixed(2)}</td>
+                      <td className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">{weightedScore}</td>
                     </tr>
                   </React.Fragment>
                 );
@@ -345,7 +379,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                 <td className="border border-slate-400 p-2 text-center text-brand-700">{eligibilityWeight}%</td>
                 <td className="border border-slate-400 p-2"></td>
                 <td className="border border-slate-400 p-2 text-center text-hdi-red font-black">
-                  {evaluation.eligibilityScore.toFixed(2)}
+                  {eligibilityScore.toFixed(2)}
                 </td>
               </tr>
             </tbody>
@@ -380,34 +414,35 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
               </tr>
             </thead>
             <tbody>
-              {evaluation.coreValueRatings.map((cv) => {
-                const cvCount = evaluation.coreValueRatings?.length || 1;
+              {coreValueRatings.map((cv, idx) => {
+                const cvCount = coreValueRatings.length || 1;
                 const rawWeight = (cv as any).weightPercent ?? (coreValuesWeight / cvCount);
                 const formattedWeight = Number.isInteger(rawWeight)
                   ? `${rawWeight}%`
-                  : `${Number(rawWeight.toFixed(2))}%`;
+                  : `${Number(Number(rawWeight).toFixed(2))}%`;
+                const weightedScore = Number(cv.weightedScore || 0).toFixed(2);
 
                 return (
-                  <React.Fragment key={cv.coreValueId}>
+                  <React.Fragment key={cv.coreValueId || `cv_${idx}`}>
                     <tr>
                       <td rowSpan={3} className="border border-slate-400 p-2 font-semibold align-top">
                         {cv.name}
                         <p className="text-[10px] font-normal text-slate-600 mt-1">{cv.comments}</p>
                       </td>
                       <td className="border border-slate-400 p-1.5 text-center">POD</td>
-                      <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.podRating}</td>
+                      <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.podRating || 0}</td>
                       <td rowSpan={3} className="border border-slate-400 p-2 text-center align-middle font-bold">{formattedWeight}</td>
                       <td rowSpan={3} className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">
-                        {cv.weightedScore.toFixed(2)}
+                        {weightedScore}
                       </td>
                     </tr>
                     <tr>
                       <td className="border border-slate-400 p-1.5 text-center">Peer</td>
-                      <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.peerRating}</td>
+                      <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.peerRating || 0}</td>
                     </tr>
                     <tr>
                       <td className="border border-slate-400 p-1.5 text-center">IS (Superior)</td>
-                      <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.isRating}</td>
+                      <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.isRating || 0}</td>
                     </tr>
                   </React.Fragment>
                 );
@@ -434,15 +469,15 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                 <tr>
                   <td className="border border-slate-400 p-2 font-bold">ELIGIBILITY (Part 1A)</td>
                   <td className="border border-slate-400 p-2 text-center">{eligibilityWeight}%</td>
-                  <td className="border border-slate-400 p-2 text-center font-bold">{evaluation.eligibilityScore.toFixed(2)}</td>
+                  <td className="border border-slate-400 p-2 text-center font-bold">{eligibilityScore.toFixed(2)}</td>
                   <td rowSpan={2} className="border border-slate-400 p-2 text-center align-middle font-black text-lg bg-emerald-50 text-emerald-800">
-                    {evaluation.finalRating.toFixed(2)}
+                    {finalRating.toFixed(2)}
                   </td>
                 </tr>
                 <tr>
                   <td className="border border-slate-400 p-2 font-bold">SUITABILITY (Part 1B)</td>
                   <td className="border border-slate-400 p-2 text-center">{coreValuesWeight}%</td>
-                  <td className="border border-slate-400 p-2 text-center font-bold">{evaluation.totalCoreValuesWeightedRating.toFixed(2)}</td>
+                  <td className="border border-slate-400 p-2 text-center font-bold">{totalCoreValuesWeightedRating.toFixed(2)}</td>
                 </tr>
               </tbody>
             </table>
@@ -451,16 +486,16 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
             <div className="col-span-4 border border-slate-400 p-3 bg-slate-50">
               <h5 className="font-bold text-[10px] uppercase border-b border-slate-300 pb-1 mb-2">RATING CLASSIFICATION</h5>
               <div className="space-y-1 text-[9.5px]">
-                <p className={evaluation.finalRating >= 1.00 && evaluation.finalRating <= 1.99 ? 'font-bold text-rose-700 bg-rose-100 p-1 rounded' : 'text-slate-600'}>
+                <p className={finalRating >= 1.00 && finalRating <= 1.99 ? 'font-bold text-rose-700 bg-rose-100 p-1 rounded' : 'text-slate-600'}>
                   1.00 - 1.99 : Did Not Meet Expectations (DME)
                 </p>
-                <p className={evaluation.finalRating >= 2.00 && evaluation.finalRating <= 2.99 ? 'font-bold text-amber-700 bg-amber-100 p-1 rounded' : 'text-slate-600'}>
+                <p className={finalRating >= 2.00 && finalRating <= 2.99 ? 'font-bold text-amber-700 bg-amber-100 p-1 rounded' : 'text-slate-600'}>
                   2.00 - 2.99 : Barely Meets Expectations (BME)
                 </p>
-                <p className={evaluation.finalRating >= 3.00 && evaluation.finalRating <= 3.50 ? 'font-bold text-blue-700 bg-blue-100 p-1 rounded' : 'text-slate-600'}>
+                <p className={finalRating >= 3.00 && finalRating <= 3.50 ? 'font-bold text-blue-700 bg-blue-100 p-1 rounded' : 'text-slate-600'}>
                   3.00 - 3.50 : Meets Expectations (ME)
                 </p>
-                <p className={evaluation.finalRating >= 3.51 && evaluation.finalRating <= 4.00 ? 'font-bold text-emerald-700 bg-emerald-100 p-1 rounded' : 'text-slate-600'}>
+                <p className={finalRating >= 3.51 && finalRating <= 4.00 ? 'font-bold text-emerald-700 bg-emerald-100 p-1 rounded' : 'text-slate-600'}>
                   3.51 - 4.00 : Exceeds Expectations (EE)
                 </p>
               </div>
@@ -475,23 +510,27 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
             <div>
               <p className="font-bold text-[10px] text-slate-700 uppercase">1. KEY STRENGTHS:</p>
               <p className="p-1.5 bg-slate-50 border border-slate-200 min-h-[40px] text-[10.5px]">
-                {evaluation.developmentPlan.strengths || 'N/A'}
+                {devPlan.strengths || 'N/A'}
               </p>
             </div>
             <div>
               <p className="font-bold text-[10px] text-slate-700 uppercase">2. AREAS FOR IMPROVEMENT:</p>
               <p className="p-1.5 bg-slate-50 border border-slate-200 min-h-[40px] text-[10.5px]">
-                {evaluation.developmentPlan.areasForImprovement || 'N/A'}
+                {devPlan.areasForImprovement || 'N/A'}
               </p>
             </div>
             <div>
               <p className="font-bold text-[10px] text-slate-700 uppercase">3. WORKPLACE LEARNING & DEVELOPMENT NEEDS (Programs/Courses):</p>
               <ul className="list-disc pl-4 space-y-0.5 text-[10.5px]">
-                {evaluation.developmentPlan.learningNeeds.map((need) => (
-                  <li key={need.id}>
-                    <strong>{need.program}</strong> — Target Date: {need.targetDate} (Assigned: {need.responsiblePerson})
-                  </li>
-                ))}
+                {learningNeeds.length > 0 ? (
+                  learningNeeds.map((need, idx) => (
+                    <li key={need.id || `need_${idx}`}>
+                      <strong>{need.program || 'Development Program'}</strong> — Target Date: {need.targetDate || 'TBD'} (Assigned: {need.responsiblePerson || 'Employee'})
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-slate-500 italic">No specific learning programs assigned.</li>
+                )}
               </ul>
             </div>
           </div>
@@ -505,14 +544,14 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                 PART 2B: IMMEDIATE SUPERIOR'S SUMMARY
               </h5>
               <p className="text-[10px] text-slate-700 italic min-h-[45px]">
-                "{evaluation.supervisorSummaryComment || 'No comments added.'}"
+                "{safeEvaluation.supervisorSummaryComment || 'No comments added.'}"
               </p>
               <div className="pt-4 border-t border-slate-300 text-center">
-                {evaluation.signatures.supervisor ? (
+                {signatures.supervisor ? (
                   <div className="flex flex-col items-center">
-                    <img src={evaluation.signatures.supervisor.signatureDataUrl} alt="Supervisor Signature" className="h-10 object-contain" />
-                    <p className="font-bold underline text-[11px]">{evaluation.signatures.supervisor.signerName}</p>
-                    <p className="text-[9px] text-slate-500">SIGNATURE OVER PRINTED NAME | Date: {evaluation.signatures.supervisor.signedAt}</p>
+                    <img src={signatures.supervisor.signatureDataUrl} alt="Supervisor Signature" className="h-10 object-contain" />
+                    <p className="font-bold underline text-[11px]">{signatures.supervisor.signerName}</p>
+                    <p className="text-[9px] text-slate-500">SIGNATURE OVER PRINTED NAME | Date: {signatures.supervisor.signedAt || signatures.supervisor.dateSigned}</p>
                   </div>
                 ) : (
                   <p className="text-[10px] text-slate-400 py-4 italic">Pending Immediate Superior Signature</p>
@@ -526,14 +565,14 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                 PART 2C: APPRAISEE'S SUMMARY
               </h5>
               <p className="text-[10px] text-slate-700 italic min-h-[45px]">
-                "{evaluation.appraiseeSummaryComment || 'No comments added.'}"
+                "{safeEvaluation.appraiseeSummaryComment || 'No comments added.'}"
               </p>
               <div className="pt-4 border-t border-slate-300 text-center">
-                {evaluation.signatures.employee ? (
+                {signatures.employee ? (
                   <div className="flex flex-col items-center">
-                    <img src={evaluation.signatures.employee.signatureDataUrl} alt="Employee Signature" className="h-10 object-contain" />
-                    <p className="font-bold underline text-[11px]">{evaluation.signatures.employee.signerName}</p>
-                    <p className="text-[9px] text-slate-500">SIGNATURE OVER PRINTED NAME | Date: {evaluation.signatures.employee.signedAt}</p>
+                    <img src={signatures.employee.signatureDataUrl} alt="Employee Signature" className="h-10 object-contain" />
+                    <p className="font-bold underline text-[11px]">{signatures.employee.signerName}</p>
+                    <p className="text-[9px] text-slate-500">SIGNATURE OVER PRINTED NAME | Date: {signatures.employee.signedAt || signatures.employee.dateSigned}</p>
                   </div>
                 ) : (
                   <p className="text-[10px] text-slate-400 py-4 italic">Pending Appraisee Signature</p>
@@ -551,37 +590,37 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
             <div className="grid grid-cols-2 gap-2 text-[10px]">
               <div>
                 <label className="flex items-center space-x-1.5">
-                  <input type="checkbox" checked={evaluation.personnelAction.actionType === 'promotion'} readOnly />
+                  <input type="checkbox" checked={personnelAction.actionType === 'promotion'} readOnly />
                   <span>Promotion Recommended</span>
                 </label>
                 <label className="flex items-center space-x-1.5 mt-1">
-                  <input type="checkbox" checked={evaluation.personnelAction.actionType === 'salary_adjustment'} readOnly />
+                  <input type="checkbox" checked={personnelAction.actionType === 'salary_adjustment'} readOnly />
                   <span>Salary Adjustment</span>
                 </label>
                 <label className="flex items-center space-x-1.5 mt-1">
-                  <input type="checkbox" checked={evaluation.personnelAction.actionType === 'regularization'} readOnly />
+                  <input type="checkbox" checked={personnelAction.actionType === 'regularization'} readOnly />
                   <span>Regularization</span>
                 </label>
               </div>
               <div>
                 <label className="flex items-center space-x-1.5">
-                  <input type="checkbox" checked={evaluation.personnelAction.actionType === 'transfer'} readOnly />
+                  <input type="checkbox" checked={personnelAction.actionType === 'transfer'} readOnly />
                   <span>Transfer</span>
                 </label>
                 <label className="flex items-center space-x-1.5 mt-1">
-                  <input type="checkbox" checked={evaluation.personnelAction.actionType === 'pip'} readOnly />
+                  <input type="checkbox" checked={personnelAction.actionType === 'pip'} readOnly />
                   <span>Performance/ Values Improvement Plan ( PIP/VIP)</span>
                 </label>
                 <label className="flex items-center space-x-1.5 mt-1">
-                  <input type="checkbox" checked={evaluation.personnelAction.actionType === 'termination'} readOnly />
+                  <input type="checkbox" checked={personnelAction.actionType === 'termination'} readOnly />
                   <span>Termination</span>
                 </label>
               </div>
             </div>
             <div className="pt-2 text-[10px] space-y-1">
-              <p><strong>New Position:</strong> {evaluation.personnelAction.newPosition || 'N/A'}</p>
-              <p><strong>Date of Effectivity:</strong> {evaluation.personnelAction.effectiveDate || 'N/A'}</p>
-              <p><strong>Department Head Remarks:</strong> {evaluation.personnelAction.remarks || 'N/A'}</p>
+              <p><strong>New Position:</strong> {personnelAction.newPosition || 'N/A'}</p>
+              <p><strong>Date of Effectivity:</strong> {personnelAction.effectiveDate || 'N/A'}</p>
+              <p><strong>Department Head Remarks:</strong> {personnelAction.remarks || 'N/A'}</p>
             </div>
           </div>
 
@@ -593,22 +632,22 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
             
             {/* POD Remarks & Validation summary */}
             <div className="text-[10px] space-y-1 bg-white p-2 border border-slate-200">
-              <p><strong>POD Core Values Validation Rating:</strong> {evaluation.totalCoreValuesWeightedRating.toFixed(2)} ({coreValuesWeight}%)</p>
-              <p><strong>POD / HR Remarks & Comments:</strong> {evaluation.podValidationComment || 'Validated by People Operations Development (POD).'}</p>
-              <p><strong>Personnel Action Final Status:</strong> {evaluation.personnelAction?.isApproved ? 'Approved & Enforced' : 'Pending Final HR Enforcement'}</p>
+              <p><strong>POD Core Values Validation Rating:</strong> {totalCoreValuesWeightedRating.toFixed(2)} ({coreValuesWeight}%)</p>
+              <p><strong>POD / HR Remarks & Comments:</strong> {safeEvaluation.podValidationComment || 'Validated by People Operations Development (POD).'}</p>
+              <p><strong>Personnel Action Final Status:</strong> {personnelAction?.isApproved ? 'Approved & Enforced' : 'Pending Final HR Enforcement'}</p>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-300 text-center">
               {/* Employee Signature */}
               <div className="border border-slate-200 bg-white p-2 rounded">
                 <p className="font-bold text-[9px] text-slate-500 uppercase">1. Employee Signature</p>
-                {evaluation.signatures.employee ? (
+                {signatures.employee ? (
                   <div className="flex flex-col items-center mt-1">
-                    <img src={evaluation.signatures.employee.signatureDataUrl} alt="Employee Sig" className="h-8 object-contain" />
-                    <p className="font-bold underline text-[9.5px] mt-0.5">{evaluation.signatures.employee.signerName}</p>
-                    <p className="text-[8px] text-slate-600 font-semibold">{evaluation.signatures.employee.position || evaluation.position}</p>
-                    <p className="text-[8px] text-slate-500">{evaluation.signatures.employee.department || evaluation.departmentName}</p>
-                    <p className="text-[7.5px] text-slate-400 font-mono mt-0.5">Date: {evaluation.signatures.employee.dateSigned || evaluation.signatures.employee.signedAt} {evaluation.signatures.employee.timeSigned || ''}</p>
+                    <img src={signatures.employee.signatureDataUrl} alt="Employee Sig" className="h-8 object-contain" />
+                    <p className="font-bold underline text-[9.5px] mt-0.5">{signatures.employee.signerName}</p>
+                    <p className="text-[8px] text-slate-600 font-semibold">{signatures.employee.position || position}</p>
+                    <p className="text-[8px] text-slate-500">{signatures.employee.department || departmentName}</p>
+                    <p className="text-[7.5px] text-slate-400 font-mono mt-0.5">Date: {signatures.employee.dateSigned || signatures.employee.signedAt} {signatures.employee.timeSigned || ''}</p>
                   </div>
                 ) : (
                   <p className="text-[9px] text-slate-400 py-3 italic">Pending Signature</p>
@@ -618,13 +657,13 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
               {/* Department Head Signature */}
               <div className="border border-slate-200 bg-white p-2 rounded">
                 <p className="font-bold text-[9px] text-slate-500 uppercase">2. Department Head</p>
-                {(evaluation.signatures.deptHead || evaluation.signatures.supervisor) ? (
+                {(signatures.deptHead || signatures.supervisor) ? (
                   <div className="flex flex-col items-center mt-1">
-                    <img src={(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.signatureDataUrl} alt="DH Sig" className="h-8 object-contain" />
-                    <p className="font-bold underline text-[9.5px] mt-0.5">{(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.signerName}</p>
-                    <p className="text-[8px] text-slate-600 font-semibold">{(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.position || 'Department Head'}</p>
-                    <p className="text-[8px] text-slate-500">{(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.department || evaluation.departmentName}</p>
-                    <p className="text-[7.5px] text-slate-400 font-mono mt-0.5">Date: {(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.dateSigned || (evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.signedAt} {(evaluation.signatures.deptHead || evaluation.signatures.supervisor)?.timeSigned || ''}</p>
+                    <img src={(signatures.deptHead || signatures.supervisor)?.signatureDataUrl} alt="DH Sig" className="h-8 object-contain" />
+                    <p className="font-bold underline text-[9.5px] mt-0.5">{(signatures.deptHead || signatures.supervisor)?.signerName}</p>
+                    <p className="text-[8px] text-slate-600 font-semibold">{(signatures.deptHead || signatures.supervisor)?.position || 'Department Head'}</p>
+                    <p className="text-[8px] text-slate-500">{(signatures.deptHead || signatures.supervisor)?.department || departmentName}</p>
+                    <p className="text-[7.5px] text-slate-400 font-mono mt-0.5">Date: {(signatures.deptHead || signatures.supervisor)?.dateSigned || (signatures.deptHead || signatures.supervisor)?.signedAt} {(signatures.deptHead || signatures.supervisor)?.timeSigned || ''}</p>
                   </div>
                 ) : (
                   <p className="text-[9px] text-slate-400 py-3 italic">Pending Signature</p>
@@ -634,17 +673,17 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
               {/* President Signature */}
               <div className="border border-slate-200 bg-white p-2 rounded">
                 <p className="font-bold text-[9px] text-amber-700 uppercase">3. President & CEO</p>
-                {evaluation.signatures.president ? (
+                {signatures.president ? (
                   <div className="flex flex-col items-center mt-1">
-                    <img src={evaluation.signatures.president.signatureDataUrl} alt="Pres Sig" className="h-8 object-contain" />
-                    <p className="font-bold underline text-[9.5px] mt-0.5">{evaluation.signatures.president.signerName}</p>
-                    <p className="text-[8px] text-slate-600 font-semibold">{evaluation.signatures.president.position || 'President & CEO'}</p>
+                    <img src={signatures.president.signatureDataUrl} alt="Pres Sig" className="h-8 object-contain" />
+                    <p className="font-bold underline text-[9.5px] mt-0.5">{signatures.president.signerName}</p>
+                    <p className="text-[8px] text-slate-600 font-semibold">{signatures.president.position || 'President & CEO'}</p>
                     <p className="text-[8px] text-slate-500">Executive Office</p>
-                    <p className="text-[7.5px] text-slate-400 font-mono mt-0.5">Date: {evaluation.signatures.president.dateSigned || evaluation.signatures.president.signedAt} {evaluation.signatures.president.timeSigned || ''}</p>
+                    <p className="text-[7.5px] text-slate-400 font-mono mt-0.5">Date: {signatures.president.dateSigned || signatures.president.signedAt} {signatures.president.timeSigned || ''}</p>
                   </div>
                 ) : (
                   <p className="text-[9px] text-slate-400 py-3 italic">
-                    {evaluation.workflowType === 'WORKFLOW_DEPT_HEAD' || evaluation.isDepartmentHead ? 'Pending President Signature' : 'N/A (Regular Track)'}
+                    {safeEvaluation.workflowType === 'WORKFLOW_DEPT_HEAD' || safeEvaluation.isDepartmentHead ? 'Pending President Signature' : 'N/A (Regular Track)'}
                   </p>
                 )}
               </div>
@@ -652,13 +691,13 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
               {/* POD / HR Signature */}
               <div className="border border-slate-200 bg-white p-2 rounded">
                 <p className="font-bold text-[9px] text-indigo-700 uppercase">4. POD / HR Officer</p>
-                {(evaluation.signatures.pod || evaluation.signatures.hr) ? (
+                {(signatures.pod || signatures.hr) ? (
                   <div className="flex flex-col items-center mt-1">
-                    <img src={(evaluation.signatures.pod || evaluation.signatures.hr)?.signatureDataUrl} alt="POD Sig" className="h-8 object-contain" />
-                    <p className="font-bold underline text-[9.5px] mt-0.5">{(evaluation.signatures.pod || evaluation.signatures.hr)?.signerName}</p>
-                    <p className="text-[8px] text-slate-600 font-semibold">{(evaluation.signatures.pod || evaluation.signatures.hr)?.position || 'POD Quality Lead'}</p>
+                    <img src={(signatures.pod || signatures.hr)?.signatureDataUrl} alt="POD Sig" className="h-8 object-contain" />
+                    <p className="font-bold underline text-[9.5px] mt-0.5">{(signatures.pod || signatures.hr)?.signerName}</p>
+                    <p className="text-[8px] text-slate-600 font-semibold">{(signatures.pod || signatures.hr)?.position || 'POD Quality Lead'}</p>
                     <p className="text-[8px] text-slate-500">People Operations Dev</p>
-                    <p className="text-[7.5px] text-slate-400 font-mono mt-0.5">Date: {(evaluation.signatures.pod || evaluation.signatures.hr)?.dateSigned || (evaluation.signatures.pod || evaluation.signatures.hr)?.signedAt} {(evaluation.signatures.pod || evaluation.signatures.hr)?.timeSigned || ''}</p>
+                    <p className="text-[7.5px] text-slate-400 font-mono mt-0.5">Date: {(signatures.pod || signatures.hr)?.dateSigned || (signatures.pod || signatures.hr)?.signedAt} {(signatures.pod || signatures.hr)?.timeSigned || ''}</p>
                   </div>
                 ) : (
                   <p className="text-[9px] text-slate-400 py-3 italic">Pending POD Signature</p>
