@@ -267,71 +267,86 @@ export const App: React.FC = () => {
     loadHistoryAndArchives();
   }, []);
 
-  // 2. Real-time Database & Notification Polling (Every 3s)
+  // 2. Real-time Database & Notification Polling (Optimized for Egress & Efficiency)
   useEffect(() => {
-    const syncDatabaseAndNotifications = async () => {
+    let isMounted = true;
+    let lastSyncTimestamp = 0;
+
+    const syncDatabaseAndNotifications = async (force = false) => {
+      const now = Date.now();
+      // Throttle syncs to at most once every 6 seconds unless forced
+      if (!force && now - lastSyncTimestamp < 6000) {
+        return;
+      }
+      lastSyncTimestamp = now;
+
       if (isSupabaseConfigured) {
-        const currentUser = currentUserRef.current;
-        const isAuthenticated = isAuthenticatedRef.current;
-        
-        const sbUsers = await fetchEmployeesFromSupabase();
-        if (sbUsers && sbUsers.length > 0) {
-          setUsers(sbUsers);
+        try {
+          const currentUser = currentUserRef.current;
+          const isAuthenticated = isAuthenticatedRef.current;
           
-          // Live profile sync across devices for logged-in user
-          if (isAuthenticated) {
-            setCurrentUser((prevUser: User) => {
-              if (!prevUser) return prevUser;
-              const updatedSelf = sbUsers.find(
-                (u) => u.email.toLowerCase() === prevUser.email.toLowerCase() || u.id === prevUser.id
-              );
-              if (updatedSelf) {
-                const tenSecondsAgo = Date.now() - 10000;
-                const hasRecentAvatarUpdate = lastAvatarUpdateRef.current && lastAvatarUpdateRef.current.timestamp > tenSecondsAgo;
-                const mergedSelf: User = {
-                  ...updatedSelf,
-                  avatarUrl: hasRecentAvatarUpdate
-                    ? lastAvatarUpdateRef.current!.url
-                    : (prevUser.avatarUrl && prevUser.avatarUrl !== updatedSelf.avatarUrl ? prevUser.avatarUrl : (updatedSelf.avatarUrl || '')),
-                  personalEmail: updatedSelf.personalEmail || prevUser.personalEmail || '',
-                  requiresPasswordChange: updatedSelf.requiresPasswordChange ?? prevUser.requiresPasswordChange
-                };
-                if (
-                  prevUser.avatarUrl === mergedSelf.avatarUrl &&
-                  prevUser.name === mergedSelf.name &&
-                  prevUser.email === mergedSelf.email &&
-                  prevUser.position === mergedSelf.position &&
-                  prevUser.departmentName === mergedSelf.departmentName
-                ) {
-                  return prevUser;
+          const sbUsers = await fetchEmployeesFromSupabase();
+          if (!isMounted) return;
+          if (sbUsers && sbUsers.length > 0) {
+            setUsers(sbUsers);
+            
+            // Live profile sync across devices for logged-in user
+            if (isAuthenticated) {
+              setCurrentUser((prevUser: User) => {
+                if (!prevUser) return prevUser;
+                const updatedSelf = sbUsers.find(
+                  (u) => u.email.toLowerCase() === prevUser.email.toLowerCase() || u.id === prevUser.id
+                );
+                if (updatedSelf) {
+                  const tenSecondsAgo = Date.now() - 10000;
+                  const hasRecentAvatarUpdate = lastAvatarUpdateRef.current && lastAvatarUpdateRef.current.timestamp > tenSecondsAgo;
+                  const mergedSelf: User = {
+                    ...updatedSelf,
+                    avatarUrl: hasRecentAvatarUpdate
+                      ? lastAvatarUpdateRef.current!.url
+                      : (prevUser.avatarUrl && prevUser.avatarUrl !== updatedSelf.avatarUrl ? prevUser.avatarUrl : (updatedSelf.avatarUrl || '')),
+                    personalEmail: updatedSelf.personalEmail || prevUser.personalEmail || '',
+                    requiresPasswordChange: updatedSelf.requiresPasswordChange ?? prevUser.requiresPasswordChange
+                  };
+                  if (
+                    prevUser.avatarUrl === mergedSelf.avatarUrl &&
+                    prevUser.name === mergedSelf.name &&
+                    prevUser.email === mergedSelf.email &&
+                    prevUser.position === mergedSelf.position &&
+                    prevUser.departmentName === mergedSelf.departmentName
+                  ) {
+                    return prevUser;
+                  }
+                  setCurrentUserStore(mergedSelf);
+                  return mergedSelf;
                 }
-                setCurrentUserStore(mergedSelf);
-                return mergedSelf;
-              }
-              return prevUser;
-            });
+                return prevUser;
+              });
+            }
           }
+
+          const sbDepts = await fetchDepartmentsFromSupabase();
+          if (!isMounted) return;
+          if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
+
+          const privilegedRoles = ['system_admin', 'hr_admin', 'pod', 'dept_head', 'supervisor', 'president'];
+          const isPrivileged = currentUser?.role && privilegedRoles.includes(currentUser.role);
+          const sbEvals = await fetchEvaluationsFromSupabase(isPrivileged ? undefined : currentUser);
+          if (!isMounted) return;
+          if (sbEvals) {
+            setEvaluations(sbEvals);
+            saveEvaluations(sbEvals);
+          }
+
+          const sbNotifs = await fetchNotificationsFromSupabase(currentUser?.id, currentUser?.role);
+          if (!isMounted) return;
+          if (sbNotifs) {
+            const computed = getRoleBasedNotifications(sbNotifs, currentUser);
+            setNotifications(computed);
+          }
+        } catch (syncErr) {
+          console.warn('[APES Sync] Periodic sync note:', syncErr);
         }
-
-        const sbDepts = await fetchDepartmentsFromSupabase();
-        if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
-
-        const privilegedRoles = ['system_admin', 'hr_admin', 'pod', 'dept_head', 'supervisor', 'president'];
-        const isPrivileged = currentUser?.role && privilegedRoles.includes(currentUser.role);
-        const sbEvals = await fetchEvaluationsFromSupabase(isPrivileged ? undefined : currentUser);
-        if (sbEvals) {
-          setEvaluations(sbEvals);
-          saveEvaluations(sbEvals);
-        }
-
-
-        const sbNotifs = await fetchNotificationsFromSupabase(currentUser?.id, currentUser?.role);
-        if (sbNotifs) {
-          const computed = getRoleBasedNotifications(sbNotifs, currentUser);
-          setNotifications(computed);
-        }
-
-        console.log(`[APES Sync - Dashboard] Synchronized cloud state from Supabase: ${sbUsers?.length || 0} employees, ${sbDepts?.length || 0} departments, ${sbEvals?.length || 0} scorecards, ${sbNotifs?.length || 0} notifications.`);
       } else {
         const storedUsers = getStoredUsers();
         setUsers(storedUsers);
@@ -340,68 +355,35 @@ export const App: React.FC = () => {
     };
 
     // Initial sync
-    syncDatabaseAndNotifications();
+    syncDatabaseAndNotifications(true);
 
-    // Poll every 3 seconds for fast fallback cross-device sync
-    const intervalId = setInterval(syncDatabaseAndNotifications, 3000);
+    // Refresh when user returns to the tab/window (zero idle egress when backgrounded)
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        syncDatabaseAndNotifications(false);
+      }
+    };
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
 
-    // Dual Supabase Realtime Channels (PostgreSQL WAL changes + WebSocket Broadcast)
-    let channel: any = null;
+    // Lightweight idle fallback sync (every 60s instead of 3s to save 95%+ egress)
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        syncDatabaseAndNotifications(false);
+      }
+    }, 60000);
+
+    // Targeted WebSocket Broadcast Channel (event-driven on mutations only)
     let broadcastChannel: any = null;
 
     if (isSupabaseConfigured && supabase) {
       try {
-        channel = supabase
-          .channel('apes_realtime_channel')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, () => {
-            syncDatabaseAndNotifications();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
-            syncDatabaseAndNotifications();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'evaluations' }, () => {
-            syncDatabaseAndNotifications();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, () => {
-            syncDatabaseAndNotifications();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => {
-            syncDatabaseAndNotifications();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'evaluation_templates' }, () => {
-            fetchEvaluationTemplatesFromSupabase().then(sbTemplates => {
-              if (sbTemplates !== null) {
-                setTemplates(prev => {
-                  const masterSales = prev.find(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
-                  const result: EvaluationTemplate[] = [masterSales];
-                  for (const remoteT of sbTemplates) {
-                    if (!remoteT || !remoteT.id) continue;
-                    if (remoteT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || remoteT.id === 'template_sales') continue;
-                    if (!result.some(t => t.id === remoteT.id)) {
-                      result.push(remoteT);
-                    }
-                  }
-                  for (const localT of prev) {
-                    if (!localT || !localT.id) continue;
-                    if (localT.id === MASTER_SALES_EVALUATION_TEMPLATE.id || localT.id === 'template_sales') continue;
-                    if (!result.some(t => t.id === localT.id)) {
-                      result.push(localT);
-                    }
-                  }
-                  saveTemplates(result);
-                  return result;
-                });
-              }
-            }).catch(() => {});
-          })
-          .subscribe();
-
         broadcastChannel = supabase
           .channel('apes_broadcast_events')
           .on('broadcast', { event: 'data_changed' }, () => {
-            syncDatabaseAndNotifications();
+            syncDatabaseAndNotifications(true);
             fetchEvaluationTemplatesFromSupabase().then(sbTemplates => {
-              if (sbTemplates !== null) {
+              if (sbTemplates !== null && isMounted) {
                 setTemplates(prev => {
                   const masterSales = prev.find(t => t.id === MASTER_SALES_EVALUATION_TEMPLATE.id || t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
                   const result: EvaluationTemplate[] = [masterSales];
@@ -427,16 +409,18 @@ export const App: React.FC = () => {
           })
           .subscribe();
       } catch (e) {
-        console.warn('Realtime channel subscription error:', e);
+        console.warn('Broadcast channel subscription error:', e);
       }
     }
 
     return () => {
+      isMounted = false;
       clearInterval(intervalId);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       lastAvatarUpdateRef.current = null;
-      if (supabase) {
-        if (channel) supabase.removeChannel(channel);
-        if (broadcastChannel) supabase.removeChannel(broadcastChannel);
+      if (supabase && broadcastChannel) {
+        supabase.removeChannel(broadcastChannel);
       }
     };
   }, [currentUser?.id]);
