@@ -255,7 +255,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
         <div id="scorecard-page-1" className="bg-white text-black p-8 sm:p-10 rounded-none shadow-xl border border-slate-300 space-y-6 leading-snug">
           <div className="flex items-center justify-between border-b-2 border-hdi-red pb-3 mb-4">
             <div className="flex items-center space-x-3">
-              <div className="bg-white rounded-lg p-1 border border-slate-200 shadow-sm shrink-0">
+              <div className="shrink-0 flex items-center">
                 <img src="/hdi-logo.png" alt="HDI Hive" className="h-10 w-auto object-contain" />
               </div>
               <div>
