@@ -252,11 +252,16 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     return (activeTemplate.kraCategories || []).reduce((sum, kra) => sum + (Number(kra.categoryWeightPercent) || 0), 0);
   };
 
-  const eligibilityWeight = Number(activeTemplate.formulaConfig.eligibilityWeight || 0);
-  const isPart1AWeightValid = (): boolean => {
-    const kraTotal = getKraTotalWeight();
-    return kraTotal <= eligibilityWeight;
+  const getAllKpisTotalWeight = (): number => {
+    return (activeTemplate.kraCategories || []).reduce((sum, kra) => {
+      return sum + (kra.kpis || []).reduce((kpiSum, kpi) => kpiSum + (Number(kpi.weightPercent) || 0), 0);
+    }, 0);
   };
+
+  const eligibilityWeight = Number(activeTemplate.formulaConfig.eligibilityWeight || 0);
+  const isPart1AKraWeightValid = (): boolean => Math.abs(getKraTotalWeight() - eligibilityWeight) < 0.01;
+  const isPart1AKpiWeightValid = (): boolean => Math.abs(getAllKpisTotalWeight() - eligibilityWeight) < 0.01;
+  const isPart1AWeightValid = (): boolean => isPart1AKraWeightValid() && isPart1AKpiWeightValid();
 
   const handleSave = () => {
     const kraTotal = getKraTotalWeight();
@@ -553,17 +558,51 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               </button>
             </div>
 
-            <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${
+            <div className={`p-4 rounded-xl border space-y-2 text-xs font-bold ${
               isPart1AWeightValid()
                 ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
-                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-800 dark:text-rose-300'
+                : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 text-amber-900 dark:text-amber-200'
             }`}>
-              <div className="flex items-center space-x-2">
-                {isPart1AWeightValid() ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-                <span>Part 1A Total: {getKraTotalWeight().toFixed(2)}% / {eligibilityWeight}%</span>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center space-x-2">
+                  {isPart1AWeightValid() ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  )}
+                  <span>Part 1A Target Weight: {eligibilityWeight}%</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`px-2.5 py-1 rounded-lg border text-[11px] font-extrabold ${
+                    isPart1AKraWeightValid()
+                      ? 'bg-emerald-100 dark:bg-emerald-900/60 border-emerald-400 text-emerald-800 dark:text-emerald-200'
+                      : 'bg-rose-100 dark:bg-rose-900/60 border-rose-400 text-rose-800 dark:text-rose-200'
+                  }`}>
+                    KRA Total: {getKraTotalWeight().toFixed(2)}% / {eligibilityWeight}%
+                  </span>
+                  <span className={`px-2.5 py-1 rounded-lg border text-[11px] font-extrabold ${
+                    isPart1AKpiWeightValid()
+                      ? 'bg-emerald-100 dark:bg-emerald-900/60 border-emerald-400 text-emerald-800 dark:text-emerald-200'
+                      : 'bg-rose-100 dark:bg-rose-900/60 border-rose-400 text-rose-800 dark:text-rose-200'
+                  }`}>
+                    KPI Total: {getAllKpisTotalWeight().toFixed(2)}% / {eligibilityWeight}%
+                  </span>
+                </div>
               </div>
+
               {!isPart1AWeightValid() && (
-                <span className="text-[11px] font-normal">KRA weights exceed the Part 1A weight of {eligibilityWeight}%.</span>
+                <div className="text-[11px] font-normal text-amber-900 dark:text-amber-200 pt-1.5 border-t border-amber-200 dark:border-amber-800/50 space-y-0.5">
+                  {!isPart1AKraWeightValid() && (
+                    <p>• <strong>KRA Categories Mismatch:</strong> Sum of KRA category weights is {getKraTotalWeight().toFixed(2)}% (must equal exactly {eligibilityWeight}%).</p>
+                  )}
+                  {!isPart1AKpiWeightValid() && (
+                    <p>• <strong>Individual KPI Mismatch:</strong> Sum of all individual KPI weights is {getAllKpisTotalWeight().toFixed(2)}%. {
+                      getAllKpisTotalWeight() < eligibilityWeight
+                        ? `Please add ${(eligibilityWeight - getAllKpisTotalWeight()).toFixed(2)}% to your KPI weights to reach ${eligibilityWeight}%.`
+                        : `Please reduce ${(getAllKpisTotalWeight() - eligibilityWeight).toFixed(2)}% from your KPI weights to match ${eligibilityWeight}%.`
+                    }</p>
+                  )}
+                </div>
               )}
             </div>
 
@@ -581,24 +620,34 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                       }}
                       className="font-bold text-slate-900 dark:text-white text-sm bg-transparent border-b border-brand-300 focus:border-brand-500 outline-none flex-1 min-w-0"
                     />
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={getWeightInputValue(`kra_${kra.id}`, kra.categoryWeightPercent)}
-                      onChange={(e) => handleWeightInputChange(`kra_${kra.id}`, e.target.value)}
-                      onBlur={() => {
-                        const numVal = commitWeightInput(`kra_${kra.id}`, kra.categoryWeightPercent);
-                        const updated = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, categoryWeightPercent: numVal } : k);
-                        setActiveTemplate({ ...activeTemplate, kraCategories: updated });
-                      }}
-                      className={`shrink-0 w-14 px-2 py-1 rounded-lg text-[11px] font-bold border text-center ${
-                        isKraValid(kra)
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
-                          : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-800 dark:text-rose-300'
-                      }`}
-                    />
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded-md border ${
+                        Math.abs(getKpiTotal(kra) - (Number(kra.categoryWeightPercent) || 0)) < 0.01
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-700 dark:text-emerald-300'
+                          : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 text-amber-700 dark:text-amber-300'
+                      }`}>
+                        KPIs: {getKpiTotal(kra).toFixed(2)}% / {kra.categoryWeightPercent}%
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={getWeightInputValue(`kra_${kra.id}`, kra.categoryWeightPercent)}
+                        onChange={(e) => handleWeightInputChange(`kra_${kra.id}`, e.target.value)}
+                        onBlur={() => {
+                          const numVal = commitWeightInput(`kra_${kra.id}`, kra.categoryWeightPercent);
+                          const updated = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, categoryWeightPercent: numVal } : k);
+                          setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+                        }}
+                        className={`w-14 px-2 py-1 rounded-lg text-[11px] font-bold border text-center ${
+                          isKraValid(kra)
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
+                            : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-800 dark:text-rose-300'
+                        }`}
+                        title="KRA Category Target Weight"
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 ml-3">
                     <button
                       onClick={() => handleAddKPI(kra.id)}
                       className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200"
