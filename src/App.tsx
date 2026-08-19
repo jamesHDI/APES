@@ -76,6 +76,8 @@ import { PendingApprovalsDashboard } from './components/admin/PendingApprovalsDa
 import { LoginModal } from './components/auth/LoginModal';
 import { MyProfile } from './components/profile/MyProfile';
 import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
+import { CalibrationRequestForm } from './components/calibration/CalibrationRequestForm';
+import { CalibrationRequestsManager } from './components/calibration/CalibrationRequestsManager';
 import { ShieldAlert } from 'lucide-react';
 
 import { determineWorkflowType, isUserDepartmentHead, getUserActiveEvaluation, getUserLatestEvaluation, isEvaluationCompleted } from './utils/workflowUtils';
@@ -933,6 +935,34 @@ export const App: React.FC = () => {
           evaluations={evaluations}
           onSaveTemplate={handleSaveTemplate}
           onDeleteTemplate={handleDeleteTemplate}
+        />
+      );
+    }
+
+    // Change 2 — Calibration Request (Employee view)
+    if (activeTab === 'calibration_request') {
+      return (
+        <CalibrationRequestForm
+          currentUser={currentUser}
+          evaluations={evaluations}
+        />
+      );
+    }
+
+    // Change 2 — Calibration Requests (Dept Head review)
+    if (activeTab === 'calibration_requests') {
+      return (
+        <CalibrationRequestsManager
+          currentUser={currentUser}
+        />
+      );
+    }
+
+    // Change 2 — Calibration POD Review (POD / HR Admin)
+    if (activeTab === 'calibration_pod_review') {
+      return (
+        <CalibrationRequestsManager
+          currentUser={currentUser}
         />
       );
     }

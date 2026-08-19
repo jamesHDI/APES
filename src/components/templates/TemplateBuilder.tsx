@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { EvaluationTemplate, KRACategory, KPITemplateItem, CoreValue, Department, User, Evaluation } from '../../types';
+import { EvaluationTemplate, KRACategory, KPITemplateItem, CoreValue, Department, User, Evaluation, TemplateStatus } from '../../types';
 import { createMasterBasedTemplate, MASTER_SALES_EVALUATION_TEMPLATE } from '../../constants/masterSalesTemplate';
 import { validateEvaluationTemplate } from '../../services/templateValidation';
 import { assignNewEvaluationToEmployee, createDraftEvaluationInMemory } from '../../services/storage';
@@ -17,7 +17,12 @@ import {
   AlertTriangle,
   Lock,
   Eye,
-  X
+  X,
+  Send,
+  ShieldCheck,
+  RotateCcw,
+  Calendar,
+  ChevronRight,
 } from 'lucide-react';
 
 interface TemplateBuilderProps {
@@ -37,8 +42,18 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   onSaveTemplate,
   onDeleteTemplate,
 }) => {
-  // Always fallback to master template if templates array is empty
-  const initialList = templates && templates.length > 0 ? templates : [MASTER_SALES_EVALUATION_TEMPLATE];
+  const isDeptHead = currentUser?.role === 'dept_head';
+  const isPOD = currentUser?.role === 'pod' || currentUser?.role === 'hr_admin' || currentUser?.role === 'system_admin';
+
+  // For dept_head: only show templates belonging to their own department
+  const visibleTemplates = isDeptHead
+    ? (templates && templates.length > 0 ? templates : [MASTER_SALES_EVALUATION_TEMPLATE]).filter(
+        t => !t.departmentId || t.departmentId === currentUser?.departmentId
+          || t.departmentName?.toLowerCase() === currentUser?.departmentName?.toLowerCase()
+      )
+    : (templates && templates.length > 0 ? templates : [MASTER_SALES_EVALUATION_TEMPLATE]);
+
+  const initialList = visibleTemplates.length > 0 ? visibleTemplates : [MASTER_SALES_EVALUATION_TEMPLATE];
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialList[0]?.id || MASTER_SALES_EVALUATION_TEMPLATE.id);
   const [activeTemplate, setActiveTemplate] = useState<EvaluationTemplate>(
     initialList.find(t => t.id === selectedTemplateId) || initialList[0]
@@ -47,12 +62,14 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
+  const [podRemarkInput, setPodRemarkInput] = useState('');
+  const [showReturnRemarkInput, setShowReturnRemarkInput] = useState(false);
 
   useEffect(() => {
-    if (templates && templates.length > 0) {
-      if (!templates.some(t => t.id === selectedTemplateId)) {
-        setSelectedTemplateId(templates[0].id);
-        setActiveTemplate(templates[0]);
+    if (visibleTemplates.length > 0) {
+      if (!visibleTemplates.some(t => t.id === selectedTemplateId)) {
+        setSelectedTemplateId(visibleTemplates[0].id);
+        setActiveTemplate(visibleTemplates[0]);
       }
     }
   }, [templates, selectedTemplateId]);
@@ -78,6 +95,75 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   };
 
   const canDelete = currentUser?.role === 'system_admin' || currentUser?.role === 'hr_admin' || currentUser?.role === 'pod';
+
+  // Change 3 — helper to format date range as period string
+  const formatPeriodFromDates = (startDate?: string, endDate?: string): string => {
+    if (!startDate && !endDate) return activeTemplate.evaluationPeriod || '';
+    const fmt = (d: string) => {
+      const dt = new Date(d + 'T00:00:00'); // prevent timezone shift
+      return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    };
+    if (startDate && endDate) return `${fmt(startDate)} – ${fmt(endDate)}`;
+    if (startDate) return `From ${fmt(startDate)}`;
+    return endDate ? `Until ${fmt(endDate)}` : '';
+  };
+
+  // Change 1 — Dept Head submits template to POD
+  const handleSubmitToPOD = () => {
+    if (!window.confirm('Submit this template to POD for review? You will not be able to edit it until POD returns it.')) return;
+    const submitted: EvaluationTemplate = {
+      ...activeTemplate,
+      status: 'submitted_to_pod',
+      submittedAt: new Date().toISOString(),
+      createdByRole: currentUser?.role,
+      createdByUserId: currentUser?.id,
+      createdByName: currentUser?.name,
+    };
+    onSaveTemplate(submitted);
+    setActiveTemplate(submitted);
+    showToast('Template submitted to POD for review!');
+  };
+
+  // Change 1 — POD approves or returns a template
+  const handlePODAction = (action: 'approve' | 'deploy' | 'return') => {
+    if (action === 'return') {
+      if (!podRemarkInput.trim()) {
+        setShowReturnRemarkInput(true);
+        return;
+      }
+      const returned: EvaluationTemplate = {
+        ...activeTemplate,
+        status: 'draft',
+        podRemarks: podRemarkInput,
+        reviewedAt: new Date().toISOString(),
+      };
+      onSaveTemplate(returned);
+      setActiveTemplate(returned);
+      setPodRemarkInput('');
+      setShowReturnRemarkInput(false);
+      showToast('Template returned to Department Head for revision.');
+    } else if (action === 'approve') {
+      const approved: EvaluationTemplate = {
+        ...activeTemplate,
+        status: 'pod_review',
+        podRemarks: podRemarkInput || undefined,
+        reviewedAt: new Date().toISOString(),
+      };
+      onSaveTemplate(approved);
+      setActiveTemplate(approved);
+      setPodRemarkInput('');
+      showToast('Template approved by POD. Ready to deploy.');
+    } else if (action === 'deploy') {
+      const deployed: EvaluationTemplate = {
+        ...activeTemplate,
+        status: 'deployed',
+        reviewedAt: new Date().toISOString(),
+      };
+      onSaveTemplate(deployed);
+      setActiveTemplate(deployed);
+      showToast('Template deployed!');
+    }
+  };
 
   const handleDeleteTemplateAction = (templateId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -371,46 +457,66 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         {/* Template Selector Sidebar */}
         <div className="lg:col-span-4 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2">
-            Active Department Templates ({templates.length})
+            {isDeptHead ? `${currentUser?.departmentName || 'Your'} Templates` : `Active Department Templates`} ({visibleTemplates.length})
           </h3>
 
           <div className="space-y-2">
-            {templates.map((tmpl) => (
-              <div
-                key={tmpl.id}
-                onClick={() => handleSelectTemplate(tmpl.id)}
-                className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
-                  selectedTemplateId === tmpl.id
-                    ? 'bg-brand-50 dark:bg-brand-950/40 border-brand-500 ring-2 ring-brand-500/20'
-                    : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300">
-                    {tmpl.departmentName}
-                  </span>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-[10px] text-slate-400">{tmpl.evaluationPeriod}</span>
-                    {canDelete && (
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteTemplateAction(tmpl.id, e)}
-                        className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                        title="Delete Evaluation Template"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+            {visibleTemplates.map((tmpl) => {
+              const statusColors: Record<string, string> = {
+                draft: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+                submitted_to_pod: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
+                pod_review: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+                deployed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300',
+              };
+              const statusLabels: Record<string, string> = {
+                draft: 'Draft',
+                submitted_to_pod: 'Submitted to POD',
+                pod_review: 'POD Review',
+                deployed: 'Deployed',
+              };
+              const sts = tmpl.status || 'draft';
+              return (
+                <div
+                  key={tmpl.id}
+                  onClick={() => handleSelectTemplate(tmpl.id)}
+                  className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    selectedTemplateId === tmpl.id
+                      ? 'bg-brand-50 dark:bg-brand-950/40 border-brand-500 ring-2 ring-brand-500/20'
+                      : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300">
+                      {tmpl.departmentName}
+                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${statusColors[sts]}`}>
+                        {statusLabels[sts] || sts}
+                      </span>
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteTemplateAction(tmpl.id, e)}
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                          title="Delete Evaluation Template"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
+                  <p className="font-bold text-slate-900 dark:text-white text-xs mt-2">
+                    {tmpl.title}
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {tmpl.evaluationPeriod || (tmpl.startDate && tmpl.endDate ? `${tmpl.startDate} – ${tmpl.endDate}` : '')}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {tmpl.kraCategories.length} KRAs • Formula: {tmpl.formulaConfig.eligibilityWeight}% KPI / {tmpl.formulaConfig.coreValuesWeight}% Core Values
+                  </p>
                 </div>
-                <p className="font-bold text-slate-900 dark:text-white text-xs mt-2">
-                  {tmpl.title}
-                </p>
-                <p className="text-[10px] text-slate-500 mt-1">
-                  {tmpl.kraCategories.length} KRAs • Formula: {tmpl.formulaConfig.eligibilityWeight}% KPI / {tmpl.formulaConfig.coreValuesWeight}% Core Values
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -418,6 +524,73 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         <div className="lg:col-span-8 space-y-6">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
             
+            {/* Template Status Banner for Dept Head */}
+            {isDeptHead && activeTemplate.status && activeTemplate.status !== 'draft' && (
+              <div className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
+                activeTemplate.status === 'submitted_to_pod' ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800' :
+                activeTemplate.status === 'pod_review' ? 'bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800' :
+                activeTemplate.status === 'deployed' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' : ''
+              }`}>
+                <ShieldCheck className="w-4 h-4 shrink-0" />
+                <span>
+                  {activeTemplate.status === 'submitted_to_pod' && 'This template has been submitted to POD for review. Editing is locked until POD returns it for revision.'}
+                  {activeTemplate.status === 'pod_review' && 'POD has approved this template. Awaiting deployment.'}
+                  {activeTemplate.status === 'deployed' && 'This template has been deployed. Contact POD to make changes.'}
+                </span>
+                {activeTemplate.podRemarks && (
+                  <span className="block text-[11px] mt-1 italic">POD Remarks: {activeTemplate.podRemarks}</span>
+                )}
+              </div>
+            )}
+
+            {/* POD Action Panel for submitted templates */}
+            {isPOD && activeTemplate.status === 'submitted_to_pod' && (
+              <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 space-y-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-amber-600" />
+                  <span className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wide">POD Review Required</span>
+                  {activeTemplate.createdByName && (
+                    <span className="text-[11px] text-amber-600 dark:text-amber-400">Submitted by: {activeTemplate.createdByName}</span>
+                  )}
+                </div>
+                {showReturnRemarkInput && (
+                  <textarea
+                    placeholder="Enter remarks for the Department Head (required to return template)..."
+                    value={podRemarkInput}
+                    onChange={e => setPodRemarkInput(e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-amber-300 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  />
+                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button onClick={() => handlePODAction('approve')} className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Approve for Deployment
+                  </button>
+                  <button onClick={() => handlePODAction('return')} className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1">
+                    <RotateCcw className="w-3.5 h-3.5" /> Return for Revision
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* POD Deploy Panel for pod_review templates */}
+            {isPOD && activeTemplate.status === 'pod_review' && (
+              <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 space-y-2">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wide">Ready to Deploy</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => handlePODAction('deploy')} className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1">
+                    <Send className="w-3.5 h-3.5" /> Deploy Template
+                  </button>
+                  <button onClick={() => handlePODAction('return')} className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1">
+                    <RotateCcw className="w-3.5 h-3.5" /> Return for Revision
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Header Settings */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-700">
               <div>
@@ -425,7 +598,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 <p className="text-xs text-slate-500">Configure department assignment, period, and weights</p>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => setShowPreviewModal(true)}
@@ -439,19 +612,40 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   <button
                     type="button"
                     onClick={(e) => handleDeleteTemplateAction(activeTemplate.id, e)}
-                    className="px-4 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap"
+                    className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md transition-all whitespace-nowrap"
                     title="Delete Current Template"
                   >
                     Delete
                   </button>
                 )}
 
-                <button
-                  onClick={handleSave}
-                  className="px-4 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap"
-                >
-                  Save Template Changes
-                </button>
+                {/* Dept Head Save & Submit buttons */}
+                {isDeptHead && (!activeTemplate.status || activeTemplate.status === 'draft') && (
+                  <>
+                    <button
+                      onClick={handleSave}
+                      className="px-4 py-2.5 rounded-xl bg-slate-600 hover:bg-slate-700 text-white text-xs font-bold shadow-md transition-all whitespace-nowrap"
+                    >
+                      Save Draft
+                    </button>
+                    <button
+                      onClick={handleSubmitToPOD}
+                      className="px-4 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1"
+                    >
+                      <Send className="w-3.5 h-3.5" /> Submit to POD
+                    </button>
+                  </>
+                )}
+
+                {/* POD/Admin full save button */}
+                {!isDeptHead && (
+                  <button
+                    onClick={handleSave}
+                    className="px-4 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap"
+                  >
+                    Save Template Changes
+                  </button>
+                )}
               </div>
             </div>
 
@@ -464,7 +658,8 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   type="text"
                   value={activeTemplate.title}
                   onChange={(e) => setActiveTemplate({ ...activeTemplate, title: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white"
+                  disabled={isDeptHead && activeTemplate.status !== 'draft' && !!activeTemplate.status}
+                  className="w-full px-3.5 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white disabled:opacity-60"
                 />
               </div>
 
@@ -472,22 +667,74 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
                   Target Department
                 </label>
-                <select
-                  value={activeTemplate.departmentId}
-                  onChange={(e) => {
-                    const dept = departments.find(d => d.id === e.target.value);
-                    setActiveTemplate({
-                      ...activeTemplate,
-                      departmentId: e.target.value,
-                      departmentName: dept?.name || 'SALES'
-                    });
-                  }}
-                  className="w-full px-3.5 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white"
-                >
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </select>
+                {isDeptHead ? (
+                  <input
+                    type="text"
+                    value={currentUser?.departmentName || activeTemplate.departmentName}
+                    disabled
+                    className="w-full px-3.5 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-not-allowed opacity-70"
+                  />
+                ) : (
+                  <select
+                    value={activeTemplate.departmentId}
+                    onChange={(e) => {
+                      const dept = departments.find(d => d.id === e.target.value);
+                      setActiveTemplate({
+                        ...activeTemplate,
+                        departmentId: e.target.value,
+                        departmentName: dept?.name || 'SALES'
+                      });
+                    }}
+                    className="w-full px-3.5 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white"
+                  >
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Change 3 — Calendar-based Evaluation Period */}
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5" /> Evaluation Period
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[10px] text-slate-500 mb-1 font-semibold uppercase">Start Date</p>
+                    <input
+                      type="date"
+                      value={activeTemplate.startDate || ''}
+                      disabled={isDeptHead && activeTemplate.status !== 'draft' && !!activeTemplate.status}
+                      onChange={(e) => {
+                        const newStart = e.target.value;
+                        const newPeriod = formatPeriodFromDates(newStart, activeTemplate.endDate);
+                        setActiveTemplate({ ...activeTemplate, startDate: newStart, evaluationPeriod: newPeriod });
+                      }}
+                      className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white disabled:opacity-60"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 mb-1 font-semibold uppercase">End Date</p>
+                    <input
+                      type="date"
+                      value={activeTemplate.endDate || ''}
+                      min={activeTemplate.startDate || ''}
+                      disabled={isDeptHead && activeTemplate.status !== 'draft' && !!activeTemplate.status}
+                      onChange={(e) => {
+                        const newEnd = e.target.value;
+                        const newPeriod = formatPeriodFromDates(activeTemplate.startDate, newEnd);
+                        setActiveTemplate({ ...activeTemplate, endDate: newEnd, evaluationPeriod: newPeriod });
+                      }}
+                      className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white disabled:opacity-60"
+                    />
+                  </div>
+                </div>
+                {activeTemplate.evaluationPeriod && (
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
+                    Display: <span className="font-semibold text-brand-600 dark:text-brand-400">{activeTemplate.evaluationPeriod}</span>
+                  </p>
+                )}
               </div>
             </div>
 

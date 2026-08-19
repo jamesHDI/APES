@@ -110,6 +110,59 @@ CREATE POLICY "Allow public evaluation_templates select" ON public.evaluation_te
 CREATE POLICY "Allow public evaluation_templates update" ON public.evaluation_templates FOR UPDATE USING (true);
 CREATE POLICY "Allow public evaluation_templates delete" ON public.evaluation_templates FOR DELETE USING (true);
 
+-- ==============================================================================
+-- CHANGE 1: Dept Head Template Workflow — Add status/ownership columns to templates
+-- ==============================================================================
+ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'draft'
+  CHECK (status IN ('draft','submitted_to_pod','pod_review','deployed'));
+ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS created_by_role VARCHAR(50);
+ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS created_by_user_id UUID;
+ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS created_by_name VARCHAR(150);
+ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS pod_remarks TEXT;
+ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ;
+ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+
+-- CHANGE 3: Calendar-based Evaluation Period — Add start/end date columns to templates
+ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS start_date DATE;
+ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS end_date DATE;
+
+-- ==============================================================================
+-- CHANGE 2: CALIBRATION REQUESTS TABLE
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.calibration_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    evaluation_id UUID REFERENCES public.evaluations(id) ON DELETE CASCADE,
+    employee_id UUID REFERENCES public.employees(id) ON DELETE CASCADE,
+    employee_name VARCHAR(150) NOT NULL,
+    department_id UUID REFERENCES public.departments(id) ON DELETE SET NULL,
+    department_name VARCHAR(100) NOT NULL,
+    evaluation_title VARCHAR(200),
+    requested_component VARCHAR(200) NOT NULL,
+    current_value TEXT,
+    requested_value TEXT NOT NULL,
+    employee_remark TEXT,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending_dept_head'
+        CHECK (status IN ('pending_dept_head','accepted','rejected','resubmitted_to_pod','pod_approved','pod_rejected','deployed')),
+    dept_head_decision VARCHAR(50),
+    dept_head_remark TEXT,
+    dept_head_reviewed_at TIMESTAMPTZ,
+    pod_decision VARCHAR(50),
+    pod_remark TEXT,
+    pod_reviewed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.calibration_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public calibration_requests all" ON public.calibration_requests;
+CREATE POLICY "Allow public calibration_requests all" ON public.calibration_requests FOR ALL USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_calibration_requests_employee_id ON public.calibration_requests(employee_id);
+CREATE INDEX IF NOT EXISTS idx_calibration_requests_evaluation_id ON public.calibration_requests(evaluation_id);
+CREATE INDEX IF NOT EXISTS idx_calibration_requests_department_id ON public.calibration_requests(department_id);
+CREATE INDEX IF NOT EXISTS idx_calibration_requests_status ON public.calibration_requests(status);
+
+
 -- 5B. CORE VALUES TABLE (template-scoped Part 1B definitions)
 CREATE TABLE IF NOT EXISTS public.core_values (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -487,6 +540,7 @@ BEGIN
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluation_scorecard_archives; EXCEPTION WHEN duplicate_object THEN NULL; END;
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.core_values; EXCEPTION WHEN duplicate_object THEN NULL; END;
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.evaluation_templates; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.calibration_requests; EXCEPTION WHEN duplicate_object THEN NULL; END;
 END $$;
 
 -- STORAGE BUCKETS SETUP & STORAGE RLS POLICIES

@@ -1035,8 +1035,97 @@ export const syncEvaluationTemplateToSupabase = async (evaluation: Evaluation): 
   }
 };
 
+// =============================================================================
+// CHANGE 2 — CALIBRATION REQUEST SUPABASE SERVICE FUNCTIONS
+// =============================================================================
+import { CalibrationRequest, CalibrationStatus } from '../types';
 
+export const saveCalibrationRequestToSupabase = async (
+  request: CalibrationRequest
+): Promise<boolean> => {
+  if (!isSupabaseConfigured || !supabase || !request) return false;
+  try {
+    const evalUuid = isValidUuid(request.evaluationId) ? request.evaluationId : null;
+    const empUuid = isValidUuid(request.employeeId) ? request.employeeId : null;
+    const deptUuid = isValidUuid(request.departmentId) ? request.departmentId : null;
+    const payload = {
+      id: isValidUuid(request.id) ? request.id : ensureUuid(request.id || `cal_${Date.now()}`),
+      evaluation_id: evalUuid,
+      employee_id: empUuid,
+      employee_name: (request.employeeName || '').substring(0, 150),
+      department_id: deptUuid,
+      department_name: (request.departmentName || '').substring(0, 100),
+      evaluation_title: (request.evaluationTitle || '').substring(0, 200) || null,
+      requested_component: (request.requestedComponent || '').substring(0, 200),
+      current_value: request.currentValue || null,
+      requested_value: request.requestedValue || '',
+      employee_remark: request.employeeRemark || null,
+      status: request.status || 'pending_dept_head',
+      dept_head_decision: request.deptHeadDecision || null,
+      dept_head_remark: request.deptHeadRemark || null,
+      dept_head_reviewed_at: request.deptHeadReviewedAt || null,
+      pod_decision: request.podDecision || null,
+      pod_remark: request.podRemark || null,
+      pod_reviewed_at: request.podReviewedAt || null,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('calibration_requests').upsert(payload, { onConflict: 'id' });
+    if (error) {
+      console.warn('[CalibrationRequest] Save failed:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[CalibrationRequest] Exception saving:', err);
+    return false;
+  }
+};
 
+export const fetchCalibrationRequestsFromSupabase = async (): Promise<CalibrationRequest[] | null> => {
+  if (!isSupabaseConfigured || !supabase) return null;
+  try {
+    const { data: rows, error } = await supabase
+      .from('calibration_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error || !rows) return null;
+    return rows.map((row: any): CalibrationRequest => ({
+      id: row.id,
+      evaluationId: row.evaluation_id || '',
+      employeeId: row.employee_id || '',
+      employeeName: row.employee_name || '',
+      departmentId: row.department_id || '',
+      departmentName: row.department_name || '',
+      evaluationTitle: row.evaluation_title || undefined,
+      requestedComponent: row.requested_component || '',
+      currentValue: row.current_value || '',
+      requestedValue: row.requested_value || '',
+      employeeRemark: row.employee_remark || '',
+      status: (row.status as CalibrationStatus) || 'pending_dept_head',
+      deptHeadDecision: row.dept_head_decision || undefined,
+      deptHeadRemark: row.dept_head_remark || undefined,
+      deptHeadReviewedAt: row.dept_head_reviewed_at || undefined,
+      podDecision: row.pod_decision || undefined,
+      podRemark: row.pod_remark || undefined,
+      podReviewedAt: row.pod_reviewed_at || undefined,
+      createdAt: row.created_at || new Date().toISOString(),
+      updatedAt: row.updated_at || new Date().toISOString(),
+    }));
+  } catch (err) {
+    console.warn('[CalibrationRequest] Exception fetching:', err);
+    return null;
+  }
+};
+
+export const deleteCalibrationRequestFromSupabase = async (requestId: string): Promise<boolean> => {
+  if (!isSupabaseConfigured || !supabase || !requestId) return false;
+  try {
+    const uuid = isValidUuid(requestId) ? requestId : ensureUuid(requestId);
+    const { error } = await supabase.from('calibration_requests').delete().eq('id', uuid);
+    if (error) { console.warn('[CalibrationRequest] Delete failed:', error.message); return false; }
+    return true;
+  } catch { return false; }
+};
 // RELATIONAL CHILD TABLES SYNC (kpi_ratings, core_value_ratings, digital_signatures, evidence_files, kpis)
 // ==============================================================================
 
@@ -2186,6 +2275,17 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       full_payload: fullPayload,
+      // Change 1 — Template workflow fields
+      status: template.status || 'draft',
+      created_by_role: template.createdByRole || null,
+      created_by_user_id: isValidUuid(template.createdByUserId || '') ? template.createdByUserId : null,
+      created_by_name: template.createdByName || null,
+      pod_remarks: template.podRemarks || null,
+      submitted_at: template.submittedAt || null,
+      reviewed_at: template.reviewedAt || null,
+      // Change 3 — Calendar period dates
+      start_date: template.startDate || null,
+      end_date: template.endDate || null,
     };
 
     if (isValidUuid(template.departmentId)) {
@@ -2366,7 +2466,18 @@ export const fetchEvaluationTemplatesFromSupabase = async (): Promise<Evaluation
         classificationRanges: MASTER_SALES_EVALUATION_TEMPLATE.classificationRanges,
         kraCategories,
         isActive: row.is_active ?? true,
-        createdAt: row.created_at ? new Date(row.created_at).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10)
+        createdAt: row.created_at ? new Date(row.created_at).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10),
+        // Change 1 — Template workflow fields
+        status: (row.status as any) || 'draft',
+        createdByRole: row.created_by_role || undefined,
+        createdByUserId: row.created_by_user_id || undefined,
+        createdByName: row.created_by_name || undefined,
+        podRemarks: row.pod_remarks || undefined,
+        submittedAt: row.submitted_at || undefined,
+        reviewedAt: row.reviewed_at || undefined,
+        // Change 3 — Calendar period dates
+        startDate: row.start_date || undefined,
+        endDate: row.end_date || undefined,
       };
     });
 

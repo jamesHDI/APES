@@ -6,7 +6,8 @@ import {
   computeCoreValuesAverage, 
   computeCoreValuesWeightedScore, 
   computeFinalPerformanceRating, 
-  getRatingClassification 
+  getRatingClassification,
+  appendRatingAdjustment,
 } from '../../services/computationEngine';
 import { validateEvaluationForSubmission } from '../../services/validationService';
 import { triggerWorkflowNotification } from '../../services/notificationService';
@@ -199,13 +200,15 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         
         const ratingToUse = presidentRating || supervisorRating || selfRating || 0;
         const weightedScore = computeKPIWeightedScore(kpi.weightPercent, ratingToUse);
-        return {
-          ...kpi,
-          selfRating,
-          supervisorRating,
-          presidentRating,
-          weightedScore,
-        };
+
+        // Change 4 — Append to ratingHistory when supervisor or POD (president) adjusts a rating
+        let updatedKpi = { ...kpi, selfRating, supervisorRating, presidentRating, weightedScore };
+        if ((roleType === 'supervisor' || roleType === 'president') && ratingValue !== 0) {
+          const adjustedByName = currentUser?.name || currentUser?.role || 'Unknown';
+          const adjustRole = roleType === 'president' ? 'pod' : roleType;
+          updatedKpi = appendRatingAdjustment(updatedKpi, adjustedByName, adjustRole as any, ratingValue);
+        }
+        return updatedKpi;
       }
       return kpi;
     });

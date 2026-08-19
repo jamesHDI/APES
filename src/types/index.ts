@@ -105,12 +105,16 @@ export interface KRACategory {
   kpis: KPITemplateItem[];
 }
 
+export type TemplateStatus = 'draft' | 'submitted_to_pod' | 'pod_review' | 'deployed';
+
 export interface EvaluationTemplate {
   id: string;
   title: string;
   departmentId: string;
   departmentName: string;
   evaluationPeriod: string;
+  startDate?: string;   // ISO date string, e.g. "2026-01-01" (Change 3)
+  endDate?: string;     // ISO date string, e.g. "2026-12-31" (Change 3)
   kraCategories: KRACategory[];
   formulaConfig: {
     eligibilityWeight: number;
@@ -126,6 +130,14 @@ export interface EvaluationTemplate {
   }[];
   isActive: boolean;
   createdAt: string;
+  // Change 1 — Template workflow fields
+  status?: TemplateStatus;
+  createdByRole?: string;
+  createdByUserId?: string;
+  createdByName?: string;
+  podRemarks?: string;
+  submittedAt?: string;
+  reviewedAt?: string;
 }
 
 export type DeploymentStatus = 'draft' | 'scheduled' | 'active' | 'closed' | 'archived';
@@ -163,6 +175,16 @@ export interface EvaluationCycle {
   completedCount: number;
 }
 
+// Change 4 — Rating Adjustment History
+export interface RatingAdjustment {
+  role: 'employee' | 'supervisor' | 'dept_head' | 'president' | 'pod';
+  adjustedBy: string;
+  previousRating: number;
+  newRating: number;
+  timestamp: string;
+  remark?: string;
+}
+
 export interface KPIRating {
   kpiId: string;
   kraId: string;
@@ -171,11 +193,13 @@ export interface KPIRating {
   weightPercent: number;
   selfRating: number;
   supervisorRating: number;
-  presidentRating?: number;
+  presidentRating: number;
+  podRating?: number;
   weightedScore: number;
   comments: string;
   standards: RatingStandard[];
   evidenceRequired: boolean;
+  ratingHistory?: RatingAdjustment[]; // Change 4 — sequential adjustment trail
 }
 
 export interface CoreValue {
@@ -405,6 +429,10 @@ export interface Evaluation {
 
   kpiRatings: KPIRating[];
   coreValueRatings: CoreValueRating[];
+  formulaConfig?: {
+    eligibilityWeight: number;
+    coreValuesWeight: number;
+  };
   developmentPlan: DevelopmentPlan;
   personnelAction: PersonnelAction;
   signatures: {
@@ -461,4 +489,37 @@ export interface AuditLog {
   action: string;
   details: string;
   ipAddress?: string;
+}
+
+// Change 2 — Calibration Request
+export type CalibrationStatus =
+  | 'pending_dept_head'
+  | 'accepted'
+  | 'rejected'
+  | 'resubmitted_to_pod'
+  | 'pod_approved'
+  | 'pod_rejected'
+  | 'deployed';
+
+export interface CalibrationRequest {
+  id: string;
+  evaluationId: string;
+  employeeId: string;
+  employeeName: string;
+  departmentId: string;
+  departmentName: string;
+  evaluationTitle?: string;
+  requestedComponent: string; // e.g. "KPI: Sales Target Weight"
+  currentValue: string;       // e.g. "Weight: 20%"
+  requestedValue: string;     // e.g. "Weight: 15%"
+  employeeRemark: string;
+  status: CalibrationStatus;
+  deptHeadDecision?: 'accepted' | 'rejected';
+  deptHeadRemark?: string;
+  deptHeadReviewedAt?: string;
+  podDecision?: 'approved' | 'rejected';
+  podRemark?: string;
+  podReviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }

@@ -105,3 +105,45 @@ export function validateWeightsTotal(kpiRatings: KPIRating[], targetTotal: numbe
     currentTotal: Number(total.toFixed(2))
   };
 }
+
+/**
+ * Change 4 — Sequential Rating Adjustment:
+ * Returns the final effective rating for a KPI.
+ * If ratingHistory is present, returns the rating from the LAST history entry.
+ * Otherwise falls back to the existing priority logic:
+ *   presidentRating (POD) > supervisorRating > selfRating
+ * This maintains full backward compatibility with all existing evaluations.
+ */
+export function getLatestAdjustedRating(kpi: KPIRating): number {
+  if (kpi.ratingHistory && kpi.ratingHistory.length > 0) {
+    return kpi.ratingHistory[kpi.ratingHistory.length - 1].newRating;
+  }
+  // Backward-compatible priority logic (existing behaviour)
+  return kpi.presidentRating || kpi.podRating || kpi.supervisorRating || kpi.selfRating || 0;
+}
+
+/**
+ * Change 4 — Appends a new RatingAdjustment entry to a KPI's history.
+ * Returns a new KPIRating object with the updated history.
+ */
+export function appendRatingAdjustment(
+  kpi: KPIRating,
+  adjustedBy: string,
+  role: 'employee' | 'supervisor' | 'dept_head' | 'president' | 'pod',
+  newRating: number,
+  remark?: string
+): KPIRating {
+  const previousRating = getLatestAdjustedRating(kpi);
+  const entry = {
+    role,
+    adjustedBy,
+    previousRating,
+    newRating,
+    timestamp: new Date().toISOString(),
+    remark,
+  };
+  return {
+    ...kpi,
+    ratingHistory: [...(kpi.ratingHistory || []), entry],
+  };
+}

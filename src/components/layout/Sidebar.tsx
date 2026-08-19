@@ -21,6 +21,7 @@ import {
   UserCircle,
   Rocket,
   Menu,
+  MessageSquare,
 } from 'lucide-react';
 
 interface NavItem {
@@ -80,6 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (currentRole === 'employee') {
       items = [
         ...common,
+        { id: 'calibration_request', label: 'Calibration Request', icon: MessageSquare },
         { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'my_profile', label: 'My Profile', icon: UserCircle },
       ];
@@ -95,6 +97,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items = [
         ...common,
         { id: 'dept_actions', label: 'Personnel Actions', icon: FileCheck },
+        { id: 'template_builder', label: 'Dept Template Builder', icon: SlidersHorizontal },
+        { id: 'calibration_requests', label: 'Calibration Requests', icon: MessageSquare },
         { id: 'reports', label: 'Reports', icon: BarChart3 },
         { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'my_profile', label: 'My Profile', icon: UserCircle },
@@ -130,6 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             { id: 'workflow_monitoring', label: 'Workflow Monitoring', icon: GitBranch },
             { id: 'evaluation_deployment', label: 'Evaluation Deployment', icon: Rocket },
             { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal },
+            { id: 'calibration_pod_review', label: 'Calibration Review', icon: MessageSquare },
             { id: 'admin_panel', label: 'Users, Roles & Config', icon: Settings },
           ],
         },

@@ -367,6 +367,26 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                       <td className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">{kpi.supervisorRating || kpi.selfRating || '-'}</td>
                       <td className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">{weightedScore}</td>
                     </tr>
+                    {/* Change 4 — Rating Adjustment History Trail */}
+                    {kpi.ratingHistory && kpi.ratingHistory.length > 0 && (
+                      <tr key={`${kpi.kpiId}_history`}>
+                        <td colSpan={6} className="border border-slate-300 px-3 py-1.5 bg-slate-50">
+                          <div className="text-[9px] text-slate-500 font-semibold uppercase mb-1">Rating Adjustment History</div>
+                          <div className="flex flex-wrap gap-2">
+                            {kpi.ratingHistory.map((entry, hi) => (
+                              <div key={hi} className="flex items-center gap-1 text-[9px] text-slate-600 bg-white border border-slate-200 rounded px-1.5 py-0.5">
+                                <span className="font-bold capitalize">{entry.role}:</span>
+                                <span>{entry.adjustedBy}</span>
+                                <span className="text-slate-400">•</span>
+                                <span>{entry.previousRating} → <strong>{entry.newRating}</strong></span>
+                                {entry.remark && <span className="text-slate-400 italic">({entry.remark})</span>}
+                                <span className="text-slate-400">{new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   </React.Fragment>
                 );
               })}
