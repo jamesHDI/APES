@@ -92,7 +92,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
   useEffect(() => {
     if (visibleTemplates.length > 0) {
-      if (!visibleTemplates.some(t => t.id === selectedTemplateId)) {
+      const match = visibleTemplates.find(t => t.id === selectedTemplateId);
+      if (match) {
+        setActiveTemplate(match);
+      } else {
         setSelectedTemplateId(visibleTemplates[0].id);
         setActiveTemplate(visibleTemplates[0]);
       }
@@ -309,10 +312,15 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     const defaultEnd = `${currentYear}-12-31`;
     const defaultPeriod = formatPeriodFromDates(defaultStart, defaultEnd);
 
+    const existingDeptTemplates = templates.filter(
+      t => t.departmentId === targetDept.id || t.departmentName?.toLowerCase() === targetDept.name?.toLowerCase()
+    );
+    const titleSuffix = existingDeptTemplates.length > 0 ? ` (Draft ${existingDeptTemplates.length + 1})` : '';
+
     const newTemplate = createMasterBasedTemplate(
       targetDept.id,
       targetDept.name,
-      `${targetDept.name} Performance Evaluation Scorecard Template`,
+      `${targetDept.name} Performance Evaluation Scorecard Template${titleSuffix}`,
       defaultPeriod
     );
 

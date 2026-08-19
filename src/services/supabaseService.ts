@@ -2238,30 +2238,53 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
     }, {} as Record<string, number>);
 
     const fullPayload = {
-      title: (template.title || 'Evaluation Template').substring(0, 150),
-      departmentName: (template.departmentName || 'General').substring(0, 100),
-      evaluationPeriod: (template.evaluationPeriod || 'Annual 2026').substring(0, 100),
+      id: templateUuid,
+      title: template.title || 'Evaluation Template',
+      departmentId: template.departmentId,
+      departmentName: template.departmentName || 'General',
+      evaluationPeriod: template.evaluationPeriod || 'Annual 2026',
+      startDate: template.startDate,
+      endDate: template.endDate,
+      status: template.status || 'draft',
+      createdByRole: template.createdByRole,
+      createdByUserId: template.createdByUserId,
+      createdByName: template.createdByName,
+      podRemarks: template.podRemarks,
+      submittedAt: template.submittedAt,
+      reviewedAt: template.reviewedAt,
+      isActive: template.isActive ?? true,
       formulaConfig: {
         eligibilityWeight: Number(template.formulaConfig?.eligibilityWeight ?? 85.00),
         coreValuesWeight: Number(template.formulaConfig?.coreValuesWeight ?? 15.00),
       },
-      kraCategories: kraCategories.map(kra => ({
+      kraCategories: (template.kraCategories || []).map((kra, kraIdx) => ({
+        id: kra.id || `kra_${templateUuid}_${kraIdx}`,
         name: kra.name,
         categoryWeightPercent: Number(kra.categoryWeightPercent || 0),
-        kpis: (kra.kpis || []).map(kpi => ({
+        kpis: (kra.kpis || []).map((kpi, kpiIdx) => ({
+          id: kpi.id || `kpi_${templateUuid}_${kraIdx}_${kpiIdx}`,
+          kraId: kra.id || `kra_${templateUuid}_${kraIdx}`,
+          kraName: kra.name,
           name: kpi.name,
           description: kpi.description || '',
           weightPercent: Number(kpi.weightPercent || 0),
           evidenceRequired: Boolean(kpi.evidenceRequired),
+          standards: Array.isArray(kpi.standards) && kpi.standards.length > 0 ? kpi.standards : [
+            { rating: 4, label: '4 - Exceeds', description: 'Exceeds target performance' },
+            { rating: 3, label: '3 - Meets', description: 'Meets expected target' },
+            { rating: 2, label: '2 - Barely Meets', description: 'Barely meets minimum target' },
+            { rating: 1, label: '1 - Did Not Meet', description: 'Did not meet target performance' }
+          ]
         })),
       })),
-      coreValues: (template.coreValues || []).map(cv => ({
+      coreValues: (template.coreValues || []).map((cv, cvIdx) => ({
+        id: cv.id || `cv_${templateUuid}_${cvIdx}`,
         name: cv.name,
         description: cv.description || '',
         weightPercent: Number(cv.weightPercent || 0),
-        sortOrder: Number(cv.sortOrder || 0),
+        sortOrder: Number(cv.sortOrder ?? (cvIdx + 1)),
       })),
-      classificationRanges: template.classificationRanges || [],
+      classificationRanges: template.classificationRanges || MASTER_SALES_EVALUATION_TEMPLATE.classificationRanges,
       kraWeights,
     };
 
@@ -2310,19 +2333,6 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
         details: error.details,
         hint: error.hint,
         code: error.code,
-        payloadKeys: Object.keys(payload),
-        payloadSample: {
-          id: payload.id,
-          title: payload.title,
-          department_name: payload.department_name,
-          evaluation_period: payload.evaluation_period,
-          eligibility_weight: payload.eligibility_weight,
-          core_values_weight: payload.core_values_weight,
-          is_active: payload.is_active,
-          has_kra_weights: !!payload.kra_weights,
-          has_full_payload: !!payload.full_payload,
-          has_department_id: !!payload.department_id,
-        },
       });
       return false;
     }
@@ -2345,10 +2355,6 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
     }
 
     if (template.kraCategories && template.kraCategories.length > 0) {
-      const existingKpiIds = new Set(
-        (template.kraCategories.flatMap(kra => kra.kpis || [])).map(kpi => kpi.id).filter(Boolean)
-      );
-
       await supabase.from('kpis').delete().eq('template_id', templateUuid).catch(() => {});
 
       for (const kra of template.kraCategories) {
@@ -2398,87 +2404,118 @@ export const fetchEvaluationTemplatesFromSupabase = async (): Promise<Evaluation
     } catch {}
 
     const templates: EvaluationTemplate[] = rows.map((row: any) => {
-      const deptName = row.department_name || 'Sales';
-      const tmplKpis = kpiRows.filter((k: any) => k.template_id === row.id);
-      const tmplCoreValues = coreValueRows.filter((cv: any) => cv.template_id === row.id);
+      const full = row.full_payload || {};
+      const deptName = row.department_name || full.departmentName || 'General';
 
+      // Restore full kraCategories from full_payload if available (preserves exact KPI items, standards & weights)
       let kraCategories: KRACategory[] = [];
-
-      if (tmplKpis && tmplKpis.length > 0) {
-        const kraMap = new Map<string, KPITemplateItem[]>();
-        for (const k of tmplKpis) {
-          const kraName = k.kra_name || '1. FINANCIAL';
-          if (!kraMap.has(kraName)) kraMap.set(kraName, []);
-          kraMap.get(kraName)!.push({
-            id: k.id,
-            kraId: `kra_${row.id}_${kraName}`,
-            kraName: kraName,
-            name: k.kpi_name,
-            description: k.description || '',
-            weightPercent: Number(k.weight_percent || 0),
-            evidenceRequired: Boolean(k.evidence_required),
-            standards: MASTER_SALES_EVALUATION_TEMPLATE.kraCategories[0]?.kpis[0]?.standards || []
-          });
-        }
-
-        const storedKraWeights = (row as any).kra_weights || (row as any).full_payload?.kra_weights || {};
-        kraCategories = Array.from(kraMap.entries()).map(([kraName, kpis], idx) => ({
-          id: `kra_${row.id}_${idx}`,
-          name: kraName,
-          categoryWeightPercent: storedKraWeights[kraName] ?? kpis.reduce((sum, item) => sum + item.weightPercent, 0),
-          kpis: kpis
+      if (Array.isArray(full.kraCategories) && full.kraCategories.length > 0) {
+        kraCategories = full.kraCategories.map((kra: any, kraIdx: number) => ({
+          id: kra.id || `kra_${row.id}_${kraIdx}`,
+          name: kra.name || `${kraIdx + 1}. KEY RESULT AREA`,
+          categoryWeightPercent: Number(kra.categoryWeightPercent || 0),
+          kpis: (kra.kpis || []).map((kpi: any, kpiIdx: number) => ({
+            id: kpi.id || `kpi_${row.id}_${kraIdx}_${kpiIdx}`,
+            kraId: kra.id || `kra_${row.id}_${kraIdx}`,
+            kraName: kra.name || '',
+            name: kpi.name || 'KPI Item',
+            description: kpi.description || '',
+            weightPercent: Number(kpi.weightPercent || 0),
+            evidenceRequired: Boolean(kpi.evidenceRequired),
+            standards: Array.isArray(kpi.standards) && kpi.standards.length > 0 ? kpi.standards : (
+              MASTER_SALES_EVALUATION_TEMPLATE.kraCategories[0]?.kpis[0]?.standards || []
+            )
+          }))
         }));
       } else {
-        const seed = row.id || 'default';
-        const masterKras = MASTER_SALES_EVALUATION_TEMPLATE.kraCategories;
-        kraCategories = masterKras.map((kra, kraIdx) => ({
-          ...kra,
-          id: `kra_${seed}_${kraIdx}`,
-          kpis: kra.kpis.map((kpi, kpiIdx) => ({
-            ...kpi,
-            id: `kpi_${seed}_${kraIdx}_${kpiIdx}`,
-            kraId: `kra_${seed}_${kraIdx}`,
-            standards: [...kpi.standards]
-          }))
-        }));
+        const tmplKpis = kpiRows.filter((k: any) => k.template_id === row.id);
+        if (tmplKpis && tmplKpis.length > 0) {
+          const kraMap = new Map<string, KPITemplateItem[]>();
+          for (const k of tmplKpis) {
+            const kraName = k.kra_name || '1. FINANCIAL';
+            if (!kraMap.has(kraName)) kraMap.set(kraName, []);
+            kraMap.get(kraName)!.push({
+              id: k.id,
+              kraId: `kra_${row.id}_${kraName}`,
+              kraName: kraName,
+              name: k.kpi_name,
+              description: k.description || '',
+              weightPercent: Number(k.weight_percent || 0),
+              evidenceRequired: Boolean(k.evidence_required),
+              standards: MASTER_SALES_EVALUATION_TEMPLATE.kraCategories[0]?.kpis[0]?.standards || []
+            });
+          }
+
+          const storedKraWeights = (row as any).kra_weights || full.kraWeights || {};
+          kraCategories = Array.from(kraMap.entries()).map(([kraName, kpis], idx) => ({
+            id: `kra_${row.id}_${idx}`,
+            name: kraName,
+            categoryWeightPercent: storedKraWeights[kraName] ?? kpis.reduce((sum, item) => sum + item.weightPercent, 0),
+            kpis: kpis
+          }));
+        } else {
+          const seed = row.id || 'default';
+          const masterKras = MASTER_SALES_EVALUATION_TEMPLATE.kraCategories;
+          kraCategories = masterKras.map((kra, kraIdx) => ({
+            ...kra,
+            id: `kra_${seed}_${kraIdx}`,
+            kpis: kra.kpis.map((kpi, kpiIdx) => ({
+              ...kpi,
+              id: `kpi_${seed}_${kraIdx}_${kpiIdx}`,
+              kraId: `kra_${seed}_${kraIdx}`,
+              standards: [...kpi.standards]
+            }))
+          }));
+        }
       }
 
-      const coreValues: CoreValue[] = tmplCoreValues.length > 0
-        ? tmplCoreValues.map((cv: any) => ({
-            id: cv.id,
-            name: cv.name,
-            description: cv.description || '',
-            weightPercent: Number(cv.weight_percent || 0),
-            sortOrder: Number(cv.sort_order || 0)
-          }))
-        : MASTER_SALES_EVALUATION_TEMPLATE.coreValues.map(cv => ({ ...cv }));
+      // Restore core values
+      let coreValues: CoreValue[] = [];
+      if (Array.isArray(full.coreValues) && full.coreValues.length > 0) {
+        coreValues = full.coreValues.map((cv: any, idx: number) => ({
+          id: cv.id || `cv_${row.id}_${idx}`,
+          name: cv.name || 'Core Value',
+          description: cv.description || '',
+          weightPercent: Number(cv.weightPercent || 0),
+          sortOrder: Number(cv.sortOrder ?? (idx + 1))
+        }));
+      } else {
+        const tmplCoreValues = coreValueRows.filter((cv: any) => cv.template_id === row.id);
+        coreValues = tmplCoreValues.length > 0
+          ? tmplCoreValues.map((cv: any) => ({
+              id: cv.id,
+              name: cv.name,
+              description: cv.description || '',
+              weightPercent: Number(cv.weight_percent || 0),
+              sortOrder: Number(cv.sort_order || 0)
+            }))
+          : MASTER_SALES_EVALUATION_TEMPLATE.coreValues.map(cv => ({ ...cv }));
+      }
 
       return {
         id: row.id,
-        title: row.title || `${deptName} Performance Evaluation Scorecard Template`,
-        departmentId: row.department_id || 'dept_acc',
+        title: row.title || full.title || `${deptName} Performance Evaluation Scorecard Template`,
+        departmentId: row.department_id || full.departmentId || 'dept_acc',
         departmentName: deptName,
-        evaluationPeriod: row.evaluation_period || 'January-September 2025',
+        evaluationPeriod: row.evaluation_period || full.evaluationPeriod || 'January-September 2025',
         formulaConfig: {
-          eligibilityWeight: Number(row.eligibility_weight || 85),
-          coreValuesWeight: Number(row.core_values_weight || 15)
+          eligibilityWeight: Number(row.eligibility_weight ?? full.formulaConfig?.eligibilityWeight ?? 85),
+          coreValuesWeight: Number(row.core_values_weight ?? full.formulaConfig?.coreValuesWeight ?? 15)
         },
         coreValues: coreValues,
-        classificationRanges: MASTER_SALES_EVALUATION_TEMPLATE.classificationRanges,
+        classificationRanges: full.classificationRanges || MASTER_SALES_EVALUATION_TEMPLATE.classificationRanges,
         kraCategories,
-        isActive: row.is_active ?? true,
+        isActive: row.is_active ?? full.isActive ?? true,
         createdAt: row.created_at ? new Date(row.created_at).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10),
-        // Change 1 — Template workflow fields
-        status: (row.status || row.full_payload?.status || 'draft') as any,
-        createdByRole: row.created_by_role || row.full_payload?.createdByRole || undefined,
-        createdByUserId: row.created_by_user_id || row.full_payload?.createdByUserId || undefined,
-        createdByName: row.created_by_name || row.full_payload?.createdByName || undefined,
-        podRemarks: row.pod_remarks || row.full_payload?.podRemarks || undefined,
-        submittedAt: row.submitted_at || row.full_payload?.submittedAt || undefined,
-        reviewedAt: row.reviewed_at || row.full_payload?.reviewedAt || undefined,
-        // Change 3 — Calendar period dates
-        startDate: row.start_date || row.full_payload?.startDate || undefined,
-        endDate: row.end_date || row.full_payload?.endDate || undefined,
+        status: (row.status || full.status || 'draft') as any,
+        createdByRole: row.created_by_role || full.createdByRole || undefined,
+        createdByUserId: row.created_by_user_id || full.createdByUserId || undefined,
+        createdByName: row.created_by_name || full.createdByName || undefined,
+        podRemarks: row.pod_remarks || full.podRemarks || undefined,
+        submittedAt: row.submitted_at || full.submittedAt || undefined,
+        reviewedAt: row.reviewed_at || full.reviewedAt || undefined,
+        startDate: row.start_date || full.startDate || undefined,
+        endDate: row.end_date || full.endDate || undefined,
       };
     });
 

@@ -86,6 +86,7 @@ const mergeEvaluationTemplates = (remote: EvaluationTemplate[] | null, local: Ev
   const result: EvaluationTemplate[] = [];
   const seenIds = new Set<string>();
 
+  // 1. Remote Supabase templates take highest priority
   if (remote && remote.length > 0) {
     for (const r of remote) {
       if (r && r.id && !seenIds.has(r.id)) {
@@ -95,6 +96,7 @@ const mergeEvaluationTemplates = (remote: EvaluationTemplate[] | null, local: Ev
     }
   }
 
+  // 2. Merge local templates that are not yet in remote
   for (const l of local) {
     if (l && l.id && !seenIds.has(l.id)) {
       seenIds.add(l.id);
@@ -102,22 +104,11 @@ const mergeEvaluationTemplates = (remote: EvaluationTemplate[] | null, local: Ev
     }
   }
 
-  // Deduplicate by department + title to prevent duplicate identical templates
-  const deduped: EvaluationTemplate[] = [];
-  const seenKeys = new Set<string>();
-  for (const t of result) {
-    const key = `${t.departmentId}_${t.title}`.toLowerCase();
-    if (!seenKeys.has(key)) {
-      seenKeys.add(key);
-      deduped.push(t);
-    }
+  if (result.length === 0) {
+    result.push(MASTER_SALES_EVALUATION_TEMPLATE);
   }
 
-  if (deduped.length === 0) {
-    deduped.push(MASTER_SALES_EVALUATION_TEMPLATE);
-  }
-
-  return deduped;
+  return result;
 };
 
 export const App: React.FC = () => {
