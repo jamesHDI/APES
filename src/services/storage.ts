@@ -351,17 +351,14 @@ export const getStoredTemplates = (): EvaluationTemplate[] => {
     } catch {}
   }
 
-  // Deduplicate by ID and (department + title)
+  // Deduplicate strictly by unique ID
   const deduped: EvaluationTemplate[] = [];
   const seenIds = new Set<string>();
-  const seenKeys = new Set<string>();
 
   for (const t of templates) {
     if (!t || !t.id) continue;
-    const key = `${t.departmentId}_${t.title}`.toLowerCase();
-    if (!seenIds.has(t.id) && !seenKeys.has(key)) {
+    if (!seenIds.has(t.id)) {
       seenIds.add(t.id);
-      seenKeys.add(key);
       deduped.push(t);
     }
   }

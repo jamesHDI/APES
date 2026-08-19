@@ -2288,7 +2288,7 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       kraWeights,
     };
 
-    const payload: Record<string, any> = {
+    const basePayload: Record<string, any> = {
       id: templateUuid,
       title: (template.title || 'Evaluation Template').substring(0, 150),
       department_name: (template.departmentName || 'General').substring(0, 100),
@@ -2296,10 +2296,13 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       eligibility_weight: Number(template.formulaConfig?.eligibilityWeight ?? 85.00),
       core_values_weight: Number(template.formulaConfig?.coreValuesWeight ?? 15.00),
       is_active: template.isActive ?? true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
       full_payload: fullPayload,
-      // Change 1 — Template workflow fields
+      updated_at: new Date().toISOString(),
+    };
+
+    const extendedPayload: Record<string, any> = {
+      ...basePayload,
+      created_at: new Date().toISOString(),
       status: template.status || 'draft',
       created_by_role: template.createdByRole || null,
       created_by_user_id: isValidUuid(template.createdByUserId || '') ? template.createdByUserId : null,
@@ -2307,34 +2310,29 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       pod_remarks: template.podRemarks || null,
       submitted_at: template.submittedAt || null,
       reviewed_at: template.reviewedAt || null,
-      // Change 3 — Calendar period dates
       start_date: template.startDate || null,
       end_date: template.endDate || null,
     };
 
     if (isValidUuid(template.departmentId)) {
-      payload.department_id = template.departmentId;
+      extendedPayload.department_id = template.departmentId;
     }
 
     console.log('[Template Cloud Sync] Upserting template payload:', {
-      id: payload.id,
-      title: payload.title,
-      department: payload.department_name,
-      hasKraWeights: !!payload.kra_weights,
-      hasFullPayload: !!payload.full_payload,
-      payloadKeys: Object.keys(payload),
+      id: extendedPayload.id,
+      title: extendedPayload.title,
+      department: extendedPayload.department_name,
     });
 
-    const { error } = await supabase.from('evaluation_templates').upsert(payload, { onConflict: 'id' });
+    let { error } = await supabase.from('evaluation_templates').upsert(extendedPayload, { onConflict: 'id' });
 
     if (error) {
-      console.warn('[Template Cloud Sync] Could not upsert template to Supabase:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      });
-      return false;
+      console.warn('[Template Cloud Sync] Extended upsert failed, attempting fallback to base payload:', error.message);
+      const { error: baseError } = await supabase.from('evaluation_templates').upsert(basePayload, { onConflict: 'id' });
+      if (baseError) {
+        console.warn('[Template Cloud Sync] Base payload upsert failed:', baseError.message);
+        return false;
+      }
     }
 
     const coreValueRows = (template.coreValues || []).map((cv, idx) => ({
