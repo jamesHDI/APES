@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { EvaluationTemplate, KRACategory, KPITemplateItem, CoreValue, Department, User, Evaluation, TemplateStatus } from '../../types';
 import { createMasterBasedTemplate, MASTER_SALES_EVALUATION_TEMPLATE } from '../../constants/masterSalesTemplate';
 import { validateEvaluationTemplate } from '../../services/templateValidation';
-import { assignNewEvaluationToEmployee, createDraftEvaluationInMemory } from '../../services/storage';
+import { triggerTemplateWorkflowNotification } from '../../services/notificationService';
+import { generateUuid } from '../../services/supabaseService';
+import { createDraftEvaluationInMemory } from '../../services/storage';
 import { PrintableScorecard } from '../evaluation/PrintableScorecard';
 import { 
   Plus,
@@ -23,6 +25,8 @@ import {
   RotateCcw,
   Calendar,
   ChevronRight,
+  Filter,
+  CheckCheck,
 } from 'lucide-react';
 
 interface TemplateBuilderProps {
@@ -45,18 +49,35 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const isDeptHead = currentUser?.role === 'dept_head';
   const isPOD = currentUser?.role === 'pod' || currentUser?.role === 'hr_admin' || currentUser?.role === 'system_admin';
 
-  // For dept_head: only show templates belonging to their own department
-  const visibleTemplates = isDeptHead
+  const canCreate = isDeptHead || currentUser?.role === 'system_admin';
+  const canDelete = currentUser?.role === 'system_admin';
+
+  const allVisibleTemplates = isDeptHead
     ? (templates && templates.length > 0 ? templates : [MASTER_SALES_EVALUATION_TEMPLATE]).filter(
         t => !t.departmentId || t.departmentId === currentUser?.departmentId
           || t.departmentName?.toLowerCase() === currentUser?.departmentName?.toLowerCase()
       )
     : (templates && templates.length > 0 ? templates : [MASTER_SALES_EVALUATION_TEMPLATE]);
 
-  const initialList = visibleTemplates.length > 0 ? visibleTemplates : [MASTER_SALES_EVALUATION_TEMPLATE];
+  const [podFilterTab, setPodFilterTab] = useState<'all' | 'pending' | 'approved' | 'drafts'>('all');
+
+  const visibleTemplates = isPOD
+    ? allVisibleTemplates.filter(t => {
+        if (podFilterTab === 'pending') return t.status === 'submitted_to_pod' || t.status === 'resubmitted_to_pod';
+        if (podFilterTab === 'approved') return t.status === 'approved' || t.status === 'pod_review' || t.status === 'deployed';
+        if (podFilterTab === 'drafts') return t.status === 'draft' || t.status === 'returned_for_revision' || !t.status;
+        return true;
+      })
+    : allVisibleTemplates;
+
+  const pendingSubmissionsCount = allVisibleTemplates.filter(
+    t => t.status === 'submitted_to_pod' || t.status === 'resubmitted_to_pod'
+  ).length;
+
+  const initialList = visibleTemplates.length > 0 ? visibleTemplates : allVisibleTemplates;
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialList[0]?.id || MASTER_SALES_EVALUATION_TEMPLATE.id);
   const [activeTemplate, setActiveTemplate] = useState<EvaluationTemplate>(
-    initialList.find(t => t.id === selectedTemplateId) || initialList[0]
+    initialList.find(t => t.id === selectedTemplateId) || initialList[0] || MASTER_SALES_EVALUATION_TEMPLATE
   );
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -65,14 +86,21 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const [podRemarkInput, setPodRemarkInput] = useState('');
   const [showReturnRemarkInput, setShowReturnRemarkInput] = useState(false);
 
+  const canEdit = isPOD 
+    || currentUser?.role === 'system_admin'
+    || (isDeptHead && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_for_revision'));
+
   useEffect(() => {
     if (visibleTemplates.length > 0) {
       if (!visibleTemplates.some(t => t.id === selectedTemplateId)) {
         setSelectedTemplateId(visibleTemplates[0].id);
         setActiveTemplate(visibleTemplates[0]);
       }
+    } else if (allVisibleTemplates.length > 0) {
+      setSelectedTemplateId(allVisibleTemplates[0].id);
+      setActiveTemplate(allVisibleTemplates[0]);
     }
-  }, [templates, selectedTemplateId]);
+  }, [templates, selectedTemplateId, podFilterTab]);
 
   const getWeightInputValue = (id: string, defaultValue: number | string): string => {
     return weightInputs[id] ?? String(defaultValue);
@@ -94,13 +122,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     return numVal;
   };
 
-  const canDelete = currentUser?.role === 'system_admin' || currentUser?.role === 'hr_admin' || currentUser?.role === 'pod';
-
-  // Change 3 — helper to format date range as period string
   const formatPeriodFromDates = (startDate?: string, endDate?: string): string => {
     if (!startDate && !endDate) return activeTemplate.evaluationPeriod || '';
     const fmt = (d: string) => {
-      const dt = new Date(d + 'T00:00:00'); // prevent timezone shift
+      const dt = new Date(d + 'T00:00:00');
       return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     };
     if (startDate && endDate) return `${fmt(startDate)} – ${fmt(endDate)}`;
@@ -108,49 +133,114 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     return endDate ? `Until ${fmt(endDate)}` : '';
   };
 
-  // Change 1 — Dept Head submits template to POD
-  const handleSubmitToPOD = () => {
-    if (!window.confirm('Submit this template to POD for review? You will not be able to edit it until POD returns it.')) return;
+  const handleSubmitToPOD = async () => {
+    const isResubmission = activeTemplate.status === 'returned_for_revision';
+    const confirmMsg = isResubmission
+      ? 'Resubmit this revised template to POD for review?'
+      : 'Submit this template to POD for review? You will not be able to edit it until POD returns it.';
+    
+    if (!window.confirm(confirmMsg)) return;
+
+    const newStatus: TemplateStatus = isResubmission ? 'resubmitted_to_pod' : 'submitted_to_pod';
     const submitted: EvaluationTemplate = {
       ...activeTemplate,
-      status: 'submitted_to_pod',
+      status: newStatus,
       submittedAt: new Date().toISOString(),
-      createdByRole: currentUser?.role,
-      createdByUserId: currentUser?.id,
-      createdByName: currentUser?.name,
+      createdByRole: activeTemplate.createdByRole || currentUser?.role,
+      createdByUserId: activeTemplate.createdByUserId || currentUser?.id,
+      createdByName: activeTemplate.createdByName || currentUser?.name,
     };
+
     onSaveTemplate(submitted);
     setActiveTemplate(submitted);
-    showToast('Template submitted to POD for review!');
+
+    try {
+      await triggerTemplateWorkflowNotification({
+        recipientRole: 'pod',
+        templateId: submitted.id,
+        templateTitle: submitted.title,
+        departmentName: submitted.departmentName,
+        senderName: currentUser?.name || 'Department Head',
+        title: isResubmission ? 'Revised Evaluation Template Resubmitted' : 'New Evaluation Template Submitted',
+        message: `The ${submitted.departmentName} Department Head (${currentUser?.name || 'Department Head'}) has submitted the "${submitted.title}" evaluation template for POD review.`,
+        type: 'action_required',
+        status: newStatus,
+      });
+    } catch (e) {
+      console.warn('[TemplateBuilder] Notification error:', e);
+    }
+
+    showToast(isResubmission ? 'Template resubmitted to POD for review!' : 'Template submitted to POD for review!');
   };
 
-  // Change 1 — POD approves or returns a template
-  const handlePODAction = (action: 'approve' | 'deploy' | 'return') => {
+  const handlePODAction = async (action: 'approve' | 'deploy' | 'return') => {
     if (action === 'return') {
       if (!podRemarkInput.trim()) {
         setShowReturnRemarkInput(true);
+        showToast('Please enter revision remarks for the Department Head.');
         return;
       }
+
       const returned: EvaluationTemplate = {
         ...activeTemplate,
-        status: 'draft',
-        podRemarks: podRemarkInput,
+        status: 'returned_for_revision',
+        podRemarks: podRemarkInput.trim(),
         reviewedAt: new Date().toISOString(),
       };
+
       onSaveTemplate(returned);
       setActiveTemplate(returned);
+
+      try {
+        await triggerTemplateWorkflowNotification({
+          targetUserId: activeTemplate.createdByUserId,
+          recipientRole: 'dept_head',
+          recipientDepartment: activeTemplate.departmentName,
+          templateId: returned.id,
+          templateTitle: returned.title,
+          departmentName: activeTemplate.departmentName,
+          senderName: currentUser?.name || 'People Operations (POD)',
+          title: 'Evaluation Template Returned for Revision',
+          message: `POD (${currentUser?.name || 'POD'}) has returned the evaluation template "${activeTemplate.title}" for revision. Remarks: "${podRemarkInput.trim()}".`,
+          type: 'alert',
+          status: 'returned_for_revision',
+        });
+      } catch (e) {
+        console.warn('[TemplateBuilder] Notification error:', e);
+      }
+
       setPodRemarkInput('');
       setShowReturnRemarkInput(false);
       showToast('Template returned to Department Head for revision.');
     } else if (action === 'approve') {
       const approved: EvaluationTemplate = {
         ...activeTemplate,
-        status: 'pod_review',
-        podRemarks: podRemarkInput || undefined,
+        status: 'approved',
+        podRemarks: podRemarkInput.trim() || activeTemplate.podRemarks,
         reviewedAt: new Date().toISOString(),
       };
+
       onSaveTemplate(approved);
       setActiveTemplate(approved);
+
+      try {
+        await triggerTemplateWorkflowNotification({
+          targetUserId: activeTemplate.createdByUserId,
+          recipientRole: 'dept_head',
+          recipientDepartment: activeTemplate.departmentName,
+          templateId: approved.id,
+          templateTitle: approved.title,
+          departmentName: activeTemplate.departmentName,
+          senderName: currentUser?.name || 'People Operations (POD)',
+          title: 'Evaluation Template Approved',
+          message: `POD (${currentUser?.name || 'POD'}) has approved the evaluation template "${activeTemplate.title}".`,
+          type: 'success',
+          status: 'approved',
+        });
+      } catch (e) {
+        console.warn('[TemplateBuilder] Notification error:', e);
+      }
+
       setPodRemarkInput('');
       showToast('Template approved by POD. Ready to deploy.');
     } else if (action === 'deploy') {
@@ -159,9 +249,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         status: 'deployed',
         reviewedAt: new Date().toISOString(),
       };
+
       onSaveTemplate(deployed);
       setActiveTemplate(deployed);
-      showToast('Template deployed!');
+      showToast('Template deployed successfully!');
     }
   };
 
@@ -169,14 +260,13 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     if (e) e.stopPropagation();
 
     if (!canDelete) {
-      alert('Only System Administrators and POD Officers can delete evaluation templates.');
+      alert('Only System Administrators can delete evaluation templates.');
       return;
     }
 
     const tmplToDelete = templates.find(t => t.id === templateId);
     if (!tmplToDelete) return;
 
-    // Check if the template is currently active or assigned to an ongoing evaluation
     const isInUse = evaluations?.some(
       (ev) => ev.templateId === templateId && ev.status !== 'archived'
     );
@@ -190,7 +280,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       if (onDeleteTemplate) {
         onDeleteTemplate(templateId);
       }
-      const remaining = templates.filter(t => t.id !== templateId);
+      const remaining = visibleTemplates.filter(t => t.id !== templateId);
       if (selectedTemplateId === templateId && remaining.length > 0) {
         setSelectedTemplateId(remaining[0].id);
         setActiveTemplate(remaining[0]);
@@ -202,24 +292,43 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const handleSelectTemplate = (id: string) => {
     setSelectedTemplateId(id);
     setValidationErrors([]);
-    const tmpl = templates.find((t) => t.id === id);
+    const tmpl = visibleTemplates.find((t) => t.id === id) || templates.find((t) => t.id === id);
     if (tmpl) setActiveTemplate(tmpl);
   };
 
   const handleCreateNewTemplate = () => {
-    const defaultDept = departments[0] || { id: 'dept_acc', name: 'Accounting' };
+    const targetDept = departments.find(
+      d => d.id === currentUser?.departmentId || d.name?.toLowerCase() === currentUser?.departmentName?.toLowerCase()
+    ) || { 
+      id: currentUser?.departmentId || 'dept_gen', 
+      name: currentUser?.departmentName || 'Department' 
+    };
+
+    const currentYear = new Date().getFullYear();
+    const defaultStart = `${currentYear}-01-01`;
+    const defaultEnd = `${currentYear}-12-31`;
+    const defaultPeriod = formatPeriodFromDates(defaultStart, defaultEnd);
+
     const newTemplate = createMasterBasedTemplate(
-      defaultDept.id,
-      defaultDept.name,
-      `${defaultDept.name} Performance Evaluation Scorecard Template`,
-      'January-September 2025'
+      targetDept.id,
+      targetDept.name,
+      `${targetDept.name} Performance Evaluation Scorecard Template`,
+      defaultPeriod
     );
+
+    newTemplate.id = generateUuid();
+    newTemplate.status = 'draft';
+    newTemplate.createdByRole = currentUser?.role;
+    newTemplate.createdByUserId = currentUser?.id;
+    newTemplate.createdByName = currentUser?.name;
+    newTemplate.startDate = defaultStart;
+    newTemplate.endDate = defaultEnd;
 
     onSaveTemplate(newTemplate);
     setActiveTemplate(newTemplate);
     setSelectedTemplateId(newTemplate.id);
     setValidationErrors([]);
-    showToast(`New Master-Layout Template initialized for ${defaultDept.name}!`);
+    showToast(`New draft template initialized for ${targetDept.name}!`);
   };
 
   const handleAddKRA = () => {
@@ -258,28 +367,28 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         { rating: 4, label: '4 - Exceeds', description: 'Exceeds target performance' },
         { rating: 3, label: '3 - Meets', description: 'Meets expected target' },
         { rating: 2, label: '2 - Barely Meets', description: 'Barely meets minimum target' },
-        { rating: 1, label: '1 - Did Not Meet', description: 'Fails to meet target' }
+        { rating: 1, label: '1 - Did Not Meet', description: 'Did not meet target performance' },
       ]
     };
 
-    const updatedKras = activeTemplate.kraCategories.map((k) => {
+    const updated = activeTemplate.kraCategories.map(k => {
       if (k.id === kraId) {
         return { ...k, kpis: [...k.kpis, newKpi] };
       }
       return k;
     });
 
-    setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
+    setActiveTemplate({ ...activeTemplate, kraCategories: updated });
   };
 
   const handleRemoveKPI = (kraId: string, kpiId: string) => {
-    const updatedKras = activeTemplate.kraCategories.map((k) => {
+    const updated = activeTemplate.kraCategories.map(k => {
       if (k.id === kraId) {
         return { ...k, kpis: k.kpis.filter(item => item.id !== kpiId) };
       }
       return k;
     });
-    setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
+    setActiveTemplate({ ...activeTemplate, kraCategories: updated });
   };
 
   const handleAddCoreValue = () => {
@@ -328,152 +437,163 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     });
   };
 
-  const formulaTotal = (activeTemplate.formulaConfig.eligibilityWeight || 0) + (activeTemplate.formulaConfig.coreValuesWeight || 0);
-  const isFormulaValid = Math.abs(formulaTotal - 100) < 0.01;
   const totalCoreValueWeight = (activeTemplate.coreValues || []).reduce((sum, cv) => sum + (Number(cv.weightPercent) || 0), 0);
   const isCoreValuesValid = Math.abs(totalCoreValueWeight - (activeTemplate.formulaConfig.coreValuesWeight || 0)) < 0.01;
 
-  const getKpiTotal = (kra: KRACategory): number => {
-    return (kra.kpis || []).reduce((sum, kpi) => sum + (Number(kpi.weightPercent) || 0), 0);
-  };
-
-  const isKraValid = (kra: KRACategory): boolean => {
-    const kpiTotal = getKpiTotal(kra);
-    const kraWeight = Number(kra.categoryWeightPercent) || 0;
-    return kpiTotal <= kraWeight;
-  };
-
-  const getKraTotalWeight = (): number => {
-    return (activeTemplate.kraCategories || []).reduce((sum, kra) => sum + (Number(kra.categoryWeightPercent) || 0), 0);
-  };
-
-  const getAllKpisTotalWeight = (): number => {
-    return (activeTemplate.kraCategories || []).reduce((sum, kra) => {
-      return sum + (kra.kpis || []).reduce((kpiSum, kpi) => kpiSum + (Number(kpi.weightPercent) || 0), 0);
-    }, 0);
-  };
-
-  const eligibilityWeight = Number(activeTemplate.formulaConfig.eligibilityWeight || 0);
-  const isPart1AKraWeightValid = (): boolean => Math.abs(getKraTotalWeight() - eligibilityWeight) < 0.01;
-  const isPart1AKpiWeightValid = (): boolean => Math.abs(getAllKpisTotalWeight() - eligibilityWeight) < 0.01;
-  const isPart1AWeightValid = (): boolean => isPart1AKraWeightValid() && isPart1AKpiWeightValid();
-
   const handleSave = () => {
-    const kraTotal = getKraTotalWeight();
-    const part1AWeight = Number(activeTemplate.formulaConfig.eligibilityWeight || 0);
-    const kraValidationErrors = activeTemplate.kraCategories.map(kra => {
-      const kpiTotal = getKpiTotal(kra);
-      const kraWeight = Number(kra.categoryWeightPercent) || 0;
-      if (kpiTotal > kraWeight) {
-        return `KRA "${kra.name || 'Unnamed'}": KPI weights total ${kpiTotal.toFixed(2)}%, which exceeds the KRA weight of ${kraWeight}%.`;
-      }
-      return null;
-    }).filter((msg): msg is string => msg !== null);
-
-    if (kraTotal > part1AWeight) {
-      const error = `KRA weights exceed the Part 1A weight of ${part1AWeight}%. Current total: ${kraTotal.toFixed(2)}%. Please adjust the KRA weights before saving.`;
-      setValidationErrors([error]);
-      showToast('KRA weight allocation exceeded. Fix errors before saving.');
+    const validation = validateEvaluationTemplate(activeTemplate);
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      showToast('Please resolve all validation errors before saving.');
       return;
     }
 
-    if (kraValidationErrors.length > 0) {
-      setValidationErrors(kraValidationErrors);
-      showToast('KRA weight allocation exceeded. Fix errors before saving.');
-      return;
-    }
-
-    const valResult = validateEvaluationTemplate(activeTemplate);
-    if (!valResult.isValid) {
-      setValidationErrors(valResult.errors);
-      showToast('Template validation failed. Fix errors before saving.');
-      return;
-    }
     setValidationErrors([]);
     onSaveTemplate(activeTemplate);
-    showToast(`Template "${activeTemplate.title}" saved successfully!`);
+    showToast(isDeptHead ? 'Template draft saved successfully!' : 'Template changes saved successfully!');
   };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Calculate total weights
-  const totalKPIWeight = activeTemplate.kraCategories.reduce((acc, kra) => {
-    return acc + (kra.kpis ? kra.kpis.reduce((kAcc, kpi) => kAcc + (kpi.weightPercent || 0), 0) : 0);
-  }, 0);
-  const eligibilityTarget = activeTemplate.formulaConfig.eligibilityWeight || 85;
-  const isKpiTotalValid = Math.abs(totalKPIWeight - eligibilityTarget) < 0.01;
+  const getKpiTotal = (kra: KRACategory) => {
+    return kra.kpis.reduce((sum, item) => sum + (Number(item.weightPercent) || 0), 0);
+  };
+
+  const getKraTotalWeight = () => {
+    return activeTemplate.kraCategories.reduce((sum, kra) => sum + (Number(kra.categoryWeightPercent) || 0), 0);
+  };
+
+  const getAllKpisTotalWeight = () => {
+    return activeTemplate.kraCategories.reduce((sum, kra) => {
+      return sum + kra.kpis.reduce((kpiSum, kpi) => kpiSum + (Number(kpi.weightPercent) || 0), 0);
+    }, 0);
+  };
+
+  const eligibilityWeight = Number(activeTemplate.formulaConfig.eligibilityWeight) || 85;
+  const isPart1AKraWeightValid = () => Math.abs(getKraTotalWeight() - eligibilityWeight) < 0.01;
+  const isPart1AKpiWeightValid = () => Math.abs(getAllKpisTotalWeight() - eligibilityWeight) < 0.01;
+  const isKraValid = (kra: KRACategory) => getKpiTotal(kra) <= (Number(kra.categoryWeightPercent) || 0);
+
+  const statusColors: Record<string, string> = {
+    draft: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+    submitted_to_pod: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    resubmitted_to_pod: 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300',
+    returned_for_revision: 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300',
+    pod_review: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    approved: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    deployed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+  };
+
+  const statusLabels: Record<string, string> = {
+    draft: 'Draft',
+    submitted_to_pod: 'Submitted to POD',
+    resubmitted_to_pod: 'Resubmitted to POD',
+    returned_for_revision: 'Returned for Revision',
+    pod_review: 'POD Approved',
+    approved: 'POD Approved',
+    deployed: 'Deployed',
+  };
 
   return (
     <div className="space-y-6 pb-12">
-      
-      {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-brand-500 flex items-center space-x-3 animate-in fade-in">
-          <Sparkles className="w-5 h-5 text-brand-400" />
-          <span className="text-sm font-semibold">{toastMessage}</span>
+        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-[#F28C28] flex items-center space-x-2 animate-in fade-in">
+          <Sparkles className="w-4 h-4 text-[#F28C28]" />
+          <span className="text-xs font-bold">{toastMessage}</span>
         </div>
       )}
 
-      {/* Validation Errors Box */}
       {validationErrors.length > 0 && (
-        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 space-y-2 shadow-sm">
-          <div className="flex items-center space-x-2 font-extrabold text-xs uppercase text-rose-700 dark:text-rose-300">
-            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
-            <span>Template Save Blocked — Validation Requirements Unfulfilled</span>
+        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 space-y-1">
+          <div className="flex items-center space-x-2 text-rose-700 dark:text-rose-400 font-bold text-xs">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>Cannot save template. Please correct the following:</span>
           </div>
-          <ul className="list-disc pl-5 text-xs space-y-1 text-rose-800 dark:text-rose-200">
-            {validationErrors.map((err, idx) => (
-              <li key={idx}>{err}</li>
+          <ul className="list-disc list-inside text-xs text-rose-600 dark:text-rose-400 space-y-0.5 ml-1">
+            {validationErrors.map((err, i) => (
+              <li key={i}>{err}</li>
             ))}
           </ul>
         </div>
       )}
 
-      {/* Top Banner */}
       <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
         <div>
           <div className="flex items-center space-x-2">
-            <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">Dynamic HR Evaluation Template & KPI Builder</h2>
+            <Layers className="w-5 h-5 text-brand-500" />
+            <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+              {isDeptHead ? 'Department Performance Evaluation Template Builder' : 'Evaluation Templates & POD Review'}
+            </h2>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-            Create or customize performance scorecards for any department (IT, Sales, Accounting, HR, Operations, Engineering) without modifying source code.
+            {isDeptHead 
+              ? 'Create, configure KRAs and KPIs, and submit the official evaluation template for your department to POD.'
+              : 'Review, edit, approve, and deploy department evaluation templates submitted by Department Heads.'}
           </p>
         </div>
 
-        <button
-          onClick={handleCreateNewTemplate}
-          className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold shadow-md flex items-center space-x-2 shrink-0 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create New Template</span>
-        </button>
+        {canCreate && (
+          <button
+            onClick={handleCreateNewTemplate}
+            className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold shadow-md flex items-center space-x-2 shrink-0 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create New Template</span>
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Template Selector Sidebar */}
         <div className="lg:col-span-4 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2">
-            {isDeptHead ? `${currentUser?.departmentName || 'Your'} Templates` : `Active Department Templates`} ({visibleTemplates.length})
-          </h3>
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              {isDeptHead ? `${currentUser?.departmentName || 'Your'} Templates` : `Department Templates`} ({visibleTemplates.length})
+            </h3>
+          </div>
 
-          <div className="space-y-2">
-            {visibleTemplates.map((tmpl) => {
-              const statusColors: Record<string, string> = {
-                draft: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
-                submitted_to_pod: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
-                pod_review: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-                deployed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300',
-              };
-              const statusLabels: Record<string, string> = {
-                draft: 'Draft',
-                submitted_to_pod: 'Submitted to POD',
-                pod_review: 'POD Review',
-                deployed: 'Deployed',
-              };
+          {isPOD && (
+            <div className="flex p-1 bg-slate-100 dark:bg-slate-750 rounded-xl gap-1 text-[11px] font-semibold">
+              <button
+                onClick={() => setPodFilterTab('all')}
+                className={`flex-1 py-1 rounded-lg transition-all ${podFilterTab === 'all' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setPodFilterTab('pending')}
+                className={`flex-1 py-1 rounded-lg transition-all flex items-center justify-center gap-1 ${podFilterTab === 'pending' ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Pending
+                {pendingSubmissionsCount > 0 && (
+                  <span className="px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[9px] font-bold">
+                    {pendingSubmissionsCount}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setPodFilterTab('approved')}
+                className={`flex-1 py-1 rounded-lg transition-all ${podFilterTab === 'approved' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Approved
+              </button>
+              <button
+                onClick={() => setPodFilterTab('drafts')}
+                className={`flex-1 py-1 rounded-lg transition-all ${podFilterTab === 'drafts' ? 'bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Drafts
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-2 max-h-[70vh] overflow-y-auto">
+            {visibleTemplates.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400">
+                No templates in this category.
+              </div>
+            ) : visibleTemplates.map((tmpl) => {
               const sts = tmpl.status || 'draft';
               return (
                 <div
@@ -490,7 +610,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                       {tmpl.departmentName}
                     </span>
                     <div className="flex items-center space-x-2">
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${statusColors[sts]}`}>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${statusColors[sts] || statusColors.draft}`}>
                         {statusLabels[sts] || sts}
                       </span>
                       {canDelete && (
@@ -498,101 +618,149 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                           type="button"
                           onClick={(e) => handleDeleteTemplateAction(tmpl.id, e)}
                           className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                          title="Delete Evaluation Template"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
                   </div>
-                  <p className="font-bold text-slate-900 dark:text-white text-xs mt-2">
-                    {tmpl.title}
-                  </p>
+                  <p className="font-bold text-slate-900 dark:text-white text-xs mt-2">{tmpl.title}</p>
                   <p className="text-[10px] text-slate-500 mt-1">
                     {tmpl.evaluationPeriod || (tmpl.startDate && tmpl.endDate ? `${tmpl.startDate} – ${tmpl.endDate}` : '')}
                   </p>
                   <p className="text-[10px] text-slate-400 mt-0.5">
                     {tmpl.kraCategories.length} KRAs • Formula: {tmpl.formulaConfig.eligibilityWeight}% KPI / {tmpl.formulaConfig.coreValuesWeight}% Core Values
                   </p>
+                  {tmpl.createdByName && (
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Created by: {tmpl.createdByName}
+                    </p>
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Template Workspace Editor */}
         <div className="lg:col-span-8 space-y-6">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
-            
-            {/* Template Status Banner for Dept Head */}
-            {isDeptHead && activeTemplate.status && activeTemplate.status !== 'draft' && (
-              <div className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
-                activeTemplate.status === 'submitted_to_pod' ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800' :
-                activeTemplate.status === 'pod_review' ? 'bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800' :
-                activeTemplate.status === 'deployed' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' : ''
-              }`}>
-                <ShieldCheck className="w-4 h-4 shrink-0" />
-                <span>
-                  {activeTemplate.status === 'submitted_to_pod' && 'This template has been submitted to POD for review. Editing is locked until POD returns it for revision.'}
-                  {activeTemplate.status === 'pod_review' && 'POD has approved this template. Awaiting deployment.'}
-                  {activeTemplate.status === 'deployed' && 'This template has been deployed. Contact POD to make changes.'}
-                </span>
+          {activeTemplate.status && (
+            <div className={`p-4 rounded-xl text-xs flex items-start gap-2.5 ${
+              activeTemplate.status === 'submitted_to_pod' || activeTemplate.status === 'resubmitted_to_pod' ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800' :
+              activeTemplate.status === 'returned_for_revision' ? 'bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800' :
+              activeTemplate.status === 'approved' || activeTemplate.status === 'pod_review' ? 'bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800' :
+              activeTemplate.status === 'deployed' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' : ''
+            }`}>
+              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="font-bold uppercase tracking-wider text-[10px]">
+                  Status: {statusLabels[activeTemplate.status] || activeTemplate.status}
+                </p>
+                <p>
+                  {activeTemplate.status === 'submitted_to_pod' && (
+                    isDeptHead 
+                      ? 'This template has been submitted to POD for review. Editing is locked until POD approves or returns it.'
+                      : 'This template was submitted by the Department Head and requires POD review and approval.'
+                  )}
+                  {activeTemplate.status === 'resubmitted_to_pod' && (
+                    isDeptHead 
+                      ? 'This revised template has been resubmitted to POD. Editing is locked until POD review.'
+                      : 'The Department Head has revised and resubmitted this template for POD review.'
+                  )}
+                  {activeTemplate.status === 'returned_for_revision' && (
+                    isDeptHead
+                      ? 'POD has returned this template for revision. Please review the remarks below, update the template, and resubmit.'
+                      : 'This template was returned to the Department Head for revision.'
+                  )}
+                  {(activeTemplate.status === 'approved' || activeTemplate.status === 'pod_review') && (
+                    'POD has approved this template. It is ready for evaluation deployment.'
+                  )}
+                  {activeTemplate.status === 'deployed' && (
+                    'This template is actively deployed for evaluations.'
+                  )}
+                </p>
                 {activeTemplate.podRemarks && (
-                  <span className="block text-[11px] mt-1 italic">POD Remarks: {activeTemplate.podRemarks}</span>
+                  <p className="text-[11px] mt-1 italic font-semibold text-rose-700 dark:text-rose-300">
+                    POD Remarks: "{activeTemplate.podRemarks}"
+                  </p>
                 )}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* POD Action Panel for submitted templates */}
-            {isPOD && activeTemplate.status === 'submitted_to_pod' && (
-              <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 space-y-3">
+          {isPOD && (activeTemplate.status === 'submitted_to_pod' || activeTemplate.status === 'resubmitted_to_pod') && (
+            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-amber-600" />
-                  <span className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wide">POD Review Required</span>
-                  {activeTemplate.createdByName && (
-                    <span className="text-[11px] text-amber-600 dark:text-amber-400">Submitted by: {activeTemplate.createdByName}</span>
-                  )}
+                  <span className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wide">POD Action Required</span>
                 </div>
-                {showReturnRemarkInput && (
+                {activeTemplate.createdByName && (
+                  <span className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold">
+                    Submitted by: {activeTemplate.createdByName} ({activeTemplate.departmentName})
+                  </span>
+                )}
+              </div>
+
+              {showReturnRemarkInput && (
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase">
+                    Revision Remarks for Department Head *
+                  </label>
                   <textarea
-                    placeholder="Enter remarks for the Department Head (required to return template)..."
+                    placeholder="Enter specific feedback or adjustments needed from the Department Head..."
                     value={podRemarkInput}
                     onChange={e => setPodRemarkInput(e.target.value)}
                     rows={2}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-amber-300 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-amber-300 bg-white dark:bg-slate-900 text-slate-900 dark:text-white resize-none"
                   />
-                )}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button onClick={() => handlePODAction('approve')} className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Approve for Deployment
-                  </button>
-                  <button onClick={() => handlePODAction('return')} className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1">
-                    <RotateCcw className="w-3.5 h-3.5" /> Return for Revision
-                  </button>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* POD Deploy Panel for pod_review templates */}
-            {isPOD && activeTemplate.status === 'pod_review' && (
-              <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button 
+                  onClick={() => handlePODAction('approve')} 
+                  className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-all"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Approve Template
+                </button>
+                <button 
+                  onClick={() => handlePODAction('deploy')} 
+                  className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-all"
+                >
+                  <Send className="w-3.5 h-3.5" /> Deploy Template
+                </button>
+                <button 
+                  onClick={() => handlePODAction('return')} 
+                  className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-all"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Return for Revision
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isPOD && (activeTemplate.status === 'approved' || activeTemplate.status === 'pod_review') && (
+            <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 space-y-2">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wide">Ready to Deploy</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => handlePODAction('deploy')} className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1">
-                    <Send className="w-3.5 h-3.5" /> Deploy Template
-                  </button>
-                  <button onClick={() => handlePODAction('return')} className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1">
-                    <RotateCcw className="w-3.5 h-3.5" /> Return for Revision
-                  </button>
+                  <span className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wide">Approved & Ready for Deployment</span>
                 </div>
               </div>
-            )}
+              <div className="flex items-center gap-2">
+                <button onClick={() => handlePODAction('deploy')} className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm">
+                  <Send className="w-3.5 h-3.5" /> Deploy Template
+                </button>
+                <button onClick={() => handlePODAction('return')} className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm">
+                  <RotateCcw className="w-3.5 h-3.5" /> Return for Revision
+                </button>
+              </div>
+            </div>
+          )}
 
-            {/* Header Settings */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
+            
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-700 flex-wrap gap-3">
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white text-base">Template Properties</h3>
                 <p className="text-xs text-slate-500">Configure department assignment, period, and weights</p>
@@ -608,19 +776,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   Preview Master PDF
                 </button>
 
-                {canDelete && (
-                  <button
-                    type="button"
-                    onClick={(e) => handleDeleteTemplateAction(activeTemplate.id, e)}
-                    className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md transition-all whitespace-nowrap"
-                    title="Delete Current Template"
-                  >
-                    Delete
-                  </button>
-                )}
-
-                {/* Dept Head Save & Submit buttons */}
-                {isDeptHead && (!activeTemplate.status || activeTemplate.status === 'draft') && (
+                {isDeptHead && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_for_revision') && (
                   <>
                     <button
                       onClick={handleSave}
@@ -632,18 +788,18 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                       onClick={handleSubmitToPOD}
                       className="px-4 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1"
                     >
-                      <Send className="w-3.5 h-3.5" /> Submit to POD
+                      <Send className="w-3.5 h-3.5" /> 
+                      {activeTemplate.status === 'returned_for_revision' ? 'Resubmit to POD' : 'Submit to POD'}
                     </button>
                   </>
                 )}
 
-                {/* POD/Admin full save button */}
                 {!isDeptHead && (
                   <button
                     onClick={handleSave}
-                    className="px-4 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap"
+                    className="px-4 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
                   >
-                    Save Template Changes
+                    <Save className="w-3.5 h-3.5" /> Save Template Changes
                   </button>
                 )}
               </div>
@@ -658,7 +814,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   type="text"
                   value={activeTemplate.title}
                   onChange={(e) => setActiveTemplate({ ...activeTemplate, title: e.target.value })}
-                  disabled={isDeptHead && activeTemplate.status !== 'draft' && !!activeTemplate.status}
+                  disabled={!canEdit}
                   className="w-full px-3.5 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white disabled:opacity-60"
                 />
               </div>
@@ -677,6 +833,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 ) : (
                   <select
                     value={activeTemplate.departmentId}
+                    disabled={!canEdit}
                     onChange={(e) => {
                       const dept = departments.find(d => d.id === e.target.value);
                       setActiveTemplate({
@@ -685,7 +842,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                         departmentName: dept?.name || 'SALES'
                       });
                     }}
-                    className="w-full px-3.5 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white"
+                    className="w-full px-3.5 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white disabled:opacity-60"
                   >
                     {departments.map((d) => (
                       <option key={d.id} value={d.id}>{d.name}</option>
@@ -694,7 +851,6 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 )}
               </div>
 
-              {/* Change 3 — Calendar-based Evaluation Period */}
               <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2 flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5" /> Evaluation Period
@@ -705,7 +861,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     <input
                       type="date"
                       value={activeTemplate.startDate || ''}
-                      disabled={isDeptHead && activeTemplate.status !== 'draft' && !!activeTemplate.status}
+                      disabled={!canEdit}
                       onChange={(e) => {
                         const newStart = e.target.value;
                         const newPeriod = formatPeriodFromDates(newStart, activeTemplate.endDate);
@@ -720,7 +876,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                       type="date"
                       value={activeTemplate.endDate || ''}
                       min={activeTemplate.startDate || ''}
-                      disabled={isDeptHead && activeTemplate.status !== 'draft' && !!activeTemplate.status}
+                      disabled={!canEdit}
                       onChange={(e) => {
                         const newEnd = e.target.value;
                         const newPeriod = formatPeriodFromDates(activeTemplate.startDate, newEnd);
@@ -730,28 +886,20 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     />
                   </div>
                 </div>
-                {activeTemplate.evaluationPeriod && (
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
-                    Display: <span className="font-semibold text-brand-600 dark:text-brand-400">{activeTemplate.evaluationPeriod}</span>
-                  </p>
-                )}
               </div>
-            </div>
 
-            {/* Formula Weight Configuration */}
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Formula Weights</span>
-                  <p className="text-[11px] text-slate-500">Part 1A Eligibility vs Part 1B Core Values</p>
+              <div className="sm:col-span-2 p-4 bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Formula Weights (%)</span>
                 </div>
-                <div className="flex items-center space-x-3 text-xs font-bold">
+                <div className="flex items-center space-x-6 text-xs font-bold">
                   <div>
                     <span className="text-slate-500 dark:text-slate-400 mr-1">Part 1A:</span>
                     <input
                       type="text"
                       inputMode="numeric"
                       value={getWeightInputValue('formula_eligibility', activeTemplate.formulaConfig.eligibilityWeight)}
+                      disabled={!canEdit}
                       onChange={(e) => handleWeightInputChange('formula_eligibility', e.target.value)}
                       onBlur={() => {
                         const numVal = commitWeightInput('formula_eligibility', activeTemplate.formulaConfig.eligibilityWeight);
@@ -760,109 +908,83 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                           formulaConfig: { ...activeTemplate.formulaConfig, eligibilityWeight: numVal }
                         });
                       }}
-                      className="w-14 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center font-bold"
+                      className="w-14 px-2 py-1 rounded-lg text-xs font-bold border text-center bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white disabled:opacity-60"
                     />
-                    <span className="text-slate-600 dark:text-slate-400 ml-1">%</span>
+                    <span className="ml-1">%</span>
                   </div>
+
                   <div>
                     <span className="text-slate-500 dark:text-slate-400 mr-1">Part 1B:</span>
                     <input
                       type="text"
                       inputMode="numeric"
-                      value={getWeightInputValue('formula_coreValues', activeTemplate.formulaConfig.coreValuesWeight)}
-                      onChange={(e) => handleWeightInputChange('formula_coreValues', e.target.value)}
+                      value={getWeightInputValue('formula_core_values', activeTemplate.formulaConfig.coreValuesWeight)}
+                      disabled={!canEdit}
+                      onChange={(e) => handleWeightInputChange('formula_core_values', e.target.value)}
                       onBlur={() => {
-                        const numVal = commitWeightInput('formula_coreValues', activeTemplate.formulaConfig.coreValuesWeight);
+                        const numVal = commitWeightInput('formula_core_values', activeTemplate.formulaConfig.coreValuesWeight);
                         setActiveTemplate({
                           ...activeTemplate,
                           formulaConfig: { ...activeTemplate.formulaConfig, coreValuesWeight: numVal }
                         });
                       }}
-                      className="w-14 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center font-bold"
+                      className="w-14 px-2 py-1 rounded-lg text-xs font-bold border text-center bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white disabled:opacity-60"
                     />
-                    <span className="text-slate-600 dark:text-slate-400 ml-1">%</span>
+                    <span className="ml-1">%</span>
                   </div>
                 </div>
               </div>
-              <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${
-                isFormulaValid
-                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
-                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-800 dark:text-rose-300'
-              }`}>
-                <div className="flex items-center space-x-2">
-                  {isFormulaValid ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-                  <span>Formula Total: {Number(formulaTotal.toFixed(2))}%</span>
-                </div>
-                {!isFormulaValid && (
-                  <span className="text-[11px] font-normal">Part 1A + Part 1B must total exactly 100%.</span>
-                )}
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm">Key Result Areas (KRAs) & Key Performance Indicators (KPIs)</h4>
+                <p className="text-xs text-slate-500">Configure department goals, weight allocations, and rating rubrics</p>
               </div>
+              {canEdit && (
+                <button
+                  onClick={handleAddKRA}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold flex items-center space-x-1.5 shadow-sm"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add KRA Category</span>
+                </button>
+              )}
             </div>
 
-          {/* Part 1A - EVALUATION ON ELIGIBILITY FACTORS */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm uppercase tracking-wider">
-                EVALUATION ON ELIGIBILITY FACTORS
-              </h3>
-              <button
-                onClick={handleAddKRA}
-                className="px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-sm flex items-center space-x-1"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add KRA Category</span>
-              </button>
-            </div>
-
-            <div className={`p-4 rounded-xl border space-y-2 text-xs font-bold ${
-              isPart1AWeightValid()
-                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
-                : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 text-amber-900 dark:text-amber-200'
+            <div className={`p-4 rounded-xl border space-y-2 ${
+              isPart1AKraWeightValid() && isPart1AKpiWeightValid()
+                ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+                : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300'
             }`}>
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center justify-between text-xs font-bold">
                 <div className="flex items-center space-x-2">
-                  {isPart1AWeightValid() ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  {isPart1AKraWeightValid() && isPart1AKpiWeightValid() ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   ) : (
-                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
                   )}
-                  <span>Part 1A Target Weight: {eligibilityWeight}%</span>
+                  <span>Part 1A Total Weight Allocation</span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`px-2.5 py-1 rounded-lg border text-[11px] font-extrabold ${
-                    isPart1AKraWeightValid()
-                      ? 'bg-emerald-100 dark:bg-emerald-900/60 border-emerald-400 text-emerald-800 dark:text-emerald-200'
-                      : 'bg-rose-100 dark:bg-rose-900/60 border-rose-400 text-rose-800 dark:text-rose-200'
-                  }`}>
-                    KRA Total: {getKraTotalWeight().toFixed(2)}% / {eligibilityWeight}%
-                  </span>
-                  <span className={`px-2.5 py-1 rounded-lg border text-[11px] font-extrabold ${
-                    isPart1AKpiWeightValid()
-                      ? 'bg-emerald-100 dark:bg-emerald-900/60 border-emerald-400 text-emerald-800 dark:text-emerald-200'
-                      : 'bg-rose-100 dark:bg-rose-900/60 border-rose-400 text-rose-800 dark:text-rose-200'
-                  }`}>
-                    KPI Total: {getAllKpisTotalWeight().toFixed(2)}% / {eligibilityWeight}%
-                  </span>
+                <div className="flex items-center space-x-4">
+                  <span>KRA Categories: <strong>{getKraTotalWeight().toFixed(2)}%</strong> / {eligibilityWeight}%</span>
+                  <span>Individual KPIs: <strong>{getAllKpisTotalWeight().toFixed(2)}%</strong> / {eligibilityWeight}%</span>
                 </div>
               </div>
 
-              {!isPart1AWeightValid() && (
+              {(!isPart1AKraWeightValid() || !isPart1AKpiWeightValid()) && (
                 <div className="text-[11px] font-normal text-amber-900 dark:text-amber-200 pt-1.5 border-t border-amber-200 dark:border-amber-800/50 space-y-0.5">
                   {!isPart1AKraWeightValid() && (
                     <p>• <strong>KRA Categories Mismatch:</strong> Sum of KRA category weights is {getKraTotalWeight().toFixed(2)}% (must equal exactly {eligibilityWeight}%).</p>
                   )}
                   {!isPart1AKpiWeightValid() && (
-                    <p>• <strong>Individual KPI Mismatch:</strong> Sum of all individual KPI weights is {getAllKpisTotalWeight().toFixed(2)}%. {
-                      getAllKpisTotalWeight() < eligibilityWeight
-                        ? `Please add ${(eligibilityWeight - getAllKpisTotalWeight()).toFixed(2)}% to your KPI weights to reach ${eligibilityWeight}%.`
-                        : `Please reduce ${(getAllKpisTotalWeight() - eligibilityWeight).toFixed(2)}% from your KPI weights to match ${eligibilityWeight}%.`
-                    }</p>
+                    <p>• <strong>Individual KPI Mismatch:</strong> Sum of all individual KPI weights is {getAllKpisTotalWeight().toFixed(2)}% (must equal exactly {eligibilityWeight}%).</p>
                   )}
                 </div>
               )}
             </div>
 
-            {activeTemplate.kraCategories.map((kra, kraIdx) => (
+            {activeTemplate.kraCategories.map((kra) => (
               <div key={kra.id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
                 
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
@@ -870,11 +992,12 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     <input
                       type="text"
                       value={kra.name}
+                      disabled={!canEdit}
                       onChange={(e) => {
                         const updated = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, name: e.target.value } : k);
                         setActiveTemplate({ ...activeTemplate, kraCategories: updated });
                       }}
-                      className="font-bold text-slate-900 dark:text-white text-sm bg-transparent border-b border-brand-300 focus:border-brand-500 outline-none flex-1 min-w-0"
+                      className="font-bold text-slate-900 dark:text-white text-sm bg-transparent border-b border-brand-300 focus:border-brand-500 outline-none flex-1 min-w-0 disabled:border-none"
                     />
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className={`text-[10px] font-bold px-2 py-1 rounded-md border ${
@@ -888,13 +1011,14 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                         type="text"
                         inputMode="numeric"
                         value={getWeightInputValue(`kra_${kra.id}`, kra.categoryWeightPercent)}
+                        disabled={!canEdit}
                         onChange={(e) => handleWeightInputChange(`kra_${kra.id}`, e.target.value)}
                         onBlur={() => {
                           const numVal = commitWeightInput(`kra_${kra.id}`, kra.categoryWeightPercent);
                           const updated = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, categoryWeightPercent: numVal } : k);
                           setActiveTemplate({ ...activeTemplate, kraCategories: updated });
                         }}
-                        className={`w-14 px-2 py-1 rounded-lg text-[11px] font-bold border text-center ${
+                        className={`w-14 px-2 py-1 rounded-lg text-[11px] font-bold border text-center disabled:opacity-60 ${
                           isKraValid(kra)
                             ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
                             : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-800 dark:text-rose-300'
@@ -903,20 +1027,22 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                       />
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2 ml-3">
-                    <button
-                      onClick={() => handleAddKPI(kra.id)}
-                      className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200"
-                    >
-                      + Add KPI
-                    </button>
-                    <button
-                      onClick={() => handleRemoveKRA(kra.id)}
-                      className="p-1 text-slate-400 hover:text-rose-600 rounded"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  {canEdit && (
+                    <div className="flex items-center space-x-2 ml-3">
+                      <button
+                        onClick={() => handleAddKPI(kra.id)}
+                        className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200"
+                      >
+                        + Add KPI
+                      </button>
+                      <button
+                        onClick={() => handleRemoveKRA(kra.id)}
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {!isKraValid(kra) && (
@@ -925,14 +1051,9 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                       <AlertTriangle className="w-3 h-3" />
                       <span>KPI weights exceed the KRA weight.</span>
                     </div>
-                    <div className="mt-1 space-y-0.5">
-                      <div>Assigned KRA weight: {kra.categoryWeightPercent}%</div>
-                      <div>Current KPI total: {getKpiTotal(kra).toFixed(2)}%</div>
-                      <div>Excess: {(getKpiTotal(kra) - kra.categoryWeightPercent).toFixed(2)}%</div>
-                    </div>
                   </div>
                 )}
-                {/* KPI List under KRA */}
+
                 <div className="space-y-3">
                   {kra.kpis.map((kpi) => (
                     <div key={kpi.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-3">
@@ -941,34 +1062,37 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                           <input
                             type="text"
                             value={kpi.name}
+                            disabled={!canEdit}
                             onChange={(e) => {
                               const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, name: e.target.value } : item);
                               const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
                               setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
                             }}
-                            className="w-full font-bold text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-brand-500/20"
+                            className="w-full font-bold text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
                             placeholder="KPI Name"
                           />
-                          <input
-                            type="text"
+                          <textarea
                             value={kpi.description}
+                            disabled={!canEdit}
                             onChange={(e) => {
                               const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, description: e.target.value } : item);
                               const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
                               setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
                             }}
-                            className="w-full text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-brand-500/20"
-                            placeholder="KPI Description / Performance standard summary"
+                            rows={2}
+                            className="w-full text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 resize-none disabled:opacity-60"
+                            placeholder="KPI Description / Goals"
                           />
                         </div>
 
-                        <div className="flex items-center space-x-3 shrink-0">
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Weight %</label>
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <div className="flex items-center space-x-1">
+                            <span className="text-xs text-slate-400 font-bold">Weight:</span>
                             <input
                               type="text"
                               inputMode="numeric"
                               value={getWeightInputValue(`kpi_${kpi.id}`, kpi.weightPercent)}
+                              disabled={!canEdit}
                               onChange={(e) => handleWeightInputChange(`kpi_${kpi.id}`, e.target.value)}
                               onBlur={() => {
                                 const numVal = commitWeightInput(`kpi_${kpi.id}`, kpi.weightPercent);
@@ -976,50 +1100,50 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                                 const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
                                 setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
                               }}
-                              className="w-16 px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-center font-bold text-xs"
+                              className="w-14 px-2 py-1 rounded-lg text-xs font-bold border text-center bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white disabled:opacity-60"
                             />
+                            <span className="text-xs text-slate-400 font-bold">%</span>
                           </div>
 
-                          <button
-                            onClick={() => handleRemoveKPI(kra.id, kpi.id)}
-                            className="p-1 text-slate-400 hover:text-rose-600 rounded mt-4"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleRemoveKPI(kra.id, kpi.id)}
+                              className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
 
-                      {/* Rating Standards for Scale 1-4 */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1">
-                        {kpi.standards.map((st, stIdx) => (
-                          <div key={st.rating} className="flex items-center space-x-1.5">
-                            <span className="font-bold text-slate-500 dark:text-slate-400 w-4 shrink-0">{st.rating}:</span>
-                            <input
-                              type="text"
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                        {kpi.standards.map((st, sIdx) => (
+                          <div key={sIdx} className="p-2.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
+                            <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase">
+                              Rating {st.rating} ({st.label})
+                            </span>
+                            <textarea
                               value={st.description}
+                              disabled={!canEdit}
                               onChange={(e) => {
-                                const newSts = [...kpi.standards];
-                                newSts[stIdx].description = e.target.value;
-                                const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, standards: newSts } : item);
+                                const updatedStandards = kpi.standards.map((item, idx) => idx === sIdx ? { ...item, description: e.target.value } : item);
+                                const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, standards: updatedStandards } : item);
                                 const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
                                 setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
                               }}
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
+                              rows={2}
+                              className="w-full text-[11px] p-1 rounded border border-slate-200 dark:border-slate-800 bg-transparent text-slate-700 dark:text-slate-300 resize-none disabled:opacity-60"
+                              placeholder="Standard criteria..."
                             />
                           </div>
                         ))}
                       </div>
-
                     </div>
                   ))}
                 </div>
 
               </div>
             ))}
-          </div>
-
-
-
 
             {/* Part 1B - EVALUATION ON SUITABILITY FACTORS */}
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 space-y-3">
@@ -1113,7 +1237,6 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
           </div>
         </div>
       </div>
-      {/* Live Master Scorecard PDF Preview Modal */}
       {showPreviewModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-5xl w-full max-h-[95vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800">

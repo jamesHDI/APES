@@ -254,3 +254,55 @@ export const triggerAnnouncementNotification = async (
   triggerRealtimeBroadcast('data_changed', { type: 'announcement', title });
   return saved;
 };
+
+/**
+ * Change 1 — Triggers database-persisted notifications for Evaluation Template workflow actions
+ * (Submission to POD, Returning for Revision, POD Approval, and Deployment).
+ */
+export const triggerTemplateWorkflowNotification = async ({
+  targetUserId,
+  recipientRole,
+  recipientDepartment,
+  templateId,
+  templateTitle,
+  departmentName,
+  senderName,
+  title,
+  message,
+  type = 'action_required',
+  status = 'submitted_to_pod',
+}: {
+  targetUserId?: string;
+  recipientRole?: Role | 'ALL' | 'ALL_ADMINS';
+  recipientDepartment?: string;
+  templateId: string;
+  templateTitle: string;
+  departmentName: string;
+  senderName: string;
+  title: string;
+  message: string;
+  type?: 'action_required' | 'info' | 'success' | 'alert';
+  status?: string;
+}): Promise<boolean> => {
+  const newNotif: Notification = {
+    id: generateUuid(),
+    userId: targetUserId,
+    recipientRole,
+    recipientDepartment,
+    title,
+    message,
+    category: 'approval',
+    date: 'Just now',
+    read: false,
+    type,
+    departmentName,
+    status,
+    senderName,
+    dateTime: new Date().toLocaleString(),
+    templateId,
+  };
+
+  const saved = await saveNotificationToSupabase(newNotif);
+  triggerRealtimeBroadcast('data_changed', { type: 'template_workflow', templateId, status });
+  return saved;
+};

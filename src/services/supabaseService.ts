@@ -741,8 +741,8 @@ export const fetchNotificationsFromSupabase = async (userId?: string, userRole?:
     // Server-side filtering: fetch notifications targeted to user ID (UUID or string), recipient role, or global announcements
     if (userId) {
       const targetUuid = ensureUuid(userId);
-      if (userRole === 'system_admin' || userRole === 'hr_admin') {
-        query = query.or(`user_id.eq.${targetUuid},user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,recipient_role.eq.ALL_ADMINS,recipient_role.eq.${userRole},is_announcement.eq.true`);
+      if (userRole === 'system_admin' || userRole === 'hr_admin' || userRole === 'pod') {
+        query = query.or(`user_id.eq.${targetUuid},user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,recipient_role.eq.ALL_ADMINS,recipient_role.eq.${userRole},recipient_role.eq.pod,is_announcement.eq.true`);
       } else if (userRole) {
         query = query.or(`user_id.eq.${targetUuid},user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,recipient_role.eq.${userRole},is_announcement.eq.true`);
       } else {
@@ -781,6 +781,7 @@ export const fetchNotificationsFromSupabase = async (userId?: string, userRole?:
         actionLink: n.action_link,
         expirationDate: n.expiration_date,
         evaluationId: n.evaluation_id,
+        templateId: n.template_id || n.templateId || undefined,
         date: formattedDate,
         dateTime: formattedDateTime,
       };
@@ -799,7 +800,7 @@ export const saveNotificationToSupabase = async (notif: Notification): Promise<b
   try {
     const payload: any = {
       id: ensureUuid(notif.id),
-      user_id: ensureUuid(notif.userId),
+      user_id: notif.userId ? (isValidUuid(notif.userId) ? notif.userId : ensureUuid(notif.userId)) : null,
       recipient_role: notif.recipientRole || null,
       recipient_department: notif.recipientDepartment || null,
       title: notif.title,
@@ -812,7 +813,7 @@ export const saveNotificationToSupabase = async (notif: Notification): Promise<b
       sender_name: notif.senderName || null,
       action_link: notif.actionLink || null,
       expiration_date: notif.expirationDate || null,
-      evaluation_id: isValidUuid(notif.evaluationId) ? notif.evaluationId : null
+      evaluation_id: isValidUuid(notif.evaluationId || '') ? notif.evaluationId : null
     };
 
     const { error } = await supabase.from('notifications').upsert(payload, { onConflict: 'id' });
@@ -832,7 +833,7 @@ export const saveNotificationsBatchToSupabase = async (notifs: Notification[]): 
   try {
     const payloads = notifs.map(notif => ({
       id: ensureUuid(notif.id),
-      user_id: ensureUuid(notif.userId),
+      user_id: notif.userId ? (isValidUuid(notif.userId) ? notif.userId : ensureUuid(notif.userId)) : null,
       recipient_role: notif.recipientRole || null,
       recipient_department: notif.recipientDepartment || null,
       title: notif.title,
@@ -845,7 +846,7 @@ export const saveNotificationsBatchToSupabase = async (notifs: Notification[]): 
       sender_name: notif.senderName || null,
       action_link: notif.actionLink || null,
       expiration_date: notif.expirationDate || null,
-      evaluation_id: isValidUuid(notif.evaluationId) ? notif.evaluationId : null
+      evaluation_id: isValidUuid(notif.evaluationId || '') ? notif.evaluationId : null
     }));
 
     console.log(`[Broadcast Debug] Inserting batch of ${payloads.length} notification rows into Supabase...`);
@@ -2468,16 +2469,16 @@ export const fetchEvaluationTemplatesFromSupabase = async (): Promise<Evaluation
         isActive: row.is_active ?? true,
         createdAt: row.created_at ? new Date(row.created_at).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10),
         // Change 1 — Template workflow fields
-        status: (row.status as any) || 'draft',
-        createdByRole: row.created_by_role || undefined,
-        createdByUserId: row.created_by_user_id || undefined,
-        createdByName: row.created_by_name || undefined,
-        podRemarks: row.pod_remarks || undefined,
-        submittedAt: row.submitted_at || undefined,
-        reviewedAt: row.reviewed_at || undefined,
+        status: (row.status || row.full_payload?.status || 'draft') as any,
+        createdByRole: row.created_by_role || row.full_payload?.createdByRole || undefined,
+        createdByUserId: row.created_by_user_id || row.full_payload?.createdByUserId || undefined,
+        createdByName: row.created_by_name || row.full_payload?.createdByName || undefined,
+        podRemarks: row.pod_remarks || row.full_payload?.podRemarks || undefined,
+        submittedAt: row.submitted_at || row.full_payload?.submittedAt || undefined,
+        reviewedAt: row.reviewed_at || row.full_payload?.reviewedAt || undefined,
         // Change 3 — Calendar period dates
-        startDate: row.start_date || undefined,
-        endDate: row.end_date || undefined,
+        startDate: row.start_date || row.full_payload?.startDate || undefined,
+        endDate: row.end_date || row.full_payload?.endDate || undefined,
       };
     });
 

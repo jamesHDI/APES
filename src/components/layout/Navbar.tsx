@@ -235,6 +235,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setShowNotifications(false);
                             if (n.category === 'account' || n.status === 'pending_approval' || n.title.includes('Registration')) {
                               if (onSelectTab) onSelectTab('pending_approvals');
+                            } else if (n.templateId || n.title.includes('Template') || n.message.includes('template')) {
+                              if (onSelectTab) onSelectTab('template_builder');
                             } else if (n.evaluationId && onSelectEvaluation) {
                               onSelectEvaluation(n.evaluationId);
                             }

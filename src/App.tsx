@@ -351,6 +351,13 @@ export const App: React.FC = () => {
           if (!isMounted) return;
           if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
 
+          const sbTemplates = await fetchEvaluationTemplatesFromSupabase();
+          if (!isMounted) return;
+          if (sbTemplates && sbTemplates.length > 0) {
+            setTemplates(sbTemplates);
+            saveTemplates(sbTemplates);
+          }
+
           const privilegedRoles = ['system_admin', 'hr_admin', 'pod', 'dept_head', 'supervisor', 'president'];
           const isPrivileged = currentUser?.role && privilegedRoles.includes(currentUser.role);
           const sbEvals = await fetchEvaluationsFromSupabase(isPrivileged ? undefined : currentUser);
@@ -469,13 +476,18 @@ export const App: React.FC = () => {
         const activeUserObj = currentUserRef.current || authenticatedUser;
         const privilegedRoles = ['system_admin', 'hr_admin', 'pod', 'dept_head', 'supervisor', 'president'];
         const isPrivileged = currentUserRole && privilegedRoles.includes(currentUserRole);
-        const [sbDepts, sbEvals, sbNotifs] = await Promise.all([
+        const [sbDepts, sbEvals, sbNotifs, sbTemplates] = await Promise.all([
           fetchDepartmentsFromSupabase(),
           fetchEvaluationsFromSupabase(isPrivileged ? undefined : activeUserObj),
-          fetchNotificationsFromSupabase(currentUserId, currentUserRole)
+          fetchNotificationsFromSupabase(currentUserId, currentUserRole),
+          fetchEvaluationTemplatesFromSupabase()
         ]);
 
         if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
+        if (sbTemplates && sbTemplates.length > 0) {
+          setTemplates(sbTemplates);
+          saveTemplates(sbTemplates);
+        }
         if (sbEvals) {
           const cleanEvals = deduplicateEvaluations(sbEvals);
           setEvaluations(cleanEvals);
@@ -699,7 +711,7 @@ export const App: React.FC = () => {
     setNotifications(getRoleBasedNotifications(currentUser));
   };
 
-  const handleSaveTemplate = (updatedTemplate: EvaluationTemplate) => {
+  const handleSaveTemplate = async (updatedTemplate: EvaluationTemplate) => {
     const existingIndex = templates.findIndex((t) => t.id === updatedTemplate.id);
     let newTemplates = [...templates];
     if (existingIndex >= 0) {
@@ -711,15 +723,21 @@ export const App: React.FC = () => {
     saveTemplates(newTemplates);
 
     if (isSupabaseConfigured) {
-      saveEvaluationTemplateToSupabase(updatedTemplate).then((success) => {
+      try {
+        const success = await saveEvaluationTemplateToSupabase(updatedTemplate);
         if (success) {
-          triggerRealtimeBroadcast('data_changed', { type: 'template' });
+          triggerRealtimeBroadcast('data_changed', { type: 'template', templateId: updatedTemplate.id });
+          const freshTemplates = await fetchEvaluationTemplatesFromSupabase();
+          if (freshTemplates && freshTemplates.length > 0) {
+            setTemplates(freshTemplates);
+            saveTemplates(freshTemplates);
+          }
         } else {
-          console.warn('[App] Template saved locally but cloud sync failed. Template will persist locally.');
+          console.warn('[App] Template saved locally but cloud sync failed.');
         }
-      }).catch((err) => {
+      } catch (err) {
         console.warn('[App] Template saved locally but cloud sync encountered an error:', err);
-      });
+      }
     }
   };
 

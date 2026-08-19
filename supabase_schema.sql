@@ -114,7 +114,7 @@ CREATE POLICY "Allow public evaluation_templates delete" ON public.evaluation_te
 -- CHANGE 1: Dept Head Template Workflow — Add status/ownership columns to templates
 -- ==============================================================================
 ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'draft'
-  CHECK (status IN ('draft','submitted_to_pod','pod_review','deployed'));
+  CHECK (status IN ('draft','submitted_to_pod','returned_for_revision','resubmitted_to_pod','pod_review','approved','deployed'));
 ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS created_by_role VARCHAR(50);
 ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS created_by_user_id UUID;
 ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS created_by_name VARCHAR(150);

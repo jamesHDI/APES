@@ -105,7 +105,14 @@ export interface KRACategory {
   kpis: KPITemplateItem[];
 }
 
-export type TemplateStatus = 'draft' | 'submitted_to_pod' | 'pod_review' | 'deployed';
+export type TemplateStatus = 
+  | 'draft' 
+  | 'submitted_to_pod' 
+  | 'returned_for_revision' 
+  | 'resubmitted_to_pod' 
+  | 'pod_review' 
+  | 'approved' 
+  | 'deployed';
 
 export interface EvaluationTemplate {
   id: string;
@@ -479,6 +486,7 @@ export interface Notification {
   senderName?: string;
   dateTime?: string;
   evaluationId?: string;
+  templateId?: string;
 }
 
 export interface AuditLog {
