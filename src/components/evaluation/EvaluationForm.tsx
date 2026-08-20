@@ -135,21 +135,30 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         { coreValueId: 'cv_accountability', name: 'Accountability & Ownership', description: 'Takes full ownership of duties, commitments, and professional conduct.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' }
       ];
 
-  // Self-heal evaluation data if kpiRatings or coreValueRatings are missing or empty
+  // Self-heal: only populate kpiRatings/coreValueRatings if they are truly absent (no structure at all).
+  // CRITICAL: Never overwrite existing ratings. If a KPI already has selfRating/supervisorRating data,
+  // those are the employee's real submitted values and must not be reset to zero.
   useEffect(() => {
     let needsUpdate = false;
     let healed = { ...initialEvaluation };
 
-    if (!Array.isArray(healed.kpiRatings) || healed.kpiRatings.length === 0) {
+    const hasExistingKpiStructure = Array.isArray(healed.kpiRatings) && healed.kpiRatings.length > 0;
+    if (!hasExistingKpiStructure) {
       healed.kpiRatings = templateKpiRatings;
       needsUpdate = true;
     }
-    if (!Array.isArray(healed.coreValueRatings) || healed.coreValueRatings.length === 0) {
+
+    const hasExistingCvStructure = Array.isArray(healed.coreValueRatings) && healed.coreValueRatings.length > 0;
+    if (!hasExistingCvStructure) {
       healed.coreValueRatings = templateCoreValueRatings;
       needsUpdate = true;
     }
 
+    // Always sync local evalData with the latest initialEvaluation from storage
+    // (e.g. after dept head opens an evaluation submitted by employee)
     setEvalData(healed);
+
+    // Only persist to storage if we had to add missing structure
     if (needsUpdate) {
       onSave(healed);
     }
@@ -299,9 +308,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     const updatedKpis = kpisToUpdate.map((kpi) => 
       kpi.kpiId === kpiId ? { ...kpi, comments: comment } : kpi
     );
-    const updated = { ...evalData, kpiRatings: updatedKpis };
-    setEvalData(updated);
-    onSave(updated);
+    // Only update local state — onSave will be called on draft save or submission
+    setEvalData(prev => ({ ...prev, kpiRatings: updatedKpis }));
   };
 
   const handleCoreValueRatingChange = (cvId: string, field: 'podRating' | 'peerRating' | 'isRating', value: number) => {
@@ -350,9 +358,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     const updatedCVs = cvsToUpdate.map((cv) => 
       cv.coreValueId === cvId ? { ...cv, comments: comment } : cv
     );
-    const updated = { ...evalData, coreValueRatings: updatedCVs };
-    setEvalData(updated);
-    onSave(updated);
+    // Only update local state — onSave will be called on draft save or submission
+    setEvalData(prev => ({ ...prev, coreValueRatings: updatedCVs }));
   };
 
   const recalculateAndSetState = (kpiRatings = evalData.kpiRatings, coreValueRatings = evalData.coreValueRatings) => {
@@ -362,8 +369,10 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     const finalRating = computeFinalPerformanceRating(eligibilityScore, coreValuesWeightedScore);
     const classification = getRatingClassification(finalRating);
 
-    const updated: Evaluation = {
-      ...evalData,
+    // Only update local state here. onSave is called explicitly by submission handlers
+    // and handleSaveDraft to avoid race conditions from rapid rating changes.
+    setEvalData(prev => ({
+      ...prev,
       kpiRatings,
       coreValueRatings,
       eligibilityScore,
@@ -373,10 +382,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       finalRating,
       ratingClassification: classification.label,
       updatedAt: new Date().toISOString()
-    };
-
-    setEvalData(updated);
-    onSave(updated);
+    }));
   };
 
   const addAuditEntry = (actionPerformed: string, previousStatus: string, newStatus: string, assignedTo: string, remarks?: string) => {
