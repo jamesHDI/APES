@@ -531,3 +531,25 @@ export interface CalibrationRequest {
   createdAt: string;
   updatedAt: string;
 }
+
+// Messenger & Direct Concerns
+export interface DirectMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole?: string;
+  senderAvatarUrl?: string;
+  senderDepartment?: string;
+  recipientId: string;
+  recipientName: string;
+  recipientRole?: string;
+  recipientAvatarUrl?: string;
+  recipientDepartment?: string;
+  subject?: string;
+  message: string;
+  isConcern?: boolean;
+  category?: string; // e.g. 'General', 'Evaluation Concern', 'KPI Question', 'Calibration', 'System Support'
+  read: boolean;
+  createdAt: string;
+}
+

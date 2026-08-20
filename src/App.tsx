@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { User, Role, Evaluation, EvaluationTemplate, Department, EvaluationCycle, Notification, isPendingUser, EvaluationScorecardArchive, DevelopmentPlan, PersonnelAction } from './types';
+import { User, Role, Evaluation, EvaluationTemplate, Department, EvaluationCycle, Notification, isPendingUser, EvaluationScorecardArchive, DevelopmentPlan, PersonnelAction, DirectMessage } from './types';
 import { MASTER_SALES_EVALUATION_TEMPLATE } from './constants/masterSalesTemplate';
 import { 
   getStoredUsers, 
@@ -21,6 +21,7 @@ import {
   getStoredEvaluationHistory,
   getStoredScorecardArchives,
   getStoredAuditLogs,
+  getStoredDirectMessages,
   resetToDefaultSeedData,
   SEED_USERS
 } from './services/storage';
@@ -78,6 +79,7 @@ import { MyProfile } from './components/profile/MyProfile';
 import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
 import { CalibrationRequestForm } from './components/calibration/CalibrationRequestForm';
 import { CalibrationRequestsManager } from './components/calibration/CalibrationRequestsManager';
+import { MessengerModal } from './components/messenger/MessengerModal';
 import { ShieldAlert } from 'lucide-react';
 
 import { determineWorkflowType, isUserDepartmentHead, getUserActiveEvaluation, getUserLatestEvaluation, isEvaluationCompleted } from './utils/workflowUtils';
@@ -125,6 +127,8 @@ export const App: React.FC = () => {
   const [auditLogs, setAuditLogs] = useState(getStoredAuditLogs());
   const [notifications, setNotifications] = useState<Notification[]>(() => getRoleBasedNotifications(currentUser));
   const [showAnnouncementModal, setShowAnnouncementModal] = useState<boolean>(false);
+  const [showMessengerModal, setShowMessengerModal] = useState<boolean>(false);
+  const [directMessages, setDirectMessages] = useState<DirectMessage[]>(() => getStoredDirectMessages());
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedEvalId, setSelectedEvalId] = useState<string>('');
@@ -1214,6 +1218,15 @@ export const App: React.FC = () => {
 
   const pendingAccountCount = users.filter(isPendingUser).length;
 
+  const unreadDirectMessagesCount = useMemo(() => {
+    return directMessages.filter(
+      (m) =>
+        !m.read &&
+        (m.recipientId === currentUser.id || m.recipientId === 'all') &&
+        m.senderId !== currentUser.id
+    ).length;
+  }, [directMessages, currentUser.id]);
+
   if (viewMode === 'printable') {
     const targetForPrint = printableEvaluation || currentEvaluation;
     return (
@@ -1265,6 +1278,8 @@ export const App: React.FC = () => {
             onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             isSidebarOpen={isSidebarOpen}
             onOpenAnnouncementModal={() => setShowAnnouncementModal(true)}
+            onOpenMessenger={() => setShowMessengerModal(true)}
+            unreadMessagesCount={unreadDirectMessagesCount}
           />
         </div>
 
@@ -1300,6 +1315,20 @@ export const App: React.FC = () => {
           senderName={currentUser.name}
           onAnnouncementCreated={() => {
             setNotifications(getRoleBasedNotifications(currentUser));
+          }}
+        />
+
+        {/* Messenger & Direct Concerns Modal */}
+        <MessengerModal
+          isOpen={showMessengerModal}
+          onClose={() => {
+            setShowMessengerModal(false);
+            setDirectMessages(getStoredDirectMessages());
+          }}
+          currentUser={currentUser}
+          allUsers={users}
+          onMessagesUpdated={() => {
+            setDirectMessages(getStoredDirectMessages());
           }}
         />
 

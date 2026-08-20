@@ -1,4 +1,4 @@
-import { User, Department, EvaluationTemplate, EvaluationCycle, EvaluationDeployment, Evaluation, AuditLog, Role, EvaluationHistory, EvaluationScorecardArchive, CalibrationRequest } from '../types';
+import { User, Department, EvaluationTemplate, EvaluationCycle, EvaluationDeployment, Evaluation, AuditLog, Role, EvaluationHistory, EvaluationScorecardArchive, CalibrationRequest, DirectMessage } from '../types';
 import { MASTER_SALES_EVALUATION_TEMPLATE } from '../constants/masterSalesTemplate';
 import { 
   saveEmployeeToSupabase, 
@@ -28,6 +28,7 @@ const AUDIT_LOGS_KEY = 'apes_audit_logs_v3';
 const EVALUATION_HISTORY_KEY = 'apes_evaluation_history_v3';
 const SCORECARD_ARCHIVES_KEY = 'apes_scorecard_archives_v3';
 const CALIBRATION_REQUESTS_KEY = 'apes_calibration_requests_v1';
+const DIRECT_MESSAGES_KEY = 'apes_direct_messages_v1';
 
 // Initial Pre-seeded Enterprise Data
 export const SEED_USERS: User[] = [
@@ -1076,6 +1077,72 @@ export const deleteStoredCalibrationRequest = (id: string) => {
   saveStoredCalibrationRequests(all.filter(r => r.id !== id));
 };
 
+// ── DIRECT MESSAGES & CONCERNS ──────────────────────────────────────────────
+export const SEED_DIRECT_MESSAGES: DirectMessage[] = [
+  {
+    id: 'msg_welcome_pod',
+    senderId: 'usr_pod_malene',
+    senderName: 'Malene Pellazo',
+    senderRole: 'POD Officer',
+    senderAvatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    senderDepartment: 'People Operations',
+    recipientId: 'all',
+    recipientName: 'All HDI Hive Users',
+    subject: 'Welcome to HDI Messenger & Concerns Desk',
+    message: 'Hello team! Welcome to the APES Direct Messenger. You can use this channel to submit inquiries, clarify KPI weights, discuss evaluation calibrations, or raise general performance concerns directly to any colleague, supervisor, or POD representative.',
+    isConcern: false,
+    category: 'General',
+    read: true,
+    createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+  }
+];
+
+export const getStoredDirectMessages = (): DirectMessage[] => {
+  const data = localStorage.getItem(DIRECT_MESSAGES_KEY);
+  if (data) {
+    try {
+      const parsed: DirectMessage[] = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    } catch {}
+  }
+  return SEED_DIRECT_MESSAGES;
+};
+
+export const saveStoredDirectMessages = (messages: DirectMessage[]) => {
+  try {
+    localStorage.setItem(DIRECT_MESSAGES_KEY, JSON.stringify(messages));
+  } catch (e) {
+    console.warn('LocalStorage saveStoredDirectMessages quota warning:', e);
+  }
+};
+
+export const sendDirectMessage = (message: DirectMessage) => {
+  const all = getStoredDirectMessages();
+  const updated = [message, ...all];
+  saveStoredDirectMessages(updated);
+};
+
+export const markDirectMessagesAsRead = (conversationPartnerId: string, currentUserId: string) => {
+  const all = getStoredDirectMessages();
+  let modified = false;
+  const updated = all.map(msg => {
+    if (
+      msg.senderId === conversationPartnerId &&
+      (msg.recipientId === currentUserId || msg.recipientId === 'all') &&
+      !msg.read
+    ) {
+      modified = true;
+      return { ...msg, read: true };
+    }
+    return msg;
+  });
+  if (modified) {
+    saveStoredDirectMessages(updated);
+  }
+};
+
 export const resetToDefaultSeedData = () => {
   localStorage.setItem(USERS_KEY, JSON.stringify(SEED_USERS));
   sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(SEED_USERS[0]));
@@ -1085,4 +1152,5 @@ export const resetToDefaultSeedData = () => {
   localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(SEED_EVALUATIONS));
   localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify([]));
   localStorage.setItem(CALIBRATION_REQUESTS_KEY, JSON.stringify([]));
+  localStorage.setItem(DIRECT_MESSAGES_KEY, JSON.stringify(SEED_DIRECT_MESSAGES));
 };

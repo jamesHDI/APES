@@ -15,6 +15,7 @@ import {
   User as UserIcon,
   Wifi,
   WifiOff,
+  MessageSquare,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -30,6 +31,8 @@ interface NavbarProps {
   onToggleSidebar: () => void;
   isSidebarOpen: boolean;
   onOpenAnnouncementModal?: () => void;
+  onOpenMessenger?: () => void;
+  unreadMessagesCount?: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -45,6 +48,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleSidebar,
   isSidebarOpen,
   onOpenAnnouncementModal,
+  onOpenMessenger,
+  unreadMessagesCount = 0,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -142,6 +147,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
               {darkMode ? <Sun className="w-4.5 h-4.5 text-amber-400" /> : <Moon className="w-[18px] h-[18px]" />}
+            </button>
+
+            {/* Messenger & Direct Concerns Button */}
+            <button
+              onClick={onOpenMessenger}
+              className="relative p-2 text-slate-500 dark:text-slate-400 hover:bg-[#FFF4EA] hover:text-[#E96B1A] dark:hover:bg-slate-800 rounded-xl transition-all duration-150"
+              title="HDI Hive Messenger & Concerns Desk"
+              aria-label={`Messenger & Concerns${unreadMessagesCount > 0 ? ` (${unreadMessagesCount} unread)` : ''}`}
+            >
+              <MessageSquare className="w-[18px] h-[18px]" />
+              {unreadMessagesCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-[#E96B1A] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm shadow-orange-500/30">
+                  {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+                </span>
+              )}
             </button>
 
             {/* Notification Bell */}
