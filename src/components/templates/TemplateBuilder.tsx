@@ -50,7 +50,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const isPOD = currentUser?.role === 'pod' || currentUser?.role === 'hr_admin' || currentUser?.role === 'system_admin';
 
   const canCreate = isDeptHead || currentUser?.role === 'system_admin';
-  const canDelete = currentUser?.role === 'system_admin';
+  const canDelete = currentUser?.role === 'system_admin' || isDeptHead || currentUser?.role === 'supervisor' || isPOD;
 
   const allVisibleTemplates = isDeptHead
     ? (templates && templates.length > 0 ? templates : [MASTER_SALES_EVALUATION_TEMPLATE]).filter(
@@ -263,11 +263,11 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     if (e) e.stopPropagation();
 
     if (!canDelete) {
-      alert('Only System Administrators can delete evaluation templates.');
+      alert('Only authorized supervisors, department heads, or administrators can delete evaluation templates.');
       return;
     }
 
-    const tmplToDelete = templates.find(t => t.id === templateId);
+    const tmplToDelete = templates.find(t => t.id === templateId) || visibleTemplates.find(t => t.id === templateId);
     if (!tmplToDelete) return;
 
     const isInUse = evaluations?.some(
@@ -279,7 +279,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       return;
     }
 
-    if (window.confirm('Are you sure you want to delete this evaluation template?')) {
+    if (window.confirm(`Are you sure you want to delete "${tmplToDelete.title}"?`)) {
       if (onDeleteTemplate) {
         onDeleteTemplate(templateId);
       }
@@ -787,10 +787,13 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 {isDeptHead && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_for_revision') && (
                   <>
                     <button
-                      onClick={handleSave}
-                      className="px-4 py-2.5 rounded-xl bg-slate-600 hover:bg-slate-700 text-white text-xs font-bold shadow-md transition-all whitespace-nowrap"
+                      type="button"
+                      onClick={() => handleDeleteTemplateAction(activeTemplate.id)}
+                      className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
+                      title="Delete this template"
                     >
-                      Save Draft
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
                     </button>
                     <button
                       onClick={handleSubmitToPOD}
@@ -803,12 +806,25 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 )}
 
                 {!isDeptHead && (
-                  <button
-                    onClick={handleSave}
-                    className="px-4 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
-                  >
-                    <Save className="w-3.5 h-3.5" /> Save Template Changes
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTemplateAction(activeTemplate.id)}
+                        className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
+                        title="Delete this template"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    )}
+                    <button
+                      onClick={handleSave}
+                      className="px-4 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      <Save className="w-3.5 h-3.5" /> Save Template Changes
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
