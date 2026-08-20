@@ -1,4 +1,4 @@
-import { User, Department, EvaluationTemplate, EvaluationCycle, EvaluationDeployment, Evaluation, AuditLog, Role, EvaluationHistory, EvaluationScorecardArchive } from '../types';
+import { User, Department, EvaluationTemplate, EvaluationCycle, EvaluationDeployment, Evaluation, AuditLog, Role, EvaluationHistory, EvaluationScorecardArchive, CalibrationRequest } from '../types';
 import { MASTER_SALES_EVALUATION_TEMPLATE } from '../constants/masterSalesTemplate';
 import { 
   saveEmployeeToSupabase, 
@@ -27,6 +27,7 @@ const EVALUATIONS_KEY = 'apes_evaluations_v3';
 const AUDIT_LOGS_KEY = 'apes_audit_logs_v3';
 const EVALUATION_HISTORY_KEY = 'apes_evaluation_history_v3';
 const SCORECARD_ARCHIVES_KEY = 'apes_scorecard_archives_v3';
+const CALIBRATION_REQUESTS_KEY = 'apes_calibration_requests_v1';
 
 // Initial Pre-seeded Enterprise Data
 export const SEED_USERS: User[] = [
@@ -1039,6 +1040,42 @@ export const getStoredScorecardArchives = (): EvaluationScorecardArchive[] => {
   return [];
 };
 
+export const getStoredCalibrationRequests = (): CalibrationRequest[] => {
+  const data = localStorage.getItem(CALIBRATION_REQUESTS_KEY);
+  if (data) {
+    try {
+      const requests: CalibrationRequest[] = JSON.parse(data);
+      if (Array.isArray(requests)) return requests;
+    } catch {}
+  }
+  return [];
+};
+
+export const saveStoredCalibrationRequests = (requests: CalibrationRequest[]) => {
+  try {
+    localStorage.setItem(CALIBRATION_REQUESTS_KEY, JSON.stringify(requests));
+  } catch (e) {
+    console.warn('LocalStorage saveStoredCalibrationRequests quota warning:', e);
+  }
+};
+
+export const saveSingleCalibrationRequest = (request: CalibrationRequest) => {
+  const all = getStoredCalibrationRequests();
+  const index = all.findIndex(r => r.id === request.id);
+  let updatedList = [...all];
+  if (index >= 0) {
+    updatedList[index] = request;
+  } else {
+    updatedList.unshift(request);
+  }
+  saveStoredCalibrationRequests(updatedList);
+};
+
+export const deleteStoredCalibrationRequest = (id: string) => {
+  const all = getStoredCalibrationRequests();
+  saveStoredCalibrationRequests(all.filter(r => r.id !== id));
+};
+
 export const resetToDefaultSeedData = () => {
   localStorage.setItem(USERS_KEY, JSON.stringify(SEED_USERS));
   sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(SEED_USERS[0]));
@@ -1047,4 +1084,5 @@ export const resetToDefaultSeedData = () => {
   localStorage.setItem(CYCLES_KEY, JSON.stringify(SEED_CYCLES));
   localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(SEED_EVALUATIONS));
   localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify([]));
+  localStorage.setItem(CALIBRATION_REQUESTS_KEY, JSON.stringify([]));
 };

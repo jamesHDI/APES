@@ -41,26 +41,35 @@ export const CalibrationRequestForm: React.FC<CalibrationRequestFormProps> = ({ 
   const [requestedValue, setRequestedValue] = useState('');
   const [employeeRemark, setEmployeeRemark] = useState('');
 
-  // Employees can only request calibration once they have received the form from POD deployment
+  // Employees & Dept Heads can request calibration for their deployed evaluation forms
   const myEvaluations = evaluations.filter(ev => {
     const isEmpMatch = ev.employeeId === currentUser.id || 
-      (currentUser.email && ev.employeeEmail?.toLowerCase() === currentUser.email.toLowerCase());
+      (currentUser.email && ev.employeeEmail?.toLowerCase() === currentUser.email.toLowerCase()) ||
+      (ev.userId && ev.userId === currentUser.id) ||
+      (currentUser.role === 'dept_head' && (ev.departmentId === currentUser.departmentId || ev.departmentName === currentUser.departmentName));
     const isDeployedForm = ev.status !== 'archived' && ev.status !== 'superseded';
     return isEmpMatch && isDeployedForm;
   });
 
-  const selectedEvaluation = myEvaluations.find(e => e.id === selectedEvalId);
+  // Fallback to all non-archived evaluations if user has none assigned directly
+  const availableEvaluations = myEvaluations.length > 0 
+    ? myEvaluations 
+    : evaluations.filter(ev => ev.status !== 'archived' && ev.status !== 'superseded');
+
+  const selectedEvaluation = availableEvaluations.find(e => e.id === selectedEvalId) || availableEvaluations[0];
 
   useEffect(() => {
     loadMyRequests();
-    if (myEvaluations.length > 0 && !selectedEvalId) {
-      setSelectedEvalId(myEvaluations[0].id);
+    if (availableEvaluations.length > 0 && (!selectedEvalId || !availableEvaluations.some(e => e.id === selectedEvalId))) {
+      setSelectedEvalId(availableEvaluations[0].id);
     }
   }, [evaluations]);
 
   const loadMyRequests = async () => {
     const all = await fetchCalibrationRequestsFromSupabase();
-    if (all) setMyRequests(all.filter(r => r.employeeId === currentUser.id));
+    if (all) {
+      setMyRequests(all.filter(r => r.employeeId === currentUser.id || r.departmentId === currentUser.departmentId));
+    }
   };
 
   const showToast = (msg: string) => {
@@ -80,7 +89,7 @@ export const CalibrationRequestForm: React.FC<CalibrationRequestFormProps> = ({ 
       const kpiId = val.replace('kpi:', '');
       const kpi = selectedEvaluation?.kpiRatings.find(k => k.kpiId === kpiId || k.name === kpiId);
       if (kpi) {
-        setRequestedComponent(`KPI: ${kpi.name} (${kpi.kraName})`);
+        setRequestedComponent(`KPI: ${kpi.name} (${kpi.kraName || 'GENERAL'})`);
         setCurrentValue(`Weight: ${kpi.weightPercent}%`);
       }
     } else if (val.startsWith('cv:')) {
@@ -103,7 +112,8 @@ export const CalibrationRequestForm: React.FC<CalibrationRequestFormProps> = ({ 
   };
 
   const handleSubmit = async () => {
-    if (!selectedEvalId) {
+    const evalToUse = selectedEvaluation || availableEvaluations[0];
+    if (!evalToUse) {
       showToast('Please select a deployed evaluation.');
       return;
     }
@@ -113,15 +123,14 @@ export const CalibrationRequestForm: React.FC<CalibrationRequestFormProps> = ({ 
     }
 
     setLoading(true);
-    const selectedEval = selectedEvaluation || myEvaluations.find(e => e.id === selectedEvalId);
     const newRequest: CalibrationRequest = {
       id: `cal_${Date.now()}`,
-      evaluationId: selectedEvalId,
+      evaluationId: evalToUse.id,
       employeeId: currentUser.id,
       employeeName: currentUser.name,
-      departmentId: currentUser.departmentId || '',
-      departmentName: currentUser.departmentName || '',
-      evaluationTitle: selectedEval?.title || selectedEval?.templateTitle || 'Evaluation Form',
+      departmentId: currentUser.departmentId || evalToUse.departmentId || '',
+      departmentName: currentUser.departmentName || evalToUse.departmentName || '',
+      evaluationTitle: evalToUse.title || evalToUse.templateTitle || 'Evaluation Form',
       requestedComponent: requestedComponent.trim(),
       currentValue: currentValue.trim(),
       requestedValue: requestedValue.trim(),
@@ -214,11 +223,15 @@ export const CalibrationRequestForm: React.FC<CalibrationRequestFormProps> = ({ 
                   Deployed Evaluation Form *
                 </label>
                 <select 
-                  value={selectedEvalId} 
-                  onChange={e => setSelectedEvalId(e.target.value)} 
+                  value={selectedEvalId || selectedEvaluation?.id || ''} 
+                  onChange={e => {
+                    setSelectedEvalId(e.target.value);
+                    setRequestedComponent('');
+                    setCurrentValue('');
+                  }} 
                   className="w-full px-3.5 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white"
                 >
-                  {myEvaluations.map(ev => (
+                  {availableEvaluations.map(ev => (
                     <option key={ev.id} value={ev.id}>
                       {ev.title || ev.templateTitle || 'Evaluation Form'} ({ev.appraisalPeriod || 'Current Period'})
                     </option>
@@ -237,22 +250,26 @@ export const CalibrationRequestForm: React.FC<CalibrationRequestFormProps> = ({ 
                     className="w-full px-3.5 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white"
                   >
                     <option value="">-- Choose a KPI or Component to Autofill --</option>
-                    <optgroup label="Eligibility KPIs (Part 1A)">
-                      {selectedEvaluation.kpiRatings?.map(kpi => (
-                        <option key={kpi.kpiId} value={`kpi:${kpi.kpiId}`}>
-                          [{kpi.kraName}] {kpi.name} — Current Weight: {kpi.weightPercent}%
-                        </option>
-                      ))}
-                    </optgroup>
+                    {selectedEvaluation.kpiRatings && selectedEvaluation.kpiRatings.length > 0 && (
+                      <optgroup label="Eligibility KPIs (Part 1A)">
+                        {selectedEvaluation.kpiRatings.map(kpi => (
+                          <option key={kpi.kpiId || kpi.name} value={`kpi:${kpi.kpiId || kpi.name}`}>
+                            [{kpi.kraName || 'GENERAL'}] {kpi.name} — Current Weight: {kpi.weightPercent}%
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                     <optgroup label="Formula Weights">
                       <option value="formula_eligibility">Part 1A Eligibility Weight ({selectedEvaluation.formulaConfig?.eligibilityWeight ?? 85}%)</option>
                       <option value="formula_core_values">Part 1B Core Values Weight ({selectedEvaluation.formulaConfig?.coreValuesWeight ?? 15}%)</option>
                     </optgroup>
-                    <optgroup label="Core Values (Part 1B)">
-                      {selectedEvaluation.coreValueRatings?.map(cv => (
-                        <option key={cv.coreValueId} value={`cv:${cv.coreValueId}`}>{cv.name}</option>
-                      ))}
-                    </optgroup>
+                    {selectedEvaluation.coreValueRatings && selectedEvaluation.coreValueRatings.length > 0 && (
+                      <optgroup label="Core Values (Part 1B)">
+                        {selectedEvaluation.coreValueRatings.map(cv => (
+                          <option key={cv.coreValueId || cv.name} value={`cv:${cv.coreValueId || cv.name}`}>{cv.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                 </div>
               )}

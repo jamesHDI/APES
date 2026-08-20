@@ -646,3 +646,40 @@ CREATE TRIGGER trg_supersede_older_drafts
   BEFORE INSERT ON public.evaluations
   FOR EACH ROW
   EXECUTE FUNCTION public.supersede_older_drafts();
+
+-- ==============================================================================
+-- 15. CALIBRATION REQUESTS TABLE
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.calibration_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    evaluation_id UUID,
+    employee_id UUID,
+    employee_name VARCHAR(150),
+    department_id UUID,
+    department_name VARCHAR(100),
+    evaluation_title VARCHAR(200),
+    requested_component VARCHAR(200) NOT NULL,
+    current_value TEXT,
+    requested_value TEXT NOT NULL,
+    employee_remark TEXT,
+    status VARCHAR(50) DEFAULT 'pending_dept_head' CHECK (status IN ('pending_dept_head', 'accepted', 'rejected', 'resubmitted_to_pod', 'pod_approved', 'pod_rejected', 'deployed')),
+    dept_head_decision VARCHAR(50),
+    dept_head_remark TEXT,
+    dept_head_reviewed_at TIMESTAMPTZ,
+    pod_decision VARCHAR(50),
+    pod_remark TEXT,
+    pod_reviewed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.calibration_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read-write for calibration_requests"
+  ON public.calibration_requests FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_calibration_requests_employee_id ON public.calibration_requests(employee_id);
+CREATE INDEX IF NOT EXISTS idx_calibration_requests_department_id ON public.calibration_requests(department_id);
+CREATE INDEX IF NOT EXISTS idx_calibration_requests_status ON public.calibration_requests(status);
+
