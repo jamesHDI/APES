@@ -130,6 +130,21 @@ export const App: React.FC = () => {
   const [showMessengerModal, setShowMessengerModal] = useState<boolean>(false);
   const [directMessages, setDirectMessages] = useState<DirectMessage[]>(() => getStoredDirectMessages());
 
+  const pendingAccountCount = useMemo(() => {
+    return (users || []).filter(isPendingUser).length;
+  }, [users]);
+
+  const unreadDirectMessagesCount = useMemo(() => {
+    if (!directMessages || !Array.isArray(directMessages) || !currentUser?.id) return 0;
+    return directMessages.filter(
+      (m) =>
+        m &&
+        !m.read &&
+        (m.recipientId === currentUser.id || m.recipientId === 'all') &&
+        m.senderId !== currentUser.id
+    ).length;
+  }, [directMessages, currentUser?.id]);
+
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedEvalId, setSelectedEvalId] = useState<string>('');
   const [darkMode, setDarkMode] = useState<boolean>(() => {
@@ -1215,17 +1230,6 @@ export const App: React.FC = () => {
       </div>
     );
   }
-
-  const pendingAccountCount = users.filter(isPendingUser).length;
-
-  const unreadDirectMessagesCount = useMemo(() => {
-    return directMessages.filter(
-      (m) =>
-        !m.read &&
-        (m.recipientId === currentUser.id || m.recipientId === 'all') &&
-        m.senderId !== currentUser.id
-    ).length;
-  }, [directMessages, currentUser.id]);
 
   if (viewMode === 'printable') {
     const targetForPrint = printableEvaluation || currentEvaluation;
