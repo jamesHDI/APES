@@ -429,26 +429,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                       </tr>
                     )}
 
-                    {/* Rating Adjustment History row */}
-                    {kpi.ratingHistory && kpi.ratingHistory.length > 0 && (
-                      <tr key={`${kpi.kpiId}_history`}>
-                        <td colSpan={7} className="border border-slate-300 px-3 py-1.5 bg-slate-50">
-                          <div className="text-[9px] text-slate-500 font-semibold uppercase mb-1">Rating Adjustment History</div>
-                          <div className="flex flex-wrap gap-2">
-                            {kpi.ratingHistory.map((entry, hi) => (
-                              <div key={hi} className="flex items-center gap-1 text-[9px] text-slate-600 bg-white border border-slate-200 rounded px-1.5 py-0.5">
-                                <span className="font-bold capitalize">{entry.role}:</span>
-                                <span>{entry.adjustedBy}</span>
-                                <span className="text-slate-400">•</span>
-                                <span>{entry.previousRating} → <strong>{entry.newRating}</strong></span>
-                                {entry.remark && <span className="text-slate-400 italic">({entry.remark})</span>}
-                                <span className="text-slate-400">{new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
+                    {/* Rating Adjustment History REMOVED from printable scorecard */}
                   </React.Fragment>
                 );
               })}
@@ -509,7 +490,9 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                     <tr>
                       <td rowSpan={3} className="border border-slate-400 p-2 font-semibold align-top">
                         {cv.name}
-                        <p className="text-[10px] font-normal text-slate-600 mt-1">{cv.comments}</p>
+                        {cv.comments && (
+                          <p className="text-[10px] font-normal text-slate-600 mt-1 italic">{cv.comments}</p>
+                        )}
                       </td>
                       <td className="border border-slate-400 p-1.5 text-center">POD</td>
                       <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.podRating || 0}</td>
@@ -529,6 +512,36 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                   </React.Fragment>
                 );
               })}
+
+              {/* TOTAL WEIGHTED RATING summary row for Part 1B */}
+              {(() => {
+                // Overall CV average = average of each CV's avgRating
+                const cvAvgs = coreValueRatings.map(cv => {
+                  const pod = cv.podRating || 0;
+                  const peer = cv.peerRating || 0;
+                  const is = cv.isRating || 0;
+                  let sum = 0, count = 0;
+                  if (pod > 0) { sum += pod; count++; }
+                  if (peer > 0) { sum += peer; count++; }
+                  if (is > 0) { sum += is; count++; }
+                  return count > 0 ? sum / count : (cv.avgRating || 0);
+                });
+                const overallCvAvg = cvAvgs.length > 0
+                  ? Number((cvAvgs.reduce((a, b) => a + b, 0) / cvAvgs.length).toFixed(2))
+                  : 0;
+                const totalWeightedRating = Number((overallCvAvg * coreValuesWeight / 100).toFixed(2));
+                return (
+                  <tr className="bg-slate-100 font-bold border-t-2 border-slate-500">
+                    <td colSpan={3} className="border border-slate-400 p-2 text-right uppercase text-[10px]">
+                      TOTAL WEIGHTED RATING (PART 1B):
+                    </td>
+                    <td className="border border-slate-400 p-2 text-center text-[10px]">{coreValuesWeight}%</td>
+                    <td className="border border-slate-400 p-2 text-center font-black text-sm text-hdi-red">
+                      {totalWeightedRating.toFixed(2)}
+                    </td>
+                  </tr>
+                );
+              })()}
             </tbody>
           </table>
 
