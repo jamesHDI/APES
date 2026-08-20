@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { EvaluationTemplate, KRACategory, KPITemplateItem, CoreValue, Department, User, Evaluation, TemplateStatus } from '../../types';
 import { createMasterBasedTemplate, MASTER_SALES_EVALUATION_TEMPLATE } from '../../constants/masterSalesTemplate';
 import { validateEvaluationTemplate } from '../../services/templateValidation';
@@ -86,24 +86,30 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const [podRemarkInput, setPodRemarkInput] = useState('');
   const [showReturnRemarkInput, setShowReturnRemarkInput] = useState(false);
 
+  const currentLoadedTemplateIdRef = useRef<string>(selectedTemplateId);
+
   const canEdit = isPOD 
     || currentUser?.role === 'system_admin'
     || (isDeptHead && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_for_revision'));
 
   useEffect(() => {
-    if (visibleTemplates.length > 0) {
-      const match = visibleTemplates.find(t => t.id === selectedTemplateId);
+    // Only reload activeTemplate when selectedTemplateId has changed to a DIFFERENT template
+    if (selectedTemplateId !== currentLoadedTemplateIdRef.current) {
+      currentLoadedTemplateIdRef.current = selectedTemplateId;
+      const match = visibleTemplates.find(t => t.id === selectedTemplateId) || allVisibleTemplates.find(t => t.id === selectedTemplateId);
       if (match) {
         setActiveTemplate(match);
-      } else {
+      }
+    } else {
+      // If currently selected template is no longer in the list (e.g. deleted), switch to first available
+      const exists = visibleTemplates.some(t => t.id === selectedTemplateId) || allVisibleTemplates.some(t => t.id === selectedTemplateId);
+      if (!exists && visibleTemplates.length > 0) {
+        currentLoadedTemplateIdRef.current = visibleTemplates[0].id;
         setSelectedTemplateId(visibleTemplates[0].id);
         setActiveTemplate(visibleTemplates[0]);
       }
-    } else if (allVisibleTemplates.length > 0) {
-      setSelectedTemplateId(allVisibleTemplates[0].id);
-      setActiveTemplate(allVisibleTemplates[0]);
     }
-  }, [templates, selectedTemplateId, podFilterTab]);
+  }, [selectedTemplateId, visibleTemplates, allVisibleTemplates]);
 
   const getWeightInputValue = (id: string, defaultValue: number | string): string => {
     return weightInputs[id] ?? String(defaultValue);
@@ -293,6 +299,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   };
 
   const handleSelectTemplate = (id: string) => {
+    currentLoadedTemplateIdRef.current = id;
     setSelectedTemplateId(id);
     setValidationErrors([]);
     const tmpl = visibleTemplates.find((t) => t.id === id) || templates.find((t) => t.id === id);
@@ -332,6 +339,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     newTemplate.startDate = defaultStart;
     newTemplate.endDate = defaultEnd;
 
+    currentLoadedTemplateIdRef.current = newTemplate.id;
     onSaveTemplate(newTemplate);
     setActiveTemplate(newTemplate);
     setSelectedTemplateId(newTemplate.id);
@@ -449,7 +457,28 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const isCoreValuesValid = Math.abs(totalCoreValueWeight - (activeTemplate.formulaConfig.coreValuesWeight || 0)) < 0.01;
 
   const handleSave = () => {
-    const validation = validateEvaluationTemplate(activeTemplate);
+    let templateToSave = { ...activeTemplate };
+
+    // Commit any in-flight formula weight inputs
+    if (weightInputs['formula_eligibility'] !== undefined) {
+      const raw = weightInputs['formula_eligibility'];
+      const numVal = raw === '' ? 85 : Number(raw);
+      templateToSave = {
+        ...templateToSave,
+        formulaConfig: { ...templateToSave.formulaConfig, eligibilityWeight: numVal }
+      };
+    }
+    if (weightInputs['formula_core_values'] !== undefined) {
+      const raw = weightInputs['formula_core_values'];
+      const numVal = raw === '' ? 15 : Number(raw);
+      templateToSave = {
+        ...templateToSave,
+        formulaConfig: { ...templateToSave.formulaConfig, coreValuesWeight: numVal }
+      };
+    }
+    setWeightInputs({});
+
+    const validation = validateEvaluationTemplate(templateToSave);
     if (!validation.isValid) {
       setValidationErrors(validation.errors);
       showToast('Please resolve all validation errors before saving.');
@@ -457,8 +486,9 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     }
 
     setValidationErrors([]);
-    onSaveTemplate(activeTemplate);
-    showToast(isDeptHead ? 'Template draft saved successfully!' : 'Template changes saved successfully!');
+    onSaveTemplate(templateToSave);
+    setActiveTemplate(templateToSave);
+    showToast(isDeptHead ? 'Template changes saved successfully!' : 'Template changes saved successfully!');
   };
 
   const showToast = (msg: string) => {
@@ -627,7 +657,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                         <button
                           type="button"
                           onClick={(e) => handleDeleteTemplateAction(tmpl.id, e)}
-                          className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                          className="p-1 text-slate-400 hover:text-[#E96B1A] rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/40 transition-colors"
                           title="Delete template"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -791,8 +821,17 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   <>
                     <button
                       type="button"
+                      onClick={handleSave}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
+                      title="Save your template changes"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      Save Changes
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleDeleteTemplateAction(activeTemplate.id)}
-                      className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
+                      className="px-4 py-2.5 rounded-xl bg-[#E96B1A] hover:bg-[#D45909] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
                       title="Delete this template"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -810,23 +849,23 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
                 {!isDeptHead && (
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleSave}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      <Save className="w-3.5 h-3.5" /> Save Changes
+                    </button>
                     {canDelete && (
                       <button
                         type="button"
                         onClick={() => handleDeleteTemplateAction(activeTemplate.id)}
-                        className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
+                        className="px-4 py-2.5 rounded-xl bg-[#E96B1A] hover:bg-[#D45909] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
                         title="Delete this template"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         Delete
                       </button>
                     )}
-                    <button
-                      onClick={handleSave}
-                      className="px-4 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
-                    >
-                      <Save className="w-3.5 h-3.5" /> Save Template Changes
-                    </button>
                   </div>
                 )}
               </div>
