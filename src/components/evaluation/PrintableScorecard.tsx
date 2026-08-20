@@ -28,10 +28,28 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
   const appraisalPeriod = safeEvaluation.appraisalPeriod || 'Annual Appraisal';
   const appraisalDate = safeEvaluation.appraisalDate || new Date().toISOString().substring(0, 10);
   const eligibilityScore = Number(safeEvaluation.eligibilityScore || 0);
-  const finalRating = Number(safeEvaluation.finalRating || 0);
-  const totalCoreValuesWeightedRating = Number(safeEvaluation.totalCoreValuesWeightedRating || 0);
   const kpiRatings = Array.isArray(safeEvaluation.kpiRatings) ? safeEvaluation.kpiRatings : [];
   const coreValueRatings = Array.isArray(safeEvaluation.coreValueRatings) ? safeEvaluation.coreValueRatings : [];
+
+  // Calculate Part 1B Suitability score consistently across Part 1B and Part 1C
+  const calculatedCvAvgs = coreValueRatings.map(cv => {
+    const pod = cv.podRating || 0;
+    const peer = cv.peerRating || 0;
+    const is = cv.isRating || 0;
+    let sum = 0, count = 0;
+    if (pod > 0) { sum += pod; count++; }
+    if (peer > 0) { sum += peer; count++; }
+    if (is > 0) { sum += is; count++; }
+    return count > 0 ? sum / count : (cv.avgRating || 0);
+  });
+  const overallCvAvg = calculatedCvAvgs.length > 0
+    ? (calculatedCvAvgs.reduce((a, b) => a + b, 0) / calculatedCvAvgs.length)
+    : 0;
+  const part1BTotalWeightedRating = coreValueRatings.length > 0
+    ? Number((overallCvAvg * (coreValuesWeight / 100)).toFixed(2))
+    : Number(safeEvaluation.totalCoreValuesWeightedRating || 0);
+
+  const finalRating = Number((eligibilityScore + part1BTotalWeightedRating).toFixed(2));
   const devPlan = safeEvaluation.developmentPlan || { strengths: '', areasForImprovement: '', learningNeeds: [] };
   const learningNeeds = Array.isArray(devPlan.learningNeeds) ? devPlan.learningNeeds : [];
   const personnelAction = safeEvaluation.personnelAction || { actionType: 'no_action' };
@@ -483,7 +501,17 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                 const formattedWeight = Number.isInteger(rawWeight)
                   ? `${rawWeight}%`
                   : `${Number(Number(rawWeight).toFixed(2))}%`;
-                const weightedScore = Number(cv.weightedScore || 0).toFixed(2);
+
+                // Calculate per-row weighted score using row's own weight
+                const pod = cv.podRating || 0;
+                const peer = cv.peerRating || 0;
+                const is = cv.isRating || 0;
+                let sum = 0, count = 0;
+                if (pod > 0) { sum += pod; count++; }
+                if (peer > 0) { sum += peer; count++; }
+                if (is > 0) { sum += is; count++; }
+                const avgRating = count > 0 ? sum / count : (cv.avgRating || 0);
+                const rowWeightedScore = Number(((rawWeight / 100) * avgRating).toFixed(2));
 
                 return (
                   <React.Fragment key={cv.coreValueId || `cv_${idx}`}>
@@ -498,7 +526,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                       <td className="border border-slate-400 p-1.5 text-center font-bold">{cv.podRating || 0}</td>
                       <td rowSpan={3} className="border border-slate-400 p-2 text-center align-middle font-bold">{formattedWeight}</td>
                       <td rowSpan={3} className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">
-                        {weightedScore}
+                        {rowWeightedScore.toFixed(2)}
                       </td>
                     </tr>
                     <tr>
@@ -514,34 +542,15 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
               })}
 
               {/* TOTAL WEIGHTED RATING summary row for Part 1B */}
-              {(() => {
-                // Overall CV average = average of each CV's avgRating
-                const cvAvgs = coreValueRatings.map(cv => {
-                  const pod = cv.podRating || 0;
-                  const peer = cv.peerRating || 0;
-                  const is = cv.isRating || 0;
-                  let sum = 0, count = 0;
-                  if (pod > 0) { sum += pod; count++; }
-                  if (peer > 0) { sum += peer; count++; }
-                  if (is > 0) { sum += is; count++; }
-                  return count > 0 ? sum / count : (cv.avgRating || 0);
-                });
-                const overallCvAvg = cvAvgs.length > 0
-                  ? Number((cvAvgs.reduce((a, b) => a + b, 0) / cvAvgs.length).toFixed(2))
-                  : 0;
-                const totalWeightedRating = Number((overallCvAvg * coreValuesWeight / 100).toFixed(2));
-                return (
-                  <tr className="bg-slate-100 font-bold border-t-2 border-slate-500">
-                    <td colSpan={3} className="border border-slate-400 p-2 text-right uppercase text-[10px]">
-                      TOTAL WEIGHTED RATING (PART 1B):
-                    </td>
-                    <td className="border border-slate-400 p-2 text-center text-[10px]">{coreValuesWeight}%</td>
-                    <td className="border border-slate-400 p-2 text-center font-black text-sm text-hdi-red">
-                      {totalWeightedRating.toFixed(2)}
-                    </td>
-                  </tr>
-                );
-              })()}
+              <tr className="bg-slate-100 font-bold border-t-2 border-slate-500">
+                <td colSpan={3} className="border border-slate-400 p-2 text-right uppercase text-[10px]">
+                  TOTAL WEIGHTED RATING (PART 1B):
+                </td>
+                <td className="border border-slate-400 p-2 text-center text-[10px]">{coreValuesWeight}%</td>
+                <td className="border border-slate-400 p-2 text-center font-black text-sm text-hdi-red">
+                  {part1BTotalWeightedRating.toFixed(2)}
+                </td>
+              </tr>
             </tbody>
           </table>
 
@@ -572,7 +581,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                 <tr>
                   <td className="border border-slate-400 p-2 font-bold">SUITABILITY (Part 1B)</td>
                   <td className="border border-slate-400 p-2 text-center">{coreValuesWeight}%</td>
-                  <td className="border border-slate-400 p-2 text-center font-bold">{totalCoreValuesWeightedRating.toFixed(2)}</td>
+                  <td className="border border-slate-400 p-2 text-center font-bold">{part1BTotalWeightedRating.toFixed(2)}</td>
                 </tr>
               </tbody>
             </table>
@@ -727,7 +736,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
             
             {/* POD Remarks & Validation summary */}
             <div className="text-[10px] space-y-1 bg-white p-2 border border-slate-200">
-              <p><strong>POD Core Values Validation Rating:</strong> {totalCoreValuesWeightedRating.toFixed(2)} ({coreValuesWeight}%)</p>
+              <p><strong>POD Core Values Validation Rating:</strong> {part1BTotalWeightedRating.toFixed(2)} ({coreValuesWeight}%)</p>
               <p><strong>POD / HR Remarks & Comments:</strong> {safeEvaluation.podValidationComment || 'Validated by People Operations Development (POD).'}</p>
               <p><strong>Personnel Action Final Status:</strong> {personnelAction?.isApproved ? 'Approved & Enforced' : 'Pending Final HR Enforcement'}</p>
             </div>

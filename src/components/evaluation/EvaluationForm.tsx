@@ -330,7 +330,9 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         if (is > 0) { sum += is; count++; }
         
         const avgRating = count > 0 ? Number((sum / count).toFixed(2)) : 0;
-        const weightedScore = computeCoreValuesWeightedScore(avgRating, coreValuesWeight);
+        const cvCount = cvsToUpdate.length || 4;
+        const rawWeight = (cv as any).weightPercent ?? (coreValuesWeight / cvCount);
+        const weightedScore = computeCoreValuesWeightedScore(avgRating, rawWeight);
         return {
           ...cv,
           podRating: pod,
@@ -1278,7 +1280,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                     <p className="text-xs text-slate-500 dark:text-slate-300">{cv.description}</p>
                   </div>
                   <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-brand-600 dark:text-brand-400">
-                     Weighted Score: {cv.weightedScore.toFixed(2)} ({coreValuesWeight}%)
+                     Weighted Score: {cv.weightedScore.toFixed(2)} ({((cv as any).weightPercent ?? (coreValuesWeight / (effectiveCoreValueRatings.length || 4))).toFixed(2)}%)
                   </div>
                 </div>
 
