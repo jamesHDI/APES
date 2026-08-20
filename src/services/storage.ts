@@ -694,33 +694,52 @@ export const assignNewEvaluationToEmployee = async (
   const isDeptHeadTrack = employee.isDepartmentHead || employee.role === 'dept_head';
   const workflowType = isDeptHeadTrack ? ('WORKFLOW_DEPT_HEAD' as const) : ('WORKFLOW_REGULAR' as const);
 
-  const activeTemplate = (template && template.kraCategories && template.kraCategories.length > 0)
+  const activeTemplate = (template && Array.isArray(template.kraCategories) && template.kraCategories.length > 0)
     ? template
     : MASTER_SALES_EVALUATION_TEMPLATE;
 
+  const defaultStandards: { rating: 1 | 2 | 3 | 4; label: string; description: string }[] = [
+    { rating: 4, label: '4 - Exceeds', description: 'Exceeds target performance' },
+    { rating: 3, label: '3 - Meets', description: 'Meets expected target' },
+    { rating: 2, label: '2 - Barely Meets', description: 'Barely meets minimum target' },
+    { rating: 1, label: '1 - Did Not Meet', description: 'Did not meet target performance' }
+  ];
+
   const kpiRatings = activeTemplate.kraCategories.flatMap((kra) =>
-    kra.kpis.map((kpi) => ({
+    (kra.kpis || []).map((kpi) => ({
       kpiId: kpi.id,
       kraId: kra.id,
       kraName: kra.name,
       name: kpi.name,
-      weightPercent: kpi.weightPercent,
+      weightPercent: Number(kpi.weightPercent || 0),
       selfRating: 0,
       supervisorRating: 0,
       presidentRating: 0,
       weightedScore: 0,
       comments: '',
-      standards: kpi.standards,
-      evidenceRequired: kpi.evidenceRequired,
+      standards: Array.isArray(kpi.standards) && kpi.standards.length > 0 ? kpi.standards : defaultStandards,
+      evidenceRequired: Boolean(kpi.evidenceRequired),
     }))
   );
 
-  const defaultCoreValues = [
-    { coreValueId: 'cv_integrity', name: 'Integrity & Ethics', description: 'Upholds highest standards of honesty, fairness, and business ethics.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
-    { coreValueId: 'cv_excellence', name: 'Excellence & Performance', description: 'Consistently delivers top-tier results and strives for continuous improvement.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
-    { coreValueId: 'cv_teamwork', name: 'Teamwork & Collaboration', description: 'Fosters positive collaboration across departments and supports team goals.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
-    { coreValueId: 'cv_accountability', name: 'Accountability & Ownership', description: 'Takes full ownership of duties, commitments, and professional conduct.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' }
-  ];
+  const defaultCoreValues = (activeTemplate.coreValues && activeTemplate.coreValues.length > 0)
+    ? activeTemplate.coreValues.map((cv) => ({
+        coreValueId: cv.id,
+        name: cv.name,
+        description: cv.description || '',
+        podRating: 0,
+        peerRating: 0,
+        isRating: 0,
+        avgRating: 0,
+        weightedScore: 0,
+        comments: ''
+      }))
+    : [
+        { coreValueId: 'cv_integrity', name: 'Integrity & Ethics', description: 'Upholds highest standards of honesty, fairness, and business ethics.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
+        { coreValueId: 'cv_excellence', name: 'Excellence & Performance', description: 'Consistently delivers top-tier results and strives for continuous improvement.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
+        { coreValueId: 'cv_teamwork', name: 'Teamwork & Collaboration', description: 'Fosters positive collaboration across departments and supports team goals.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
+        { coreValueId: 'cv_accountability', name: 'Accountability & Ownership', description: 'Takes full ownership of duties, commitments, and professional conduct.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' }
+      ];
 
   const nowIso = new Date().toISOString();
   const dateStr = nowIso.substring(0, 10);

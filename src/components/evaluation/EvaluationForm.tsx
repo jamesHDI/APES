@@ -70,10 +70,6 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   const [isArchiving, setIsArchiving] = useState(false);
   const [archiveFailure, setArchiveFailure] = useState<ArchiveTransactionResult | null>(null);
 
-  useEffect(() => {
-    setEvalData(initialEvaluation);
-  }, [initialEvaluation.id]);
-
   const currentRole = currentUser.role;
   const isReadOnly = isEvaluationCompleted(evalData);
   const isSelfEval = Boolean(
@@ -91,6 +87,70 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     (templates || []).find(t => evalData.departmentName && t.title?.toLowerCase().includes(evalData.departmentName.toLowerCase().trim())) ||
     templates?.[0] ||
     MASTER_SALES_EVALUATION_TEMPLATE;
+
+  // Generate fallback KPI ratings from the resolved template if missing
+  const defaultStandards: { rating: 1 | 2 | 3 | 4; label: string; description: string }[] = [
+    { rating: 4, label: '4 - Exceeds', description: 'Exceeds target performance' },
+    { rating: 3, label: '3 - Meets', description: 'Meets expected target' },
+    { rating: 2, label: '2 - Barely Meets', description: 'Barely meets minimum target' },
+    { rating: 1, label: '1 - Did Not Meet', description: 'Did not meet target performance' }
+  ];
+
+  const templateKpiRatings = (currentTemplate.kraCategories || []).flatMap((kra) =>
+    (kra.kpis || []).map((kpi) => ({
+      kpiId: kpi.id,
+      kraId: kra.id,
+      kraName: kra.name,
+      name: kpi.name,
+      weightPercent: Number(kpi.weightPercent || 0),
+      selfRating: 0,
+      supervisorRating: 0,
+      presidentRating: 0,
+      weightedScore: 0,
+      comments: '',
+      standards: Array.isArray(kpi.standards) && kpi.standards.length > 0 ? kpi.standards : defaultStandards,
+      evidenceRequired: Boolean(kpi.evidenceRequired),
+    }))
+  );
+
+  const templateCoreValueRatings = (currentTemplate.coreValues && currentTemplate.coreValues.length > 0)
+    ? currentTemplate.coreValues.map((cv) => ({
+        coreValueId: cv.id,
+        name: cv.name,
+        description: cv.description || '',
+        podRating: 0,
+        peerRating: 0,
+        isRating: 0,
+        avgRating: 0,
+        weightedScore: 0,
+        comments: ''
+      }))
+    : [
+        { coreValueId: 'cv_integrity', name: 'Integrity & Ethics', description: 'Upholds highest standards of honesty, fairness, and business ethics.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
+        { coreValueId: 'cv_excellence', name: 'Excellence & Performance', description: 'Consistently delivers top-tier results and strives for continuous improvement.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
+        { coreValueId: 'cv_teamwork', name: 'Teamwork & Collaboration', description: 'Fosters positive collaboration across departments and supports team goals.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' },
+        { coreValueId: 'cv_accountability', name: 'Accountability & Ownership', description: 'Takes full ownership of duties, commitments, and professional conduct.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' }
+      ];
+
+  // Self-heal evaluation data if kpiRatings or coreValueRatings are missing or empty
+  useEffect(() => {
+    let needsUpdate = false;
+    let healed = { ...initialEvaluation };
+
+    if (!Array.isArray(healed.kpiRatings) || healed.kpiRatings.length === 0) {
+      healed.kpiRatings = templateKpiRatings;
+      needsUpdate = true;
+    }
+    if (!Array.isArray(healed.coreValueRatings) || healed.coreValueRatings.length === 0) {
+      healed.coreValueRatings = templateCoreValueRatings;
+      needsUpdate = true;
+    }
+
+    setEvalData(healed);
+    if (needsUpdate) {
+      onSave(healed);
+    }
+  }, [initialEvaluation.id, currentTemplate.id]);
 
   const matchingDeployment = evalData.deploymentId 
     ? getStoredDeployments().find(d => d.id === evalData.deploymentId)
@@ -602,12 +662,21 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const krasMap = new Map<string, typeof evalData.kpiRatings>();
-  evalData.kpiRatings.forEach((kpi) => {
-    if (!krasMap.has(kpi.kraName)) {
-      krasMap.set(kpi.kraName, []);
+  const effectiveKpiRatings = (evalData.kpiRatings && evalData.kpiRatings.length > 0)
+    ? evalData.kpiRatings
+    : templateKpiRatings;
+
+  const effectiveCoreValueRatings = (evalData.coreValueRatings && evalData.coreValueRatings.length > 0)
+    ? evalData.coreValueRatings
+    : templateCoreValueRatings;
+
+  const krasMap = new Map<string, typeof effectiveKpiRatings>();
+  effectiveKpiRatings.forEach((kpi) => {
+    const kraName = kpi.kraName || '1. KEY RESULT AREA';
+    if (!krasMap.has(kraName)) {
+      krasMap.set(kraName, []);
     }
-    krasMap.get(kpi.kraName)!.push(kpi);
+    krasMap.get(kraName)!.push(kpi);
   });
 
   return (
@@ -1007,7 +1076,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
           </div>
 
           <div className="space-y-4">
-            {evalData.coreValueRatings.map((cv) => (
+            {effectiveCoreValueRatings.map((cv) => (
               <div key={cv.coreValueId} className="p-5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>

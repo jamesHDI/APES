@@ -936,8 +936,16 @@ export const fetchEvaluationsFromSupabase = async (employeeIdOrUser?: string | U
       totalCoreValuesWeightedRating: Number(e.core_values_score || 0),
       finalRating: Number(e.final_rating || 0),
       ratingClassification: e.rating_classification,
-      kpiRatings: Array.isArray(e.kpi_ratings_data) ? e.kpi_ratings_data : [],
-      coreValueRatings: Array.isArray(e.core_value_ratings_data) ? e.core_value_ratings_data : [],
+      kpiRatings: (Array.isArray(e.kpi_ratings_data) && e.kpi_ratings_data.length > 0)
+        ? e.kpi_ratings_data
+        : (Array.isArray(e.full_payload?.kpiRatings) && e.full_payload.kpiRatings.length > 0)
+          ? e.full_payload.kpiRatings
+          : [],
+      coreValueRatings: (Array.isArray(e.core_value_ratings_data) && e.core_value_ratings_data.length > 0)
+        ? e.core_value_ratings_data
+        : (Array.isArray(e.full_payload?.coreValueRatings) && e.full_payload.coreValueRatings.length > 0)
+          ? e.full_payload.coreValueRatings
+          : [],
       developmentPlan: e.development_plan_data || { strengths: '', areasForImprovement: '', learningNeeds: [] },
       personnelAction: e.personnel_action_data || { actionType: 'no_action' },
       signatures: e.signatures_data || {},
@@ -1349,6 +1357,19 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
       audit_trail_data: evaluation.auditTrail || [],
       development_plan_data: evaluation.developmentPlan || {},
       personnel_action_data: evaluation.personnelAction || {},
+      full_payload: {
+        title: evaluation.title,
+        templateTitle: evaluation.templateTitle,
+        templateId: evaluation.templateId,
+        deploymentId: evaluation.deploymentId,
+        deadline: evaluation.deadline,
+        kpiRatings: evaluation.kpiRatings || [],
+        coreValueRatings: evaluation.coreValueRatings || [],
+        developmentPlan: evaluation.developmentPlan || {},
+        personnelAction: evaluation.personnelAction || {},
+        signatures: evaluation.signatures || {},
+        auditTrail: evaluation.auditTrail || []
+      },
       updated_at: new Date().toISOString()
     };
 
