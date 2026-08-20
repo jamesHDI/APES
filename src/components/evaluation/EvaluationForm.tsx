@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Evaluation, User, Role, DigitalSignature, EvidenceFile, PersonnelAction, ActionType, EvaluationTemplate } from '../../types';
+import { Evaluation, User, Role, DigitalSignature, EvidenceFile, PersonnelAction, ActionType, EvaluationTemplate, KPIRating, RatingStandard, RatingAdjustment } from '../../types';
 import { 
   computeKPIWeightedScore, 
   computeEligibilityScore,
@@ -7,6 +7,7 @@ import {
   computeCoreValuesWeightedScore, 
   computeFinalPerformanceRating, 
   getRatingClassification,
+  getLatestAdjustedRating,
   appendRatingAdjustment,
 } from '../../services/computationEngine';
 import { validateEvaluationForSubmission } from '../../services/validationService';
@@ -96,7 +97,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     { rating: 1, label: '1 - Did Not Meet', description: 'Did not meet target performance' }
   ];
 
-  const templateKpiRatings = (currentTemplate.kraCategories || []).flatMap((kra) =>
+  const templateKpiRatings: KPIRating[] = (currentTemplate.kraCategories || []).flatMap((kra) =>
     (kra.kpis || []).map((kpi) => ({
       kpiId: kpi.id,
       kraId: kra.id,
@@ -106,10 +107,12 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       selfRating: 0,
       supervisorRating: 0,
       presidentRating: 0,
+      podRating: 0,
       weightedScore: 0,
       comments: '',
       standards: Array.isArray(kpi.standards) && kpi.standards.length > 0 ? kpi.standards : defaultStandards,
       evidenceRequired: Boolean(kpi.evidenceRequired),
+      ratingHistory: []
     }))
   );
 
@@ -251,21 +254,22 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     showToast('Evaluation successfully returned for revision!');
   };
 
-  const handleRatingChange = (kpiId: string, roleType: 'self' | 'supervisor' | 'president', ratingValue: number) => {
-    const updatedKpis = evalData.kpiRatings.map((kpi) => {
+  const handleRatingChange = (kpiId: string, roleType: 'self' | 'supervisor' | 'president' | 'pod', ratingValue: number) => {
+    const updatedKpis: KPIRating[] = evalData.kpiRatings.map((kpi: KPIRating): KPIRating => {
       if (kpi.kpiId === kpiId) {
         const selfRating = roleType === 'self' ? ratingValue : kpi.selfRating;
         const supervisorRating = roleType === 'supervisor' ? ratingValue : kpi.supervisorRating;
-        const presidentRating = roleType === 'president' ? ratingValue : kpi.presidentRating;
-        
-        const ratingToUse = presidentRating || supervisorRating || selfRating || 0;
+        const presidentRating = (roleType === 'president' || roleType === 'pod') ? ratingValue : kpi.presidentRating;
+        const podRating = (roleType === 'pod' || roleType === 'president') ? ratingValue : (kpi.podRating ?? kpi.presidentRating);
+
+        const tempKpi: KPIRating = { ...kpi, selfRating, supervisorRating, presidentRating, podRating };
+        const ratingToUse = getLatestAdjustedRating(tempKpi);
         const weightedScore = computeKPIWeightedScore(kpi.weightPercent, ratingToUse);
 
-        // Change 4 — Append to ratingHistory when supervisor or POD (president) adjusts a rating
-        let updatedKpi = { ...kpi, selfRating, supervisorRating, presidentRating, weightedScore };
-        if ((roleType === 'supervisor' || roleType === 'president') && ratingValue !== 0) {
+        let updatedKpi: KPIRating = { ...tempKpi, weightedScore };
+        if ((roleType === 'supervisor' || roleType === 'president' || roleType === 'pod') && ratingValue !== 0) {
           const adjustedByName = currentUser?.name || currentUser?.role || 'Unknown';
-          const adjustRole = roleType === 'president' ? 'pod' : roleType;
+          const adjustRole = (roleType === 'president' || roleType === 'pod') ? 'pod' : roleType;
           updatedKpi = appendRatingAdjustment(updatedKpi, adjustedByName, adjustRole as any, ratingValue);
         }
         return updatedKpi;
@@ -662,7 +666,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const effectiveKpiRatings = (evalData.kpiRatings && evalData.kpiRatings.length > 0)
+  const effectiveKpiRatings: KPIRating[] = (evalData.kpiRatings && evalData.kpiRatings.length > 0)
     ? evalData.kpiRatings
     : templateKpiRatings;
 
@@ -670,7 +674,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     ? evalData.coreValueRatings
     : templateCoreValueRatings;
 
-  const krasMap = new Map<string, typeof effectiveKpiRatings>();
+  const krasMap = new Map<string, KPIRating[]>();
   effectiveKpiRatings.forEach((kpi) => {
     const kraName = kpi.kraName || '1. KEY RESULT AREA';
     if (!krasMap.has(kraName)) {
@@ -940,114 +944,216 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 </div>
 
                 <div className="divide-y divide-slate-200 dark:divide-slate-700/80">
-                  {kpis.map((kpi) => (
-                    <div key={kpi.kpiId} className="p-4 bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-800/60 transition-colors">
-                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-                        
-                        <div className="lg:col-span-5 space-y-1.5">
-                          <p className="font-bold text-sm text-slate-900 dark:text-white">{kpi.name}</p>
-                          <div className="bg-slate-50 dark:bg-slate-950/80 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs space-y-1">
-                            {kpi.standards.map((st) => (
-                              <div
-                                key={st.rating}
-                                className={`p-1 rounded text-[11px] ${
-                                  (kpi.presidentRating || kpi.supervisorRating || kpi.selfRating) === st.rating
-                                    ? 'bg-brand-100 dark:bg-brand-950 font-bold text-brand-800 dark:text-brand-300 border border-brand-300 dark:border-brand-800'
-                                    : 'text-slate-600 dark:text-slate-300'
-                                }`}
-                              >
-                                <strong>{st.rating}</strong>: {st.description}
+                  {kpis.map((kpi) => {
+                    const latestRating = getLatestAdjustedRating(kpi);
+                    const isSupervisorAdjusted = kpi.supervisorRating > 0 && kpi.selfRating > 0 && kpi.supervisorRating !== kpi.selfRating;
+                    const podValue = kpi.presidentRating || kpi.podRating || 0;
+                    const prevRatingBeforePod = kpi.supervisorRating || kpi.selfRating || 0;
+                    const isPodAdjusted = podValue > 0 && prevRatingBeforePod > 0 && podValue !== prevRatingBeforePod;
+
+                    const formatRatingText = (rating?: number): string => {
+                      if (!rating || rating <= 0) return '—';
+                      switch (rating) {
+                        case 4: return '4 - Exceeds';
+                        case 3: return '3 - Meets';
+                        case 2: return '2 - Barely';
+                        case 1: return '1 - Not Met';
+                        default: return `${rating}.00`;
+                      }
+                    };
+
+                    return (
+                      <div key={kpi.kpiId} className="p-4 bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-800/60 transition-colors space-y-3">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                          
+                          {/* Column 1: KPI Details & Standards (lg:col-span-4) */}
+                          <div className="lg:col-span-4 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <p className="font-bold text-sm text-slate-900 dark:text-white">{kpi.name}</p>
+                              <span className="text-[11px] font-extrabold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                Weight: {kpi.weightPercent}%
+                              </span>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-slate-950/80 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs space-y-1">
+                              {kpi.standards.map((st: RatingStandard) => (
+                                <div
+                                  key={st.rating}
+                                  className={`p-1 rounded text-[11px] ${
+                                    latestRating === st.rating
+                                      ? 'bg-brand-100 dark:bg-brand-950 font-bold text-brand-800 dark:text-brand-300 border border-brand-300 dark:border-brand-800'
+                                      : 'text-slate-600 dark:text-slate-300'
+                                  }`}
+                                >
+                                  <strong>{st.rating}</strong>: {st.description}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Column 2: Rating Adjustment Workflow Pipeline (lg:col-span-5) */}
+                          <div className="lg:col-span-5 space-y-2">
+                            <div className="flex items-center justify-between text-xs font-semibold">
+                              <span className="text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-[10px]">
+                                Rating Adjustment Pipeline
+                              </span>
+                              <span className="text-slate-600 dark:text-slate-300 text-xs">
+                                Weighted Score: <strong className="text-brand-600 dark:text-brand-400 text-sm font-black">{kpi.weightedScore.toFixed(2)}</strong>
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-4 gap-1.5 p-2 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+                              {/* Step 1: Initial (Self) */}
+                              <div className={`p-2 rounded-lg border text-xs flex flex-col justify-between ${
+                                canEditEmployeeSection
+                                  ? 'border-brand-500 bg-brand-50/60 dark:bg-brand-950/40 text-brand-950 dark:text-brand-100 ring-1 ring-brand-500/30'
+                                  : kpi.selfRating > 0
+                                    ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200'
+                                    : 'border-dashed border-slate-300 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-900/30 text-slate-400'
+                              }`}>
+                                <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                                  1. Initial (Self)
+                                </div>
+                                {canEditEmployeeSection ? (
+                                  <select
+                                    value={kpi.selfRating || 0}
+                                    onChange={(e) => handleRatingChange(kpi.kpiId, 'self', Number(e.target.value))}
+                                    className="w-full px-1 py-1 rounded border border-brand-400 bg-white dark:bg-slate-900 text-[11px] font-bold text-slate-900 dark:text-white"
+                                  >
+                                    <option value={0}>Select...</option>
+                                    <option value={4}>4 - Exceeds</option>
+                                    <option value={3}>3 - Meets</option>
+                                    <option value={2}>2 - Barely</option>
+                                    <option value={1}>1 - Not Met</option>
+                                  </select>
+                                ) : (
+                                  <div className="font-bold text-[11px] truncate">
+                                    {kpi.selfRating > 0 ? formatRatingText(kpi.selfRating) : <span className="italic text-slate-400">None</span>}
+                                  </div>
+                                )}
                               </div>
+
+                              {/* Step 2: Supervisor / IS Adjustment */}
+                              <div className={`p-2 rounded-lg border text-xs flex flex-col justify-between ${
+                                canEditDeptHeadSection
+                                  ? 'border-purple-500 bg-purple-50/60 dark:bg-purple-950/40 text-purple-950 dark:text-purple-100 ring-1 ring-purple-500/30'
+                                  : kpi.supervisorRating > 0
+                                    ? 'border-purple-200 dark:border-purple-900/60 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200'
+                                    : 'border-dashed border-slate-300 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-900/30 text-slate-400'
+                              }`}>
+                                <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 mb-1">
+                                  <span>2. IS Adjust</span>
+                                  {isSupervisorAdjusted && (
+                                    <span className="text-[8px] px-1 py-0.2 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 font-bold">
+                                      Adj
+                                    </span>
+                                  )}
+                                </div>
+                                {canEditDeptHeadSection ? (
+                                  <select
+                                    value={kpi.supervisorRating || 0}
+                                    onChange={(e) => handleRatingChange(kpi.kpiId, 'supervisor', Number(e.target.value))}
+                                    className="w-full px-1 py-1 rounded border border-purple-400 bg-white dark:bg-slate-900 text-[11px] font-bold text-slate-900 dark:text-white"
+                                  >
+                                    <option value={0}>Adjust...</option>
+                                    <option value={4}>4 - Exceeds</option>
+                                    <option value={3}>3 - Meets</option>
+                                    <option value={2}>2 - Barely</option>
+                                    <option value={1}>1 - Not Met</option>
+                                  </select>
+                                ) : (
+                                  <div className="font-bold text-[11px] truncate">
+                                    {kpi.supervisorRating > 0 ? (
+                                      formatRatingText(kpi.supervisorRating)
+                                    ) : (
+                                      <span className="italic text-slate-400">—</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Step 3: POD / President Final Adjustment */}
+                              <div className={`p-2 rounded-lg border text-xs flex flex-col justify-between ${
+                                (canEditPresidentSection || canEditPODSection)
+                                  ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/40 text-amber-950 dark:text-amber-100 ring-1 ring-amber-500/30'
+                                  : podValue > 0
+                                    ? 'border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200'
+                                    : 'border-dashed border-slate-300 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-900/30 text-slate-400'
+                              }`}>
+                                <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
+                                  <span>3. POD Adjust</span>
+                                  {isPodAdjusted && (
+                                    <span className="text-[8px] px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 font-bold">
+                                      Adj
+                                    </span>
+                                  )}
+                                </div>
+                                {(canEditPresidentSection || canEditPODSection) ? (
+                                  <select
+                                    value={podValue}
+                                    onChange={(e) => handleRatingChange(kpi.kpiId, canEditPresidentSection ? 'president' : 'pod', Number(e.target.value))}
+                                    className="w-full px-1 py-1 rounded border border-amber-400 bg-white dark:bg-slate-900 text-[11px] font-bold text-slate-900 dark:text-white"
+                                  >
+                                    <option value={0}>Adjust...</option>
+                                    <option value={4}>4 - Exceeds</option>
+                                    <option value={3}>3 - Meets</option>
+                                    <option value={2}>2 - Barely</option>
+                                    <option value={1}>1 - Not Met</option>
+                                  </select>
+                                ) : (
+                                  <div className="font-bold text-[11px] truncate">
+                                    {podValue > 0 ? (
+                                      formatRatingText(podValue)
+                                    ) : (
+                                      <span className="italic text-slate-400">—</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Step 4: Final Effective Rating */}
+                              <div className="p-2 rounded-lg border border-emerald-300 dark:border-emerald-700/80 bg-emerald-50/80 dark:bg-emerald-950/50 text-emerald-950 dark:text-emerald-100 text-xs flex flex-col justify-between">
+                                <div className="text-[9px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300 mb-1">
+                                  Final Rating
+                                </div>
+                                <div className="font-black text-[11px] text-emerald-800 dark:text-emerald-200 truncate">
+                                  {latestRating > 0 ? formatRatingText(latestRating) : <span className="italic text-slate-400">Pending</span>}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Column 3: Comments / STAR Evidence (lg:col-span-3) */}
+                          <div className="lg:col-span-3">
+                            <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase mb-1">
+                              Comments / STAR Evidence
+                            </label>
+                            <textarea
+                              rows={3}
+                              value={kpi.comments}
+                              disabled={!canEditEmployeeSection && !canEditDeptHeadSection && !canEditPresidentSection && !canEditPODSection}
+                              onChange={(e) => handleKPICommentChange(kpi.kpiId, e.target.value)}
+                              placeholder="Specific evidence details..."
+                              className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
+                            />
+                          </div>
+
+                        </div>
+
+                        {/* Rating Adjustment History Audit Sub-row */}
+                        {Array.isArray(kpi.ratingHistory) && kpi.ratingHistory.length > 0 && (
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10px] text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-2">
+                            <span className="font-bold uppercase tracking-wider text-[9px] text-slate-400">Adjustment History:</span>
+                            {kpi.ratingHistory.map((adj: RatingAdjustment, hIdx: number) => (
+                              <span key={hIdx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                                <strong className="capitalize">{adj.role}</strong> ({adj.adjustedBy}): {adj.previousRating || 0} ➔ <strong className="text-brand-600 dark:text-brand-400">{adj.newRating}</strong>
+                              </span>
                             ))}
                           </div>
-                        </div>
-
-                        <div className="lg:col-span-4 space-y-3">
-                          <div className="flex items-center justify-between text-xs font-semibold">
-                            <span className="text-slate-600 dark:text-slate-300">Weight: <strong className="text-slate-900 dark:text-white">{kpi.weightPercent}%</strong></span>
-                            <span className="text-slate-600 dark:text-slate-300">Score: <strong className="text-brand-600 dark:text-brand-400 text-sm font-bold">{kpi.weightedScore.toFixed(2)}</strong></span>
-                          </div>
-
-                          <div className="grid grid-cols-3 gap-2 bg-slate-100 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
-                            <div>
-                              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Self Rating</p>
-                              <select
-                                value={kpi.selfRating || 0}
-                                disabled={!canEditEmployeeSection}
-                                onChange={(e) => handleRatingChange(kpi.kpiId, 'self', Number(e.target.value))}
-                                className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold ${
-                                  canEditEmployeeSection
-                                    ? 'border-brand-500 bg-brand-50/50 text-brand-900 ring-2 ring-brand-500/20'
-                                    : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100'
-                                }`}
-                              >
-                                <option value={0}>Select...</option>
-                                <option value={4}>4 - Exceeds</option>
-                                <option value={3}>3 - Meets</option>
-                                <option value={2}>2 - Barely Meets</option>
-                                <option value={1}>1 - Did Not Meet</option>
-                              </select>
-                            </div>
-
-                            <div>
-                              <p className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase mb-1">IS Rating</p>
-                              <select
-                                value={kpi.supervisorRating || 0}
-                                disabled={!canEditDeptHeadSection}
-                                onChange={(e) => handleRatingChange(kpi.kpiId, 'supervisor', Number(e.target.value))}
-                                className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold ${
-                                  canEditDeptHeadSection 
-                                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-950 text-purple-900 dark:text-purple-100 ring-2 ring-purple-500/20' 
-                                    : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100'
-                                }`}
-                              >
-                                <option value={0}>Select...</option>
-                                <option value={4}>4 - Exceeds</option>
-                                <option value={3}>3 - Meets</option>
-                                <option value={2}>2 - Barely Meets</option>
-                                <option value={1}>1 - Did Not Meet</option>
-                              </select>
-                            </div>
-
-                            <div>
-                              <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase mb-1">President</p>
-                              <select
-                                value={kpi.presidentRating || 0}
-                                disabled={!canEditPresidentSection}
-                                onChange={(e) => handleRatingChange(kpi.kpiId, 'president', Number(e.target.value))}
-                                className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold ${
-                                  canEditPresidentSection
-                                    ? 'border-amber-500 bg-amber-50 dark:bg-amber-950 text-amber-900 ring-2 ring-amber-500/20'
-                                    : 'border-slate-300 dark:border-slate-600 bg-amber-50/50 dark:bg-amber-950/30 text-slate-900 dark:text-slate-100'
-                                }`}
-                              >
-                                <option value={0}>Select...</option>
-                                <option value={4}>4 - Exceeds</option>
-                                <option value={3}>3 - Meets</option>
-                                <option value={2}>2 - Barely Meets</option>
-                                <option value={1}>1 - Did Not Meet</option>
-                              </select>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="lg:col-span-3">
-                          <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase mb-1">
-                            Comments / STAR Evidence
-                          </label>
-                          <textarea
-                            rows={3}
-                            value={kpi.comments}
-                            disabled={!canEditEmployeeSection && !canEditDeptHeadSection && !canEditPresidentSection}
-                            onChange={(e) => handleKPICommentChange(kpi.kpiId, e.target.value)}
-                            placeholder="Specific evidence details..."
-                            className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
-                          />
-                        </div>
+                        )}
 
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );

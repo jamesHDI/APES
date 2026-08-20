@@ -20,12 +20,12 @@ export function computeKPIWeightedScore(weightPercent: number, rating: number): 
 
 /**
  * Computes total eligibility score from all KPI ratings in Part 1A.
+ * Uses the sequential adjusted rating from the last authorized evaluator.
  */
 export function computeEligibilityScore(kpiRatings: KPIRating[]): number {
   if (!kpiRatings || kpiRatings.length === 0) return 0;
   const sum = kpiRatings.reduce((acc, kpi) => {
-    // Priority: President Rating > Supervisor Rating > Self Rating
-    const ratingToUse = kpi.presidentRating || kpi.supervisorRating || kpi.selfRating || 0;
+    const ratingToUse = getLatestAdjustedRating(kpi);
     const score = computeKPIWeightedScore(kpi.weightPercent, ratingToUse);
     return acc + score;
   }, 0);
@@ -107,19 +107,30 @@ export function validateWeightsTotal(kpiRatings: KPIRating[], targetTotal: numbe
 }
 
 /**
- * Change 4 — Sequential Rating Adjustment:
+/**
+ * Sequential Rating Adjustment:
  * Returns the final effective rating for a KPI.
- * If ratingHistory is present, returns the rating from the LAST history entry.
- * Otherwise falls back to the existing priority logic:
- *   presidentRating (POD) > supervisorRating > selfRating
- * This maintains full backward compatibility with all existing evaluations.
+ * Evaluator Hierarchy Priority:
+ *   POD / President Adjustment > Supervisor / IS Adjustment > Employee Initial Self-Rating
+ * This guarantees sequential adjustment without averaging and maintains full backward compatibility.
  */
 export function getLatestAdjustedRating(kpi: KPIRating): number {
+  if (kpi.presidentRating && kpi.presidentRating > 0) {
+    return kpi.presidentRating;
+  }
+  if (kpi.podRating && kpi.podRating > 0) {
+    return kpi.podRating;
+  }
+  if (kpi.supervisorRating && kpi.supervisorRating > 0) {
+    return kpi.supervisorRating;
+  }
+  if (kpi.selfRating && kpi.selfRating > 0) {
+    return kpi.selfRating;
+  }
   if (kpi.ratingHistory && kpi.ratingHistory.length > 0) {
     return kpi.ratingHistory[kpi.ratingHistory.length - 1].newRating;
   }
-  // Backward-compatible priority logic (existing behaviour)
-  return kpi.presidentRating || kpi.podRating || kpi.supervisorRating || kpi.selfRating || 0;
+  return 0;
 }
 
 /**

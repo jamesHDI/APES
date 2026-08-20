@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Evaluation } from '../../types';
+import { getLatestAdjustedRating } from '../../services/computationEngine';
 import { Printer, Download, ArrowLeft, FileText } from 'lucide-react';
 
 interface PrintableScorecardProps {
@@ -358,13 +359,13 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                       </td>
                       <td className="border border-slate-400 p-1.5 align-top text-[9.5px]">
                         {standards.map((st) => (
-                          <div key={st.rating} className={`py-0.5 ${kpi.supervisorRating === st.rating ? 'font-bold text-brand-700 underline' : ''}`}>
+                          <div key={st.rating} className={`py-0.5 ${getLatestAdjustedRating(kpi) === st.rating ? 'font-bold text-brand-700 underline' : ''}`}>
                             {st.description} ({st.rating})
                           </div>
                         ))}
                       </td>
                       <td className="border border-slate-400 p-2 text-center align-middle font-medium">{weightPercent}%</td>
-                      <td className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">{kpi.supervisorRating || kpi.selfRating || '-'}</td>
+                      <td className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">{getLatestAdjustedRating(kpi) > 0 ? getLatestAdjustedRating(kpi) : '-'}</td>
                       <td className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">{weightedScore}</td>
                     </tr>
                     {/* Change 4 — Rating Adjustment History Trail */}
