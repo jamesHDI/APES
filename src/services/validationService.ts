@@ -51,7 +51,7 @@ export function validateEvaluationForSubmission(
 
   // Stage-specific validation checks
   const isSelfEvalStage = (evaluation.status === 'draft' || evaluation.status === 'reopened') && isEvalOwner;
-  const isDeptHeadReviewerStage = (currentUser.role === 'dept_head' || Boolean(currentUser.isDepartmentHead)) && 
+  const isDeptHeadReviewerStage = (currentUser.role === 'dept_head' || currentUser.role === 'supervisor' || Boolean(currentUser.isDepartmentHead)) && 
     !isEvalOwner && 
     (evaluation.status === 'pending_dept_head' || evaluation.status === 'employee_submitted' || evaluation.status === 'pending_supervisor');
   const isPresidentStage = currentUser.role === 'president' && (evaluation.status === 'pending_president' || evaluation.status === 'department_head_submitted');
@@ -75,9 +75,9 @@ export function validateEvaluationForSubmission(
   }
 
   if (isDeptHeadReviewerStage) {
-    const unratedIsKpis = evaluation.kpiRatings.filter(k => !k.supervisorRating || k.supervisorRating === 0);
-    if (unratedIsKpis.length > 0) {
-      errors.push(`Department Head Section Incomplete: ${unratedIsKpis.length} KPI indicator(s) require Department Head ratings before submission.`);
+    const unratedKpis = evaluation.kpiRatings.filter(k => (!k.supervisorRating || k.supervisorRating === 0) && (!k.selfRating || k.selfRating === 0));
+    if (unratedKpis.length > 0) {
+      errors.push(`Department Head Section Incomplete: ${unratedKpis.length} KPI indicator(s) require valid ratings before submission.`);
     }
 
     const hasDhSig = evaluation.signatures.deptHead || (evaluation.signatures as any).dept_head || evaluation.signatures.supervisor;

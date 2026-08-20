@@ -36,7 +36,7 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
   const [stageFilter, setStageFilter] = useState('all');
 
   const pendingPODReviews = evaluations.filter(
-    (e) => e.status === 'pending_pod' || e.status === 'supervisor_completed' || e.status === 'president_completed',
+    (e) => e.status === 'pending_pod' || e.status === 'supervisor_completed' || e.status === 'president_completed' || e.status === 'department_head_submitted',
   );
   const archivedEvaluations = evaluations.filter(
     (e) => e.status === 'archived' || e.status === 'pod_validated',
@@ -60,7 +60,7 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
     } else if (stageFilter === 'president') {
       matchStage = e.status === 'pending_president' || e.status === 'department_head_submitted';
     } else if (stageFilter === 'pod') {
-      matchStage = e.status === 'pending_pod' || e.status === 'supervisor_completed' || e.status === 'president_completed';
+      matchStage = e.status === 'pending_pod' || e.status === 'supervisor_completed' || e.status === 'president_completed' || e.status === 'department_head_submitted';
     } else if (stageFilter === 'completed') {
       matchStage = e.status === 'pod_validated' || e.status === 'archived';
     }

@@ -175,9 +175,9 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   ) && (
     currentRole === 'dept_head' ||
     currentRole === 'supervisor' ||
-    Boolean(currentUser.isDepartmentHead) ||
+    (Boolean(currentUser.isDepartmentHead) && currentRole !== 'pod') ||
     currentUser.id === currentUser.departmentHeadId ||
-    currentUser.departmentName === evalData.departmentName ||
+    (currentUser.departmentName === evalData.departmentName && currentRole !== 'pod') ||
     currentRole === 'system_admin'
   );
 
@@ -190,7 +190,10 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   );
 
   const canEditPODSection = !isReadOnly && (
-    evalData.status === 'pending_pod'
+    evalData.status === 'pending_pod' ||
+    evalData.status === 'supervisor_completed' ||
+    evalData.status === 'president_completed' ||
+    evalData.status === 'department_head_submitted'
   ) && (
     currentRole === 'pod' ||
     currentRole === 'hr_admin' ||
@@ -412,6 +415,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         updatedAt: new Date().toISOString()
       };
 
+      setEvalData(updated);
       onSave(updated);
 
       triggerWorkflowNotification(
@@ -452,6 +456,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         updatedAt: new Date().toISOString()
       };
 
+      setEvalData(updated);
       onSave(updated);
 
       if (deptHeadUser) {
@@ -485,13 +490,26 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
     const updatedAudit = addAuditEntry('Department Head Review Completed', evalData.status, 'pending_pod', assignedTo, 'Review completed and submitted to POD.');
 
+    const finalizedKpis: KPIRating[] = evalData.kpiRatings.map(k => {
+      const supRating = k.supervisorRating > 0 ? k.supervisorRating : (k.selfRating || 0);
+      const effective = getLatestAdjustedRating({ ...k, supervisorRating: supRating });
+      const weightedScore = computeKPIWeightedScore(k.weightPercent, effective);
+      return {
+        ...k,
+        supervisorRating: supRating,
+        weightedScore
+      };
+    });
+
     const updated: Evaluation = {
       ...evalData,
+      kpiRatings: finalizedKpis,
       status: 'pending_pod' as const,
       auditTrail: updatedAudit,
       updatedAt: new Date().toISOString()
     };
 
+    setEvalData(updated);
     onSave(updated);
 
     triggerWorkflowNotification(
@@ -549,6 +567,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         updatedAt: new Date().toISOString()
       };
 
+      setEvalData(updated);
       onSave(updated);
 
       triggerWorkflowNotification(
@@ -576,6 +595,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       updatedAt: new Date().toISOString()
     };
 
+    setEvalData(updated);
     onSave(updated);
 
     triggerWorkflowNotification(
@@ -610,6 +630,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       updatedAt: new Date().toISOString()
     };
 
+    setEvalData(updated);
     onSave(updated);
 
     // Notify employee that evaluation has been finalized
@@ -838,7 +859,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               </button>
             )}
 
-            {(currentRole === 'dept_head' || currentRole === 'supervisor' || currentUser.isDepartmentHead) && 
+            {(currentRole === 'dept_head' || currentRole === 'supervisor' || (Boolean(currentUser.isDepartmentHead) && currentRole !== 'pod')) && 
              (evalData.status === 'pending_dept_head' || evalData.status === 'pending_supervisor' || evalData.status === 'employee_submitted') && (
               <button onClick={handleFinalizeSupervisor} className="btn btn-success btn-sm">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -853,7 +874,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
               </button>
             )}
 
-            {currentRole === 'pod' && !isSelfEval && evalData.status === 'pending_pod' && (
+            {(currentRole === 'pod' || currentRole === 'hr_admin' || currentRole === 'system_admin') && !isSelfEval && 
+             (evalData.status === 'pending_pod' || evalData.status === 'supervisor_completed' || evalData.status === 'president_completed' || evalData.status === 'department_head_submitted') && (
               <button onClick={handleValidatePOD} className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Validate & Archive
