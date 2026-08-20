@@ -258,12 +258,16 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   };
 
   const handleRatingChange = (kpiId: string, roleType: 'self' | 'supervisor' | 'president' | 'pod', ratingValue: number) => {
-    const updatedKpis: KPIRating[] = evalData.kpiRatings.map((kpi: KPIRating): KPIRating => {
+    const kpisToUpdate = (evalData.kpiRatings && evalData.kpiRatings.length > 0)
+      ? evalData.kpiRatings
+      : templateKpiRatings;
+
+    const updatedKpis: KPIRating[] = kpisToUpdate.map((kpi: KPIRating): KPIRating => {
       if (kpi.kpiId === kpiId) {
-        const selfRating = roleType === 'self' ? ratingValue : kpi.selfRating;
-        const supervisorRating = roleType === 'supervisor' ? ratingValue : kpi.supervisorRating;
-        const presidentRating = (roleType === 'president' || roleType === 'pod') ? ratingValue : kpi.presidentRating;
-        const podRating = (roleType === 'pod' || roleType === 'president') ? ratingValue : (kpi.podRating ?? kpi.presidentRating);
+        const selfRating = roleType === 'self' ? ratingValue : (kpi.selfRating || 0);
+        const supervisorRating = roleType === 'supervisor' ? ratingValue : (kpi.supervisorRating || 0);
+        const presidentRating = (roleType === 'president' || roleType === 'pod') ? ratingValue : (kpi.presidentRating || 0);
+        const podRating = (roleType === 'pod' || roleType === 'president') ? ratingValue : (kpi.podRating ?? kpi.presidentRating ?? 0);
 
         const tempKpi: KPIRating = { ...kpi, selfRating, supervisorRating, presidentRating, podRating };
         const ratingToUse = getLatestAdjustedRating(tempKpi);
@@ -280,18 +284,32 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       return kpi;
     });
 
-    recalculateAndSetState(updatedKpis, evalData.coreValueRatings);
+    const cvsToUse = (evalData.coreValueRatings && evalData.coreValueRatings.length > 0)
+      ? evalData.coreValueRatings
+      : templateCoreValueRatings;
+
+    recalculateAndSetState(updatedKpis, cvsToUse);
   };
 
   const handleKPICommentChange = (kpiId: string, comment: string) => {
-    const updatedKpis = evalData.kpiRatings.map((kpi) => 
+    const kpisToUpdate = (evalData.kpiRatings && evalData.kpiRatings.length > 0)
+      ? evalData.kpiRatings
+      : templateKpiRatings;
+
+    const updatedKpis = kpisToUpdate.map((kpi) => 
       kpi.kpiId === kpiId ? { ...kpi, comments: comment } : kpi
     );
-    setEvalData({ ...evalData, kpiRatings: updatedKpis });
+    const updated = { ...evalData, kpiRatings: updatedKpis };
+    setEvalData(updated);
+    onSave(updated);
   };
 
   const handleCoreValueRatingChange = (cvId: string, field: 'podRating' | 'peerRating' | 'isRating', value: number) => {
-    const updatedCVs = evalData.coreValueRatings.map((cv) => {
+    const cvsToUpdate = (evalData.coreValueRatings && evalData.coreValueRatings.length > 0)
+      ? evalData.coreValueRatings
+      : templateCoreValueRatings;
+
+    const updatedCVs = cvsToUpdate.map((cv) => {
       if (cv.coreValueId === cvId) {
         const pod = field === 'podRating' ? value : cv.podRating;
         const peer = field === 'peerRating' ? value : cv.peerRating;
@@ -317,7 +335,24 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       return cv;
     });
 
-    recalculateAndSetState(evalData.kpiRatings, updatedCVs);
+    const kpisToUse = (evalData.kpiRatings && evalData.kpiRatings.length > 0)
+      ? evalData.kpiRatings
+      : templateKpiRatings;
+
+    recalculateAndSetState(kpisToUse, updatedCVs);
+  };
+
+  const handleCoreValueCommentChange = (cvId: string, comment: string) => {
+    const cvsToUpdate = (evalData.coreValueRatings && evalData.coreValueRatings.length > 0)
+      ? evalData.coreValueRatings
+      : templateCoreValueRatings;
+
+    const updatedCVs = cvsToUpdate.map((cv) => 
+      cv.coreValueId === cvId ? { ...cv, comments: comment } : cv
+    );
+    const updated = { ...evalData, coreValueRatings: updatedCVs };
+    setEvalData(updated);
+    onSave(updated);
   };
 
   const recalculateAndSetState = (kpiRatings = evalData.kpiRatings, coreValueRatings = evalData.coreValueRatings) => {
@@ -327,7 +362,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     const finalRating = computeFinalPerformanceRating(eligibilityScore, coreValuesWeightedScore);
     const classification = getRatingClassification(finalRating);
 
-    setEvalData({
+    const updated: Evaluation = {
       ...evalData,
       kpiRatings,
       coreValueRatings,
@@ -338,7 +373,10 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       finalRating,
       ratingClassification: classification.label,
       updatedAt: new Date().toISOString()
-    });
+    };
+
+    setEvalData(updated);
+    onSave(updated);
   };
 
   const addAuditEntry = (actionPerformed: string, previousStatus: string, newStatus: string, assignedTo: string, remarks?: string) => {
@@ -381,12 +419,34 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
   // Workflow Submission Handlers with Pre-Validation Check
   const handleSubmitEmployee = () => {
-    const validation = validateEvaluationForSubmission(evalData, currentUser, allUsers);
+    const kpisToSubmit = (evalData.kpiRatings && evalData.kpiRatings.length > 0) ? evalData.kpiRatings : templateKpiRatings;
+    const cvsToSubmit = (evalData.coreValueRatings && evalData.coreValueRatings.length > 0) ? evalData.coreValueRatings : templateCoreValueRatings;
+    
+    const eligibilityScore = computeEligibilityScore(kpisToSubmit);
+    const coreValuesAvg = computeCoreValuesAverage(cvsToSubmit);
+    const coreValuesWeightedScore = computeCoreValuesWeightedScore(coreValuesAvg, coreValuesWeight);
+    const finalRating = computeFinalPerformanceRating(eligibilityScore, coreValuesWeightedScore);
+    const classification = getRatingClassification(finalRating);
+
+    const readyEval: Evaluation = {
+      ...evalData,
+      kpiRatings: kpisToSubmit,
+      coreValueRatings: cvsToSubmit,
+      eligibilityScore,
+      coreValuesScore: coreValuesAvg,
+      totalEligibilityWeightedRating: eligibilityScore,
+      totalCoreValuesWeightedRating: coreValuesWeightedScore,
+      finalRating,
+      ratingClassification: classification.label
+    };
+
+    const validation = validateEvaluationForSubmission(readyEval, currentUser, allUsers);
     if (!validation.isValid) {
       setValidationErrors(validation.errors);
       return;
     }
     setValidationErrors([]);
+    setEvalData(readyEval);
     setConfirmAction('employee');
   };
 

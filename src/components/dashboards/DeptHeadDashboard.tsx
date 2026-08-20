@@ -21,21 +21,28 @@ const getGreeting = () => {
 
 export const isSameDepartment = (deptA?: string, deptB?: string): boolean => {
   if (!deptA || !deptB) return false;
+  const cleanA = deptA.trim().toLowerCase();
+  const cleanB = deptB.trim().toLowerCase();
+  if (cleanA === cleanB) return true;
+
   const norm = (str: string) => {
     const s = str.trim().toLowerCase();
-    if (s === 'dept_adm' || s === 'adm' || s === 'admin' || s === 'administration') return 'admin';
-    if (s === 'dept_acc' || s === 'acc' || s === 'accounting') return 'accounting';
-    if (s === 'dept_sls' || s === 'sls' || s === 'sales') return 'sales';
-    if (s === 'dept_ops' || s === 'ops' || s === 'operations') return 'operations';
-    if (s === 'dept_hr' || s === 'pohr' || s === 'hr' || s === 'human resources' || s === 'people & organization development') return 'hr';
+    if (s === 'dept_adm' || s === 'adm' || s === 'admin' || s === 'administration' || s.startsWith('admin')) return 'admin';
+    if (s === 'dept_acc' || s === 'acc' || s === 'accounting' || s.startsWith('acc')) return 'accounting';
+    if (s === 'dept_sls' || s === 'sls' || s === 'sales' || s.startsWith('sale')) return 'sales';
+    if (s === 'dept_ops' || s === 'ops' || s === 'operations' || s.startsWith('oper')) return 'operations';
+    if (s === 'dept_hr' || s === 'pohr' || s === 'hr' || s === 'human resources' || s === 'people & organization development' || s === 'people operations' || s.includes('people')) return 'hr';
     if (s === 'dept_bmc' || s === 'bmc') return 'bmc';
     if (s === 'dept_fop' || s === 'fop') return 'fop';
     if (s === 'dept_gaw' || s === 'gaw') return 'gaw';
-    if (s === 'dept_lgl' || s === 'lgl' || s === 'legal') return 'legal';
-    if (s === 'dept_mkt' || s === 'mkt' || s === 'marketing') return 'marketing';
+    if (s === 'dept_lgl' || s === 'lgl' || s === 'legal' || s.startsWith('leg')) return 'legal';
+    if (s === 'dept_mkt' || s === 'mkt' || s === 'marketing' || s.startsWith('mkt') || s.startsWith('market')) return 'marketing';
     return s;
   };
-  return norm(deptA) === norm(deptB);
+
+  const nA = norm(deptA);
+  const nB = norm(deptB);
+  return nA === nB || cleanA.includes(cleanB) || cleanB.includes(cleanA);
 };
 
 export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
@@ -50,10 +57,14 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
   // Find active personal Department Head evaluation strictly for current user
   const mySelfEvaluation = getUserActiveEvaluation(currentUser, evaluations);
 
-  // Filter evaluations belonging strictly to the department head's department
-  const deptEvaluations = evaluations.filter(
-    (e) => e.employeeId !== currentUser.id && isSameDepartment(e.departmentName || e.departmentId, currentUser.departmentName || currentUser.departmentId)
-  );
+  // Filter evaluations belonging strictly to the department head's department or assigned to current user
+  const deptEvaluations = evaluations.filter((e) => {
+    if (e.employeeId === currentUser.id) return false;
+    const sameDept = isSameDepartment(e.departmentName || e.departmentId, currentUser.departmentName || currentUser.departmentId);
+    const empUser = allUsers.find(u => u.id === e.employeeId || u.employeeNumber === e.employeeId || (e.employeeEmail && u.email.toLowerCase() === e.employeeEmail.toLowerCase()));
+    const assignedToMe = Boolean(empUser?.departmentHeadId && (empUser.departmentHeadId === currentUser.id || empUser.departmentHeadId === currentUser.employeeNumber));
+    return sameDept || assignedToMe;
+  });
 
   const deptRosterUsers = allUsers.filter(u => isSameDepartment(u.departmentName || u.departmentId, currentUser.departmentName || currentUser.departmentId));
   const deptRosterCount = deptRosterUsers.length > 0 ? deptRosterUsers.length : deptEvaluations.length;
