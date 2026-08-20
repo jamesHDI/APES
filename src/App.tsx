@@ -739,7 +739,7 @@ export const App: React.FC = () => {
     if (existingIndex >= 0) {
       newTemplates[existingIndex] = updatedTemplate;
     } else {
-      newTemplates.push(updatedTemplate);
+      newTemplates.unshift(updatedTemplate);
     }
     setTemplates(newTemplates);
     saveTemplates(newTemplates);

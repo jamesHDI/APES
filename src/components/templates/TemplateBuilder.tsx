@@ -554,16 +554,16 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-4 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
-          <div className="flex items-center justify-between px-1">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="lg:col-span-4 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-[calc(100vh-140px)] min-h-[600px] sticky top-4">
+          <div className="flex items-center justify-between px-1 shrink-0 mb-2">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               {isDeptHead ? `${currentUser?.departmentName || 'Your'} Templates` : `Department Templates`} ({visibleTemplates.length})
             </h3>
           </div>
 
           {isPOD && (
-            <div className="flex p-1 bg-slate-100 dark:bg-slate-750 rounded-xl gap-1 text-[11px] font-semibold">
+            <div className="flex p-1 bg-slate-100 dark:bg-slate-750 rounded-xl gap-1 text-[11px] font-semibold shrink-0 mb-2">
               <button
                 onClick={() => setPodFilterTab('all')}
                 className={`flex-1 py-1 rounded-lg transition-all ${podFilterTab === 'all' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
@@ -596,7 +596,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             </div>
           )}
 
-          <div className="space-y-2 max-h-[70vh] overflow-y-auto">
+          <div className="space-y-2.5 flex-1 overflow-y-auto pr-1 pb-10">
             {visibleTemplates.length === 0 ? (
               <div className="p-6 text-center text-xs text-slate-400">
                 No templates in this category.
@@ -618,14 +618,17 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                       {tmpl.departmentName}
                     </span>
                     <div className="flex items-center space-x-2">
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${statusColors[sts] || statusColors.draft}`}>
-                        {statusLabels[sts] || sts}
-                      </span>
+                      {sts && sts !== 'draft' && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${statusColors[sts] || statusColors.draft}`}>
+                          {statusLabels[sts] || sts}
+                        </span>
+                      )}
                       {canDelete && (
                         <button
                           type="button"
                           onClick={(e) => handleDeleteTemplateAction(tmpl.id, e)}
                           className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                          title="Delete template"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -651,7 +654,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         </div>
 
         <div className="lg:col-span-8 space-y-6">
-          {activeTemplate.status && (
+          {activeTemplate.status && activeTemplate.status !== 'draft' && (
             <div className={`p-4 rounded-xl text-xs flex items-start gap-2.5 ${
               activeTemplate.status === 'submitted_to_pod' || activeTemplate.status === 'resubmitted_to_pod' ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800' :
               activeTemplate.status === 'returned_for_revision' ? 'bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800' :
