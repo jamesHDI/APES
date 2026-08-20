@@ -95,21 +95,22 @@ export const MessengerModal: React.FC<MessengerModalProps> = ({
 
   // Mark messages as read when selecting a partner
   useEffect(() => {
-    if (selectedPartnerId) {
+    if (selectedPartnerId && currentUser?.id) {
       markDirectMessagesAsRead(selectedPartnerId, currentUser.id);
       loadMessages();
       onMessagesUpdated?.();
     }
-  }, [selectedPartnerId]);
+  }, [selectedPartnerId, currentUser?.id]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !currentUser) return null;
 
   // Filter messages relevant to current user
-  const myMessages = messages.filter(
+  const myMessages = (messages || []).filter(
     (m) =>
-      m.senderId === currentUser.id ||
+      m &&
+      (m.senderId === currentUser.id ||
       m.recipientId === currentUser.id ||
-      m.recipientId === "all"
+      m.recipientId === "all")
   );
 
   // Derive active conversation partners
@@ -273,7 +274,7 @@ export const MessengerModal: React.FC<MessengerModalProps> = ({
     : (allUsers.find((u) => u.id === selectedPartnerId) || (selectedPartnerId ? partnerMap.get(selectedPartnerId)?.partner || null : null));
 
   // Available users to message (exclude self)
-  const candidateRecipients = allUsers.filter((u) => u.id !== currentUser.id && (u.isApproved !== false && u.isActive !== false));
+  const candidateRecipients = (allUsers || []).filter((u) => u && currentUser && u.id !== currentUser.id && (u.isApproved !== false && u.isActive !== false));
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">

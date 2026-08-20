@@ -311,16 +311,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 aria-label="User account menu"
               >
                 <img
-                  src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'}
-                  alt={currentUser.name}
+                  src={currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'}
+                  alt={currentUser?.name || 'User'}
                   className="w-7 h-7 rounded-full object-cover ring-2 ring-[#F28C28]/25 shrink-0"
                 />
                 <div className="text-left hidden sm:block">
                   <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight max-w-[120px] truncate">
-                    {currentUser.name}
+                    {currentUser?.name || 'User'}
                   </p>
                   <p className="text-[10px] text-[#F28C28] dark:text-brand-400 font-semibold leading-tight">
-                    {roleLabel[currentUser.role] ?? currentUser.role}
+                    {currentUser?.role ? (roleLabel[currentUser.role] ?? currentUser.role) : 'Member'}
                   </p>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
@@ -332,19 +332,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {/* Warm User Identity Header */}
                   <div className="p-4 bg-gradient-to-br from-[#FFFAF6] to-[#FFF4EA] dark:from-slate-800 dark:to-slate-800 border-b border-[#EFE4D6] dark:border-slate-700 flex items-center gap-3">
                     <img
-                      src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'}
-                      alt={currentUser.name}
+                      src={currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'}
+                      alt={currentUser?.name || 'User'}
                       className="w-11 h-11 rounded-full object-cover ring-2 ring-[#F28C28]/25 shrink-0"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-sm text-slate-900 dark:text-white truncate leading-snug">
-                        {currentUser.name}
+                        {currentUser?.name || 'User'}
                       </p>
                       <p className="text-[11px] text-[#F28C28] dark:text-brand-400 font-semibold mt-0.5">
-                        {roleLabel[currentUser.role] ?? currentUser.role}
+                        {currentUser?.role ? (roleLabel[currentUser.role] ?? currentUser.role) : 'Member'}
                       </p>
                       <p className="text-[10px] font-mono text-slate-400 dark:text-slate-400 mt-0.5">
-                        {currentUser.employeeNumber || 'EMP-001'}
+                        {currentUser?.employeeNumber || 'EMP-001'}
                       </p>
                     </div>
                   </div>
