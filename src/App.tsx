@@ -189,6 +189,18 @@ export const App: React.FC = () => {
   }, [currentUser.avatarUrl]);
 
   useEffect(() => {
+    const handleDirectMessagesUpdate = () => {
+      setDirectMessages(getStoredDirectMessages());
+    };
+    window.addEventListener('apes_direct_messages_updated', handleDirectMessagesUpdate);
+    window.addEventListener('storage', handleDirectMessagesUpdate);
+    return () => {
+      window.removeEventListener('apes_direct_messages_updated', handleDirectMessagesUpdate);
+      window.removeEventListener('storage', handleDirectMessagesUpdate);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!currentUser || !isAuthenticated) return;
     if (currentUser.isActive !== true || currentUser.isApproved !== true || currentUser.approvalStatus === 'pending' || currentUser.approvalStatus === 'rejected') {
       setInactiveAccountModal({

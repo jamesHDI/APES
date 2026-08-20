@@ -158,7 +158,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <MessageSquare className="w-[18px] h-[18px]" />
               {unreadMessagesCount > 0 && (
-                <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-[#E96B1A] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm shadow-orange-500/30">
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-[#F28C28] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm shadow-orange-500/30">
                   {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
                 </span>
               )}

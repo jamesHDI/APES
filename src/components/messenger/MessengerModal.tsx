@@ -425,9 +425,16 @@ export const MessengerModal: React.FC<MessengerModalProps> = ({
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                             {partner.name}
                           </p>
-                          <span className="text-[10px] text-slate-400 shrink-0">
-                            {new Date(lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {unreadCount > 0 && (
+                              <span className="min-w-[16px] h-4 bg-[#F28C28] text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 shadow-sm shadow-orange-500/30">
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-400">
+                              {new Date(lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
                         </div>
 
                         <div className="flex items-center gap-1.5 mb-1">

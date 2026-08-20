@@ -1081,11 +1081,11 @@ export const deleteStoredCalibrationRequest = (id: string) => {
 export const SEED_DIRECT_MESSAGES: DirectMessage[] = [
   {
     id: 'msg_welcome_pod',
-    senderId: 'usr_pod_malene',
+    senderId: 'usr_dh_pohr',
     senderName: 'Malene Pellazo',
-    senderRole: 'POD Officer',
-    senderAvatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-    senderDepartment: 'People Operations',
+    senderRole: 'pod',
+    senderAvatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+    senderDepartment: 'People Operations (HR)',
     recipientId: 'all',
     recipientName: 'All HDI Hive Users',
     subject: 'Welcome to HDI Messenger & Concerns Desk',
@@ -1103,7 +1103,33 @@ export const getStoredDirectMessages = (): DirectMessage[] => {
     try {
       const parsed: DirectMessage[] = JSON.parse(data);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        let hasFixes = false;
+        // Normalize any old duplicate 'usr_pod_malene' records to official 'usr_dh_pohr'
+        const normalized = parsed.map(msg => {
+          let updated = { ...msg };
+          if (updated.senderId === 'usr_pod_malene') {
+            updated.senderId = 'usr_dh_pohr';
+            updated.senderName = 'Malene Pellazo';
+            updated.senderRole = 'pod';
+            updated.senderDepartment = 'People Operations (HR)';
+            updated.senderAvatarUrl = 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80';
+            hasFixes = true;
+          }
+          if (updated.recipientId === 'usr_pod_malene') {
+            updated.recipientId = 'usr_dh_pohr';
+            updated.recipientName = 'Malene Pellazo';
+            updated.recipientRole = 'pod';
+            updated.recipientDepartment = 'People Operations (HR)';
+            updated.recipientAvatarUrl = 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80';
+            hasFixes = true;
+          }
+          return updated;
+        });
+
+        if (hasFixes) {
+          saveStoredDirectMessages(normalized);
+        }
+        return normalized;
       }
     } catch {}
   }
@@ -1113,6 +1139,9 @@ export const getStoredDirectMessages = (): DirectMessage[] => {
 export const saveStoredDirectMessages = (messages: DirectMessage[]) => {
   try {
     localStorage.setItem(DIRECT_MESSAGES_KEY, JSON.stringify(messages));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('apes_direct_messages_updated', { detail: messages }));
+    }
   } catch (e) {
     console.warn('LocalStorage saveStoredDirectMessages quota warning:', e);
   }
@@ -1128,6 +1157,7 @@ export const markDirectMessagesAsRead = (conversationPartnerId: string, currentU
   const all = getStoredDirectMessages();
   let modified = false;
   const updated = all.map(msg => {
+    // If message is from partner to me (or broadcast) and is unread, mark as read
     if (
       msg.senderId === conversationPartnerId &&
       (msg.recipientId === currentUserId || msg.recipientId === 'all') &&
@@ -1138,6 +1168,7 @@ export const markDirectMessagesAsRead = (conversationPartnerId: string, currentU
     }
     return msg;
   });
+
   if (modified) {
     saveStoredDirectMessages(updated);
   }
