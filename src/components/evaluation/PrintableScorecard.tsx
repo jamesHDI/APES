@@ -316,15 +316,16 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
           </div>
 
           {/* PART 1A TABLE */}
-          <table className="w-full border-collapse border border-slate-400 text-[10.5px]">
+          <table className="w-full border-collapse border border-slate-400 text-[10px]">
             <thead>
               <tr className="bg-slate-200 text-center font-bold border-b border-slate-400">
-                <th className="border border-slate-400 p-2 w-[22%]">KEY RESULT AREAS (KRA)</th>
-                <th className="border border-slate-400 p-2 w-[42%]">PERFORMANCE INDICATORS (KPI)</th>
-                <th className="border border-slate-400 p-2 w-[16%]">SCALE STANDARDS</th>
-                <th className="border border-slate-400 p-2 w-[8%]">WEIGHT</th>
-                <th className="border border-slate-400 p-2 w-[6%]">RATING</th>
-                <th className="border border-slate-400 p-2 w-[6%]">WEIGHTED SCORE</th>
+                <th className="border border-slate-400 p-1.5 w-[14%]">KEY RESULT AREAS (KRA)</th>
+                <th className="border border-slate-400 p-1.5 w-[28%]">PERFORMANCE INDICATORS (KPI)</th>
+                <th className="border border-slate-400 p-1.5 w-[10%]">SCALE</th>
+                <th className="border border-slate-400 p-1.5 w-[24%]">COMMENTS (ACTUAL EVIDENCES - STAR FORMAT)</th>
+                <th className="border border-slate-400 p-1.5 w-[8%]">WEIGHT</th>
+                <th className="border border-slate-400 p-1.5 w-[6%]">RATING</th>
+                <th className="border border-slate-400 p-1.5 w-[10%]">WEIGHTED SCORE</th>
               </tr>
             </thead>
             <tbody>
@@ -333,16 +334,20 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                 const kraKpis = kpiRatings.filter(k => k.kraName === kpi.kraName);
                 const kraWeightSum = kraKpis.reduce((acc, k) => acc + (Number(k.weightPercent) || 0), 0);
                 const kraWeightedScoreSum = kraKpis.reduce((acc, k) => acc + (Number(k.weightedScore) || 0), 0).toFixed(2);
-                const standards = Array.isArray(kpi.standards) ? kpi.standards : [];
+                const standards = Array.isArray(kpi.standards) && kpi.standards.length > 0
+                  ? [...kpi.standards].sort((a, b) => b.rating - a.rating)  // Sort 4→1 descending like paper
+                  : [];
                 const weightPercent = Number(kpi.weightPercent || 0);
                 const weightedScore = Number(kpi.weightedScore || 0).toFixed(2);
+                const activeRating = getLatestAdjustedRating(kpi);
+                const stdCount = Math.max(standards.length, 1);
 
                 return (
                   <React.Fragment key={kpi.kpiId || `kpi_${idx}`}>
-                    {/* Category Subheader */}
+                    {/* KRA sub-category subheader row */}
                     {isFirstInKra && (
                       <tr className="bg-slate-100 font-bold border-t border-b border-slate-400">
-                        <td colSpan={3} className="border border-slate-400 p-1.5 uppercase bg-slate-100">
+                        <td colSpan={4} className="border border-slate-400 p-1.5 uppercase bg-slate-100">
                           {kpi.kraName || 'GENERAL'}
                         </td>
                         <td className="border border-slate-400 p-1.5 text-center font-bold">{kraWeightSum}%</td>
@@ -350,28 +355,84 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                         <td className="border border-slate-400 p-1.5 text-center font-bold">{kraWeightedScoreSum}</td>
                       </tr>
                     )}
-                    <tr>
-                      <td className="border border-slate-400 p-2 font-semibold align-top">
-                        {kpi.name}
-                      </td>
-                      <td className="border border-slate-400 p-2 align-top text-slate-700">
-                        {kpi.comments || kpi.name}
-                      </td>
-                      <td className="border border-slate-400 p-1.5 align-top text-[9.5px]">
-                        {standards.map((st) => (
-                          <div key={st.rating} className={`py-0.5 ${getLatestAdjustedRating(kpi) === st.rating ? 'font-bold text-brand-700 underline' : ''}`}>
-                            {st.description} ({st.rating})
-                          </div>
-                        ))}
-                      </td>
-                      <td className="border border-slate-400 p-2 text-center align-middle font-medium">{weightPercent}%</td>
-                      <td className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">{getLatestAdjustedRating(kpi) > 0 ? getLatestAdjustedRating(kpi) : '-'}</td>
-                      <td className="border border-slate-400 p-2 text-center align-middle font-bold text-sm">{weightedScore}</td>
-                    </tr>
-                    {/* Change 4 — Rating Adjustment History Trail */}
+
+                    {/* KPI rows — one row per standard, matching original paper layout */}
+                    {standards.length > 0 ? standards.map((st, stIdx) => (
+                      <tr key={`${kpi.kpiId}_st_${st.rating}`} className={activeRating === st.rating ? 'bg-brand-50' : ''}>
+                        {/* KRA column: only on the first standard row, spans all standard rows */}
+                        {stIdx === 0 && (
+                          <td
+                            rowSpan={stdCount}
+                            className="border border-slate-400 p-1.5 font-semibold align-top"
+                          >
+                            {kpi.name}
+                          </td>
+                        )}
+                        {/* PERFORMANCE INDICATORS (KPI): the standard description */}
+                        <td className={`border border-slate-400 p-1.5 align-middle text-[10px] ${
+                          activeRating === st.rating ? 'font-bold text-brand-700' : 'text-slate-700'
+                        }`}>
+                          {st.description}
+                        </td>
+                        {/* SCALE */}
+                        <td className={`border border-slate-400 p-1.5 text-center align-middle text-[10px] ${
+                          activeRating === st.rating ? 'font-bold text-brand-700 underline' : 'text-slate-600'
+                        }`}>
+                          {st.rating} - {st.rating === 4 ? 'Exceeds' : st.rating === 3 ? 'Meets' : st.rating === 2 ? 'Barely Meets' : 'Did Not Meet'}
+                        </td>
+                        {/* COMMENTS: only on first row, spans all standard rows */}
+                        {stIdx === 0 && (
+                          <td
+                            rowSpan={stdCount}
+                            className="border border-slate-400 p-1.5 align-top text-[9.5px] text-slate-700 italic"
+                          >
+                            {kpi.comments || ''}
+                          </td>
+                        )}
+                        {/* WEIGHT: only on first row */}
+                        {stIdx === 0 && (
+                          <td
+                            rowSpan={stdCount}
+                            className="border border-slate-400 p-1.5 text-center align-middle font-medium"
+                          >
+                            {weightPercent}%
+                          </td>
+                        )}
+                        {/* RATING: only on first row */}
+                        {stIdx === 0 && (
+                          <td
+                            rowSpan={stdCount}
+                            className="border border-slate-400 p-1.5 text-center align-middle font-bold text-sm"
+                          >
+                            {activeRating > 0 ? activeRating : '-'}
+                          </td>
+                        )}
+                        {/* WEIGHTED SCORE: only on first row */}
+                        {stIdx === 0 && (
+                          <td
+                            rowSpan={stdCount}
+                            className="border border-slate-400 p-1.5 text-center align-middle font-bold text-sm"
+                          >
+                            {weightedScore}
+                          </td>
+                        )}
+                      </tr>
+                    )) : (
+                      // Fallback when no standards defined
+                      <tr>
+                        <td className="border border-slate-400 p-1.5 font-semibold align-top">{kpi.name}</td>
+                        <td className="border border-slate-400 p-1.5 text-slate-400 italic" colSpan={2}>No standards defined</td>
+                        <td className="border border-slate-400 p-1.5 align-top text-[9.5px] italic">{kpi.comments || ''}</td>
+                        <td className="border border-slate-400 p-1.5 text-center">{weightPercent}%</td>
+                        <td className="border border-slate-400 p-1.5 text-center font-bold">{activeRating > 0 ? activeRating : '-'}</td>
+                        <td className="border border-slate-400 p-1.5 text-center font-bold">{weightedScore}</td>
+                      </tr>
+                    )}
+
+                    {/* Rating Adjustment History row */}
                     {kpi.ratingHistory && kpi.ratingHistory.length > 0 && (
                       <tr key={`${kpi.kpiId}_history`}>
-                        <td colSpan={6} className="border border-slate-300 px-3 py-1.5 bg-slate-50">
+                        <td colSpan={7} className="border border-slate-300 px-3 py-1.5 bg-slate-50">
                           <div className="text-[9px] text-slate-500 font-semibold uppercase mb-1">Rating Adjustment History</div>
                           <div className="flex flex-wrap gap-2">
                             {kpi.ratingHistory.map((entry, hi) => (
@@ -394,7 +455,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
 
               {/* Total Eligibility Summary Row */}
               <tr className="bg-amber-50 font-bold border-t-2 border-slate-500 text-sm">
-                <td colSpan={3} className="border border-slate-400 p-2 text-right uppercase">
+                <td colSpan={4} className="border border-slate-400 p-2 text-right uppercase">
                   TOTAL WEIGHTED ELIGIBILITY RATING (PART 1A):
                 </td>
                 <td className="border border-slate-400 p-2 text-center text-brand-700">{eligibilityWeight}%</td>
