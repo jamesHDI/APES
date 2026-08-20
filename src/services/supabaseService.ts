@@ -1357,19 +1357,6 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
       audit_trail_data: evaluation.auditTrail || [],
       development_plan_data: evaluation.developmentPlan || {},
       personnel_action_data: evaluation.personnelAction || {},
-      full_payload: {
-        title: evaluation.title,
-        templateTitle: evaluation.templateTitle,
-        templateId: evaluation.templateId,
-        deploymentId: evaluation.deploymentId,
-        deadline: evaluation.deadline,
-        kpiRatings: evaluation.kpiRatings || [],
-        coreValueRatings: evaluation.coreValueRatings || [],
-        developmentPlan: evaluation.developmentPlan || {},
-        personnelAction: evaluation.personnelAction || {},
-        signatures: evaluation.signatures || {},
-        auditTrail: evaluation.auditTrail || []
-      },
       updated_at: new Date().toISOString()
     };
 
@@ -1377,7 +1364,7 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
     let { error } = await supabase.from('evaluations').upsert(payload, { onConflict: 'id' });
 
     // Attempt 2: If optional columns are missing in DB table, retry without them
-    if (error && (error.code === 'PGRST204' || error.code === '42703' || error.message.includes('column') || error.message.includes('audit_trail_data') || error.message.includes('kpi_ratings_data') || error.message.includes('user_id') || error.message.includes('released_by') || error.message.includes('employee_email'))) {
+    if (error && (error.code === 'PGRST204' || error.code === '42703' || error.message.includes('column') || error.message.includes('audit_trail_data') || error.message.includes('kpi_ratings_data') || error.message.includes('full_payload') || error.message.includes('user_id') || error.message.includes('released_by') || error.message.includes('employee_email'))) {
       console.warn('[Evaluation Save] Optional columns missing in DB table, retrying with core payload...', error.message);
       const {
         user_id, employee_email, released_by, released_at,
