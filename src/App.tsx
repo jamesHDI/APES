@@ -963,6 +963,10 @@ export const App: React.FC = () => {
       return (
         <CalibrationRequestsManager
           currentUser={currentUser}
+          evaluations={evaluations}
+          onUpdateEvaluation={(updated: Evaluation) => {
+            setEvaluations(prev => prev.map(e => e.id === updated.id ? updated : e));
+          }}
         />
       );
     }
@@ -972,6 +976,10 @@ export const App: React.FC = () => {
       return (
         <CalibrationRequestsManager
           currentUser={currentUser}
+          evaluations={evaluations}
+          onUpdateEvaluation={(updated: Evaluation) => {
+            setEvaluations(prev => prev.map(e => e.id === updated.id ? updated : e));
+          }}
         />
       );
     }
