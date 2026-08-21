@@ -13,7 +13,6 @@ import {
   Building2, 
   Mail, 
   Sparkles, 
-  Key, 
   Trash2,
   Briefcase,
   UserCircle,
@@ -714,8 +713,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
             {/* Account Password & Login Credentials Embedded Card */}
             <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center space-x-2">
-                  <Key className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <div>
                   <span className="font-bold text-xs text-amber-900 dark:text-amber-200">
                     Account Password & Login Credentials
                   </span>
@@ -742,7 +740,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                       type={showPassword ? 'text' : 'password'}
                       value={formData.passwordInput}
                       onChange={(e) => setFormData({ ...formData, passwordInput: e.target.value })}
-                      placeholder={editingUser?.password ? "•••••••• (Leave blank to keep current)" : "Enter password..."}
+                      placeholder={editingUser?.password ? "••••••••" : "Enter password..."}
                       className="w-full px-3.5 py-2 pr-10 rounded-xl border border-amber-200 dark:border-amber-800/60 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs outline-none focus:ring-2 focus:ring-amber-500"
                     />
                     <button
@@ -753,9 +751,6 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                       {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                   </div>
-                  <p className="text-[10px] text-amber-800/80 dark:text-amber-300/80 mt-1">
-                    {editingUser?.password ? 'Leave blank to preserve existing password.' : 'Initial login password for employee.'}
-                  </p>
                 </div>
 
                 <div className="sm:col-span-6 flex items-center space-x-2 pt-2 sm:pt-0">
