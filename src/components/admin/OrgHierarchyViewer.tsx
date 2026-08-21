@@ -1,6 +1,6 @@
 import React from 'react';
 import { User, Department } from '../../types';
-import { ChevronRight, UserCheck, Hexagon } from 'lucide-react';
+import { ChevronRight, Hexagon } from 'lucide-react';
 
 interface OrgHierarchyViewerProps {
   users: User[];
@@ -94,28 +94,30 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
                     </div>
                   </div>
 
-                  {/* Dept Head Card with Hexagon Node Styling */}
-                  <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/60 border border-amber-300/40 dark:border-amber-800/80 text-xs flex items-center justify-between">
-                    <div>
-                      <p className="font-extrabold text-slate-900 dark:text-amber-100 text-sm">{dept.headName}</p>
-                      <p className="text-xs text-amber-700 dark:text-amber-400 font-bold mt-0.5">Department Head</p>
-                    </div>
-                    <div className="p-1.5 rounded-xl bg-amber-500 text-white shadow-sm">
-                      <UserCheck className="w-4 h-4" />
-                    </div>
+                  {/* Dept Head Card with Centered Text (No Icon) */}
+                  <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/60 border border-amber-300/40 dark:border-amber-800/80 text-xs text-center space-y-0.5">
+                    <p className="font-extrabold text-slate-900 dark:text-amber-100 text-sm">{dept.headName}</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-bold">Department Head</p>
                   </div>
 
-                  {/* Staff List */}
-                  <div className="pl-3 border-l-2 border-amber-400/60 space-y-2 text-xs text-slate-700 dark:text-slate-300">
-                    <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Assigned Staff ({deptStaff.length}):</p>
-                    {deptStaff.slice(0, 3).map(s => (
-                      <div key={s.id} className="flex items-center space-x-2 text-xs">
-                        <ChevronRight className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                        <span className="font-bold text-slate-800 dark:text-slate-200">{s.name} <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">({s.position})</span></span>
+                  {/* Staff List (Clean list without left orange border, scrollable container) */}
+                  <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
+                    <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Assigned Staff ({deptStaff.length}):
+                    </p>
+                    {deptStaff.length > 0 ? (
+                      <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
+                        {deptStaff.map(s => (
+                          <div key={s.id} className="flex items-center space-x-2 text-xs py-0.5">
+                            <ChevronRight className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                            <span className="font-bold text-slate-800 dark:text-slate-200">
+                              {s.name} <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">({s.position})</span>
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                    {deptStaff.length > 3 && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 font-bold pl-5">+{deptStaff.length - 3} more staff...</p>
+                    ) : (
+                      <p className="text-xs text-slate-400 dark:text-slate-500 italic pl-1">No assigned staff</p>
                     )}
                   </div>
 
