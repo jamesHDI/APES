@@ -822,7 +822,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     <button
                       type="button"
                       onClick={handleSave}
-                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
+                      className="px-4 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
                       title="Save your template changes"
                     >
                       <Save className="w-3.5 h-3.5" />
@@ -831,7 +831,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     <button
                       type="button"
                       onClick={() => handleDeleteTemplateAction(activeTemplate.id)}
-                      className="px-4 py-2.5 rounded-xl bg-[#E96B1A] hover:bg-[#D45909] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
+                      className="px-4 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
                       title="Delete this template"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -851,7 +851,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleSave}
-                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
+                      className="px-4 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
                     >
                       <Save className="w-3.5 h-3.5" /> Save Changes
                     </button>
@@ -859,7 +859,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                       <button
                         type="button"
                         onClick={() => handleDeleteTemplateAction(activeTemplate.id)}
-                        className="px-4 py-2.5 rounded-xl bg-[#E96B1A] hover:bg-[#D45909] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
+                        className="px-4 py-2.5 rounded-xl bg-[#F28C28] hover:bg-[#E96B1A] text-white text-xs font-bold shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
                         title="Delete this template"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
