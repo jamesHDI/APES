@@ -20,8 +20,16 @@ import {
 import { 
   getStoredDirectMessages, 
   sendDirectMessage, 
-  markDirectMessagesAsRead 
+  markDirectMessagesAsRead,
+  saveStoredDirectMessages
 } from "../../services/storage";
+import { 
+  fetchDirectMessagesFromSupabase,
+  saveDirectMessageToSupabase,
+  markDirectMessageReadInSupabase,
+  subscribeToDirectMessages
+} from "../../services/supabaseService";
+import { isSupabaseConfigured } from "../../services/supabaseClient";
 
 interface MessengerModalProps {
   isOpen: boolean;
@@ -76,6 +84,22 @@ export const MessengerModal: React.FC<MessengerModalProps> = ({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Load messages — prefers Supabase, falls back to localStorage
+  const loadMessages = async () => {
+    if (isSupabaseConfigured && currentUser?.id) {
+      const cloud = await fetchDirectMessagesFromSupabase(currentUser.id);
+      if (cloud !== null) {
+        setMessages(cloud);
+        // Sync fetched cloud messages into localStorage so badge counter works offline
+        saveStoredDirectMessages(cloud);
+        return;
+      }
+    }
+    // Fallback: use localStorage
+    const local = getStoredDirectMessages();
+    setMessages(local);
+  };
+
   // Load messages on open
   useEffect(() => {
     if (isOpen) {
@@ -83,10 +107,20 @@ export const MessengerModal: React.FC<MessengerModalProps> = ({
     }
   }, [isOpen]);
 
-  const loadMessages = () => {
-    const all = getStoredDirectMessages();
-    setMessages(all);
-  };
+  // Real-time subscription to Supabase
+  useEffect(() => {
+    if (!isOpen || !currentUser?.id) return;
+
+    const unsubscribe = subscribeToDirectMessages(currentUser.id, (fresh) => {
+      setMessages(fresh);
+      saveStoredDirectMessages(fresh);
+      onMessagesUpdated?.();
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [isOpen, currentUser?.id]);
 
   // Scroll to bottom when thread changes
   useEffect(() => {
@@ -96,7 +130,22 @@ export const MessengerModal: React.FC<MessengerModalProps> = ({
   // Mark messages as read when selecting a partner
   useEffect(() => {
     if (selectedPartnerId && currentUser?.id) {
+      const threadMessages = messages.filter(
+        m => m.senderId === selectedPartnerId &&
+          (m.recipientId === currentUser.id || m.recipientId === 'all') &&
+          !m.read
+      );
+      
+      // Mark read in localStorage
       markDirectMessagesAsRead(selectedPartnerId, currentUser.id);
+
+      // Mark read in Supabase (async, fire-and-forget per message)
+      if (isSupabaseConfigured) {
+        threadMessages.forEach(m => {
+          markDirectMessageReadInSupabase(m.id).catch(() => {});
+        });
+      }
+
       loadMessages();
       onMessagesUpdated?.();
     }
@@ -209,6 +258,7 @@ export const MessengerModal: React.FC<MessengerModalProps> = ({
       createdAt: new Date().toISOString()
     };
 
+    // Always save locally first for instant feedback
     sendDirectMessage(newMsg);
     loadMessages();
     setSelectedPartnerId(recipient.id);
@@ -217,6 +267,11 @@ export const MessengerModal: React.FC<MessengerModalProps> = ({
     setNewSubject("");
     setIsConcern(false);
     onMessagesUpdated?.();
+
+    // Persist to Supabase for cross-device sync
+    if (isSupabaseConfigured) {
+      saveDirectMessageToSupabase(newMsg).catch(() => {});
+    }
   };
 
   // Handle sending reply inside active conversation
@@ -251,11 +306,17 @@ export const MessengerModal: React.FC<MessengerModalProps> = ({
       createdAt: new Date().toISOString()
     };
 
+    // Always save locally first for instant feedback
     sendDirectMessage(replyMsg);
     loadMessages();
     setReplyText("");
     setReplyIsConcern(false);
     onMessagesUpdated?.();
+
+    // Persist to Supabase for cross-device sync
+    if (isSupabaseConfigured) {
+      saveDirectMessageToSupabase(replyMsg).catch(() => {});
+    }
   };
 
   // Active thread messages

@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './supabaseClient';
-import { User, Department, Evaluation, Notification, EvaluationHistory, EvaluationScorecardArchive, EvidenceFile, EvaluationTemplate, KRACategory, KPITemplateItem, CoreValue } from '../types';
+import { User, Department, Evaluation, Notification, EvaluationHistory, EvaluationScorecardArchive, EvidenceFile, EvaluationTemplate, KRACategory, KPITemplateItem, CoreValue, DirectMessage } from '../types';
 import { hashPassword, isHashedPassword } from '../utils/crypto';
 import { MASTER_SALES_EVALUATION_TEMPLATE, createMasterBasedTemplate } from '../constants/masterSalesTemplate';
 
@@ -2584,3 +2584,162 @@ export const deleteEvaluationTemplateFromSupabase = async (templateId: string): 
 };
 
 
+// ==============================================================================
+// DIRECT MESSAGES — Supabase Cloud Sync
+// ==============================================================================
+
+
+const mapRowToDirectMessage = (row: any): DirectMessage => ({
+  id: row.id,
+  senderId: row.sender_id,
+  senderName: row.sender_name || '',
+  senderRole: row.sender_role || undefined,
+  senderAvatarUrl: row.sender_avatar_url || undefined,
+  senderDepartment: row.sender_department || undefined,
+  recipientId: row.recipient_id,
+  recipientName: row.recipient_name || '',
+  recipientRole: row.recipient_role || undefined,
+  recipientAvatarUrl: row.recipient_avatar_url || undefined,
+  recipientDepartment: row.recipient_department || undefined,
+  subject: row.subject || undefined,
+  message: row.message || '',
+  isConcern: row.is_concern || false,
+  category: row.category || undefined,
+  read: row.is_read || false,
+  createdAt: row.created_at || new Date().toISOString(),
+});
+
+export const fetchDirectMessagesFromSupabase = async (userId: string): Promise<DirectMessage[] | null> => {
+  if (!isSupabaseConfigured || !supabase || !userId) return null;
+
+  try {
+    // We need all messages where the user is sender or recipient (or all-broadcast)
+    const { data, error } = await supabase
+      .from('direct_messages')
+      .select('*')
+      .or(`sender_id.eq.${userId},recipient_id.eq.${userId},recipient_id.eq.all`)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('[DM Cloud Sync] Failed to fetch messages from Supabase:', error.message);
+      return null;
+    }
+
+    const messages = (data || []).map(mapRowToDirectMessage);
+    console.log(`[DM Cloud Sync] Fetched ${messages.length} messages from Supabase for user ${userId}.`);
+    return messages;
+  } catch (err) {
+    console.warn('[DM Cloud Sync] Exception fetching messages from Supabase:', err);
+    return null;
+  }
+};
+
+export const saveDirectMessageToSupabase = async (msg: DirectMessage): Promise<boolean> => {
+  if (!isSupabaseConfigured || !supabase || !msg) return false;
+
+  try {
+    const { error } = await supabase
+      .from('direct_messages')
+      .upsert({
+        id: msg.id,
+        sender_id: msg.senderId,
+        sender_name: msg.senderName,
+        sender_role: msg.senderRole || null,
+        sender_avatar_url: msg.senderAvatarUrl || null,
+        sender_department: msg.senderDepartment || null,
+        recipient_id: msg.recipientId,
+        recipient_name: msg.recipientName,
+        recipient_role: msg.recipientRole || null,
+        recipient_avatar_url: msg.recipientAvatarUrl || null,
+        recipient_department: msg.recipientDepartment || null,
+        subject: msg.subject || null,
+        message: msg.message,
+        is_concern: msg.isConcern || false,
+        category: msg.category || null,
+        is_read: msg.read || false,
+        created_at: msg.createdAt,
+      }, { onConflict: 'id' });
+
+    if (error) {
+      console.warn('[DM Cloud Sync] Failed to save message to Supabase:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[DM Cloud Sync] Exception saving message to Supabase:', err);
+    return false;
+  }
+};
+
+export const markDirectMessageReadInSupabase = async (messageId: string): Promise<boolean> => {
+  if (!isSupabaseConfigured || !supabase || !messageId) return false;
+
+  try {
+    const { error } = await supabase
+      .from('direct_messages')
+      .update({ is_read: true })
+      .eq('id', messageId);
+
+    if (error) {
+      console.warn('[DM Cloud Sync] Failed to mark message as read in Supabase:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[DM Cloud Sync] Exception marking message as read in Supabase:', err);
+    return false;
+  }
+};
+
+/**
+ * Subscribe to real-time changes to the direct_messages table for the current user.
+ * Returns an unsubscribe function.
+ */
+export const subscribeToDirectMessages = (
+  userId: string,
+  onChange: (messages: DirectMessage[]) => void
+): (() => void) => {
+  if (!isSupabaseConfigured || !supabase || !userId) return () => {};
+
+  let channel: any;
+  try {
+    channel = supabase
+      .channel(`direct_messages_user_${userId.replace(/-/g, '_')}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'direct_messages',
+          filter: `recipient_id=eq.${userId}`,
+        },
+        async () => {
+          const fresh = await fetchDirectMessagesFromSupabase(userId);
+          if (fresh) onChange(fresh);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'direct_messages',
+          filter: `sender_id=eq.${userId}`,
+        },
+        async () => {
+          const fresh = await fetchDirectMessagesFromSupabase(userId);
+          if (fresh) onChange(fresh);
+        }
+      )
+      .subscribe();
+  } catch (err) {
+    console.warn('[DM Realtime] Error subscribing to direct messages:', err);
+    return () => {};
+  }
+
+  return () => {
+    try {
+      if (channel) supabase.removeChannel(channel);
+    } catch {}
+  };
+};
