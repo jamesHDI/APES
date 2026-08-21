@@ -84,6 +84,42 @@ import { ShieldAlert } from 'lucide-react';
 
 import { determineWorkflowType, isUserDepartmentHead, getUserActiveEvaluation, getUserLatestEvaluation, isEvaluationCompleted } from './utils/workflowUtils';
 
+export const isTabAllowedForRole = (tab: string, role?: Role): boolean => {
+  if (!role) return false;
+  if (tab === 'dashboard' || tab === 'my_profile') return true;
+
+  switch (role) {
+    case 'employee':
+      return ['dashboard', 'evaluations', 'calibration_request', 'my_history', 'my_profile'].includes(tab);
+    case 'supervisor':
+      return ['dashboard', 'evaluations', 'team_reviews', 'reports', 'my_history', 'my_profile'].includes(tab);
+    case 'dept_head':
+      return ['dashboard', 'evaluations', 'dept_actions', 'template_builder', 'calibration_requests', 'reports', 'my_history', 'my_profile'].includes(tab);
+    case 'president':
+      return ['dashboard', 'evaluations', 'dept_head_reviews', 'reports', 'my_history', 'my_profile'].includes(tab);
+    case 'pod':
+      return [
+        'dashboard', 'evaluations', 'pod_validation', 'employee_mgmt', 'pending_approvals',
+        'dept_mgmt', 'org_hierarchy', 'workflow_monitoring', 'evaluation_deployment',
+        'template_builder', 'calibration_pod_review', 'admin_panel', 'my_history', 'reports', 'my_profile'
+      ].includes(tab);
+    case 'hr_admin':
+      return [
+        'dashboard', 'evaluations', 'employee_mgmt', 'pending_approvals',
+        'dept_mgmt', 'org_hierarchy', 'workflow_monitoring', 'evaluation_deployment',
+        'template_builder', 'admin_panel', 'my_history', 'reports', 'my_profile'
+      ].includes(tab);
+    case 'system_admin':
+      return [
+        'dashboard', 'employee_mgmt', 'pending_approvals', 'dept_mgmt',
+        'org_hierarchy', 'workflow_monitoring', 'evaluation_deployment',
+        'template_builder', 'admin_panel', 'my_history', 'reports', 'my_profile'
+      ].includes(tab);
+    default:
+      return ['dashboard', 'evaluations', 'my_profile'].includes(tab);
+  }
+};
+
 const mergeEvaluationTemplates = (remote: EvaluationTemplate[] | null, local: EvaluationTemplate[]): EvaluationTemplate[] => {
   const result: EvaluationTemplate[] = [];
   const seenIds = new Set<string>();
@@ -224,7 +260,10 @@ export const App: React.FC = () => {
 
     const initSession = async () => {
       try {
-        const savedTab = localStorage.getItem('apes_active_tab_v3');
+        const rawSavedTab = sessionStorage.getItem('apes_active_tab_v3');
+        try {
+          localStorage.removeItem('apes_active_tab_v3'); // Ensure no cross-tab state leakage
+        } catch {}
         let storedUser = getStoredCurrentUser();
 
         if (storedUser) {
@@ -247,7 +286,8 @@ export const App: React.FC = () => {
               setIsAuthenticated(true);
               sessionStorage.setItem('apes_session_active_v3', 'true');
               setNotifications(getRoleBasedNotifications(storedUser));
-              if (savedTab) setActiveTab(savedTab);
+              const validTab = (rawSavedTab && isTabAllowedForRole(rawSavedTab, storedUser.role)) ? rawSavedTab : 'dashboard';
+              setActiveTab(validTab);
             }
           } else {
             if (isMounted) setIsAuthenticated(false);
@@ -523,13 +563,41 @@ export const App: React.FC = () => {
       }
     }
 
-    const savedTab = localStorage.getItem('apes_active_tab_v3') || 'dashboard';
-    setActiveTab(savedTab);
+    const targetRole = currentUserRef.current?.role || authenticatedUser.role;
+    const rawSavedTab = sessionStorage.getItem('apes_active_tab_v3');
+    try {
+      localStorage.removeItem('apes_active_tab_v3');
+    } catch {}
+    const validatedTab = (rawSavedTab && isTabAllowedForRole(rawSavedTab, targetRole)) ? rawSavedTab : 'dashboard';
+    setActiveTab(validatedTab);
   };
+
+  const handleSelectTab = (tab: string) => {
+    const safeTab = isTabAllowedForRole(tab, currentUser?.role) ? tab : 'dashboard';
+    setActiveTab(safeTab);
+    setViewMode('normal');
+    try {
+      sessionStorage.setItem('apes_active_tab_v3', safeTab);
+      localStorage.removeItem('apes_active_tab_v3');
+    } catch {}
+  };
+
+  // Reactive RBAC Security Guard: Ensure current active tab is strictly allowed for current user role
+  useEffect(() => {
+    if (currentUser?.role && !isTabAllowedForRole(activeTab, currentUser.role)) {
+      console.warn(`[Security Guard] Tab '${activeTab}' is unauthorized for role '${currentUser.role}'. Resetting to 'dashboard'.`);
+      setActiveTab('dashboard');
+      try {
+        sessionStorage.setItem('apes_active_tab_v3', 'dashboard');
+        localStorage.removeItem('apes_active_tab_v3');
+      } catch {}
+    }
+  }, [currentUser?.role, activeTab]);
 
   const handleLogout = async () => {
     clearCurrentUserStore();
     sessionStorage.removeItem('apes_session_active_v3');
+    sessionStorage.removeItem('apes_active_tab_v3');
     localStorage.removeItem('apes_session_active_v3');
     localStorage.removeItem('apes_active_tab_v3');
     setCurrentUser(SEED_USERS[0]);
@@ -865,6 +933,115 @@ export const App: React.FC = () => {
     return currentEvaluation;
   }, [selectedEvalId, evaluations, scorecardArchives, currentEvaluation]);
 
+  const renderRoleDashboard = () => {
+    // Position-Based Access Control (PBAC) Dashboard Router
+    switch (currentUser.role) {
+      case 'employee':
+        return (
+          <EmployeeDashboard
+            currentUser={currentUser}
+            evaluations={evaluations}
+            templates={templates}
+            onOpenEvaluation={(id) => {
+              setSelectedEvalId(id);
+              setActiveTab('evaluations');
+            }}
+          />
+        );
+      case 'supervisor':
+        return (
+          <SupervisorDashboard
+            currentUser={currentUser}
+            evaluations={evaluations}
+            onOpenEvaluation={(id) => {
+              setSelectedEvalId(id);
+              setActiveTab('evaluations');
+            }}
+          />
+        );
+      case 'dept_head':
+        return (
+          <DeptHeadDashboard
+            currentUser={currentUser}
+            evaluations={evaluations}
+            allUsers={users}
+            onOpenEvaluation={(id) => {
+              setSelectedEvalId(id);
+              setActiveTab('evaluations');
+            }}
+          />
+        );
+      case 'president':
+        return (
+          <PresidentDashboard
+            currentUser={currentUser}
+            evaluations={evaluations}
+            onOpenEvaluation={(id) => {
+              setSelectedEvalId(id);
+              setActiveTab('evaluations');
+            }}
+          />
+        );
+      case 'pod':
+        return (
+          <PODDashboard
+            currentUser={currentUser}
+            evaluations={evaluations}
+            departments={departments}
+            onOpenEvaluation={(id) => {
+              setSelectedEvalId(id);
+              setActiveTab('evaluations');
+            }}
+            onOpenReports={() => handleSelectTab('reports')}
+            onOpenWorkflowMonitoring={() => handleSelectTab('workflow_monitoring')}
+            onOpenDeployment={() => handleSelectTab('evaluation_deployment')}
+            onOpenTemplateBuilder={() => handleSelectTab('template_builder')}
+          />
+        );
+      case 'hr_admin':
+        return (
+          <HRDashboard
+            currentUser={currentUser}
+            evaluations={evaluations}
+            cycles={cycles}
+            departments={departments}
+            users={users}
+            onOpenEvaluation={(id) => {
+              setSelectedEvalId(id);
+              setActiveTab('evaluations');
+            }}
+            onOpenTemplateBuilder={() => handleSelectTab('template_builder')}
+            onOpenReports={() => handleSelectTab('reports')}
+            onSelectTab={handleSelectTab}
+          />
+        );
+      case 'system_admin':
+        return (
+          <AdminDashboard
+            currentUser={currentUser}
+            users={users}
+            departments={departments}
+            auditLogs={auditLogs}
+            onOpenAdminPanel={() => handleSelectTab('admin_panel')}
+            onOpenWorkflowMonitoring={() => handleSelectTab('workflow_monitoring')}
+            onSelectTab={handleSelectTab}
+          />
+        );
+      default:
+        return (
+          <EmployeeDashboard
+            currentUser={currentUser}
+            evaluations={evaluations}
+            templates={templates}
+            onOpenEvaluation={(id) => {
+              setSelectedEvalId(id);
+              setActiveTab('evaluations');
+            }}
+          />
+        );
+    }
+  };
+
   const renderMainContent = () => {
     if (viewMode === 'printable') {
       const targetForPrint = printableEvaluation || currentEvaluation;
@@ -878,6 +1055,11 @@ export const App: React.FC = () => {
           />
         );
       }
+    }
+
+    // Strict Security RBAC Guard: If requested tab is not permitted for the user's role, fallback to their dashboard
+    if (!isTabAllowedForRole(activeTab, currentUser?.role)) {
+      return renderRoleDashboard();
     }
 
     if (activeTab === 'dept_actions') {
@@ -1043,11 +1225,7 @@ export const App: React.FC = () => {
           auditLogs={auditLogs}
           onSaveUsers={handleSaveUsers}
           onSaveDepartments={handleSaveDepartments}
-          onSelectTab={(tab) => {
-            setActiveTab(tab);
-            setViewMode('normal');
-            localStorage.setItem('apes_active_tab_v3', tab);
-          }}
+          onSelectTab={handleSelectTab}
         />
       );
     }
@@ -1111,120 +1289,7 @@ export const App: React.FC = () => {
       );
     }
 
-    // Position-Based Access Control (PBAC) Dashboard Router
-    switch (currentUser.role) {
-      case 'employee':
-        return (
-          <EmployeeDashboard
-            currentUser={currentUser}
-            evaluations={evaluations}
-            templates={templates}
-            onOpenEvaluation={(id) => {
-              setSelectedEvalId(id);
-              setActiveTab('evaluations');
-            }}
-          />
-        );
-      case 'supervisor':
-        return (
-          <SupervisorDashboard
-            currentUser={currentUser}
-            evaluations={evaluations}
-            onOpenEvaluation={(id) => {
-              setSelectedEvalId(id);
-              setActiveTab('evaluations');
-            }}
-          />
-        );
-      case 'dept_head':
-        return (
-          <DeptHeadDashboard
-            currentUser={currentUser}
-            evaluations={evaluations}
-            allUsers={users}
-            onOpenEvaluation={(id) => {
-              setSelectedEvalId(id);
-              setActiveTab('evaluations');
-            }}
-          />
-        );
-      case 'president':
-        return (
-          <PresidentDashboard
-            currentUser={currentUser}
-            evaluations={evaluations}
-            onOpenEvaluation={(id) => {
-              setSelectedEvalId(id);
-              setActiveTab('evaluations');
-            }}
-          />
-        );
-      case 'pod':
-        return (
-          <PODDashboard
-            currentUser={currentUser}
-            evaluations={evaluations}
-            departments={departments}
-            onOpenEvaluation={(id) => {
-              setSelectedEvalId(id);
-              setActiveTab('evaluations');
-            }}
-            onOpenReports={() => setActiveTab('reports')}
-            onOpenWorkflowMonitoring={() => setActiveTab('workflow_monitoring')}
-            onOpenDeployment={() => setActiveTab('evaluation_deployment')}
-            onOpenTemplateBuilder={() => setActiveTab('template_builder')}
-          />
-        );
-      case 'hr_admin':
-        return (
-          <HRDashboard
-            currentUser={currentUser}
-            evaluations={evaluations}
-            cycles={cycles}
-            departments={departments}
-            users={users}
-            onOpenEvaluation={(id) => {
-              setSelectedEvalId(id);
-              setActiveTab('evaluations');
-            }}
-            onOpenTemplateBuilder={() => setActiveTab('template_builder')}
-            onOpenReports={() => setActiveTab('reports')}
-            onSelectTab={(tab) => {
-              setActiveTab(tab);
-              setViewMode('normal');
-              localStorage.setItem('apes_active_tab_v3', tab);
-            }}
-          />
-        );
-      case 'system_admin':
-        return (
-          <AdminDashboard
-            currentUser={currentUser}
-            users={users}
-            departments={departments}
-            auditLogs={auditLogs}
-            onOpenAdminPanel={() => setActiveTab('admin_panel')}
-            onOpenWorkflowMonitoring={() => setActiveTab('workflow_monitoring')}
-            onSelectTab={(tab) => {
-              setActiveTab(tab);
-              setViewMode('normal');
-              localStorage.setItem('apes_active_tab_v3', tab);
-            }}
-          />
-        );
-      default:
-        return (
-          <EmployeeDashboard
-            currentUser={currentUser}
-            evaluations={evaluations}
-            templates={templates}
-            onOpenEvaluation={(id) => {
-              setSelectedEvalId(id);
-              setActiveTab('evaluations');
-            }}
-          />
-        );
-    }
+    return renderRoleDashboard();
   };
 
   if (isSessionLoading) {
@@ -1286,11 +1351,7 @@ export const App: React.FC = () => {
               setActiveTab('evaluations');
               setViewMode('normal');
             }}
-            onSelectTab={(tab) => {
-              setActiveTab(tab);
-              setViewMode('normal');
-              localStorage.setItem('apes_active_tab_v3', tab);
-            }}
+            onSelectTab={handleSelectTab}
             onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             isSidebarOpen={isSidebarOpen}
             onOpenAnnouncementModal={() => setShowAnnouncementModal(true)}
@@ -1303,11 +1364,7 @@ export const App: React.FC = () => {
           <Sidebar
             currentRole={currentUser.role}
             activeTab={activeTab}
-            onSelectTab={(tab) => {
-              setActiveTab(tab);
-              setViewMode('normal');
-              localStorage.setItem('apes_active_tab_v3', tab);
-            }}
+            onSelectTab={handleSelectTab}
             pendingCount={notifications.filter(n => !n.read).length}
             pendingAccountCount={pendingAccountCount}
             isOpen={isSidebarOpen}
