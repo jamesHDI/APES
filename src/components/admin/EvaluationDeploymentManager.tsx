@@ -16,7 +16,8 @@ import {
   Sparkles,
   SlidersHorizontal,
   FileCheck,
-  AlertCircle
+  AlertCircle,
+  Search
 } from 'lucide-react';
 
 interface EvaluationDeploymentManagerProps {
@@ -49,7 +50,19 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
   const [assignmentType, setAssignmentType] = useState<AssignmentType>('all');
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [selectedEmps, setSelectedEmps] = useState<string[]>([]);
+  const [empSearchQuery, setEmpSearchQuery] = useState('');
   const [initialStatus, setInitialStatus] = useState<DeploymentStatus>('active');
+
+  const isEligibleUser = (u: User) => {
+    if (!u) return false;
+    if (u.role === 'system_admin') return false; // System Administrators are administrative-only and not evaluated
+    if (u.isActive === false) return false;
+    if (u.approvalStatus === 'rejected') return false;
+    if (u.isApproved === false) return false;
+    return true;
+  };
+
+  const eligibleUsers = (users || []).filter(isEligibleUser);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -63,18 +76,6 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
       alert('Please select an evaluation template.');
       return;
     }
-
-    // Determine target employees
-    const isEligibleUser = (u: User) => {
-      if (!u) return false;
-      if (u.role === 'system_admin') return false; // System Administrators are administrative-only and not evaluated
-      if (u.isActive === false) return false;
-      if (u.approvalStatus === 'rejected') return false;
-      if (u.isApproved === false) return false;
-      return true;
-    };
-
-    const eligibleUsers = users.filter(isEligibleUser);
 
     let targetUsers: User[] = [];
     if (assignmentType === 'all') {
@@ -566,6 +567,114 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
                         <span className="text-slate-800 dark:text-slate-200">{d.name}</span>
                       </label>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Specific Employees Selection List */}
+              {assignmentType === 'employees' && (
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                      Select Target Employees ({selectedEmps.length} selected):
+                    </p>
+                    <div className="flex items-center space-x-2 text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEmps(eligibleUsers.map(u => u.id))}
+                        className="font-bold text-brand-600 hover:text-brand-700 dark:text-brand-400 hover:underline"
+                      >
+                        Select All ({eligibleUsers.length})
+                      </button>
+                      <span className="text-slate-300 dark:text-slate-600">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEmps([])}
+                        className="font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 hover:underline"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Search input */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={empSearchQuery}
+                      onChange={(e) => setEmpSearchQuery(e.target.value)}
+                      placeholder="Search by name, position, or department..."
+                      className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-brand-500"
+                    />
+                  </div>
+
+                  {/* Scrollable list */}
+                  <div className="max-h-48 overflow-y-auto space-y-1 pr-1 border border-slate-200 dark:border-slate-800 rounded-xl p-1.5 bg-white dark:bg-slate-950 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
+                    {eligibleUsers
+                      .filter(u => {
+                        const q = empSearchQuery.toLowerCase().trim();
+                        if (!q) return true;
+                        return (
+                          (u.name || '').toLowerCase().includes(q) ||
+                          (u.position || '').toLowerCase().includes(q) ||
+                          (u.departmentName || '').toLowerCase().includes(q) ||
+                          (u.email || '').toLowerCase().includes(q) ||
+                          (u.employeeNumber || '').toLowerCase().includes(q)
+                        );
+                      })
+                      .map((u) => {
+                        const isChecked = selectedEmps.includes(u.id);
+                        return (
+                          <label
+                            key={u.id}
+                            className={`flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition-colors ${
+                              isChecked ? 'bg-brand-50/70 dark:bg-brand-950/30' : ''
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2.5 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedEmps(prev => [...prev, u.id]);
+                                  } else {
+                                    setSelectedEmps(prev => prev.filter(id => id !== u.id));
+                                  }
+                                }}
+                                className="rounded text-brand-600 focus:ring-brand-500 w-3.5 h-3.5"
+                              />
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                                  {u.name}
+                                </p>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                                  {u.position || 'Employee'} • {u.departmentName || 'No Dept'}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-mono text-slate-400 shrink-0 ml-2">
+                              {u.employeeNumber || ''}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    {eligibleUsers.filter(u => {
+                      const q = empSearchQuery.toLowerCase().trim();
+                      if (!q) return true;
+                      return (
+                        (u.name || '').toLowerCase().includes(q) ||
+                        (u.position || '').toLowerCase().includes(q) ||
+                        (u.departmentName || '').toLowerCase().includes(q) ||
+                        (u.email || '').toLowerCase().includes(q) ||
+                        (u.employeeNumber || '').toLowerCase().includes(q)
+                      );
+                    }).length === 0 && (
+                      <p className="text-xs text-slate-400 dark:text-slate-500 italic p-3 text-center">
+                        No employees found matching "{empSearchQuery}".
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
