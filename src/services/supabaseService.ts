@@ -2657,8 +2657,9 @@ export const saveDirectMessageToSupabase = async (msg: DirectMessage): Promise<b
         is_concern: msg.isConcern || false,
         category: msg.category || null,
         is_read: msg.read || false,
-        created_at: msg.createdAt,
-      }, { onConflict: 'id' });
+        // NOTE: created_at is intentionally omitted — Supabase sets it via DEFAULT NOW()
+        // so message ordering is always based on the server clock, not client device clocks.
+      }, { onConflict: 'id', ignoreDuplicates: false });
 
     if (error) {
       console.warn('[DM Cloud Sync] Failed to save message to Supabase:', error.message);
