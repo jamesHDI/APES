@@ -1,4 +1,4 @@
-﻿// supabase/functions/send-eval-email/index.ts
+// supabase/functions/send-eval-email/index.ts
 // Deno-based Supabase Edge Function
 // Sends evaluation deployment notification emails via Resend API.
 // RESEND_API_KEY must be set in Supabase Dashboard -> Settings -> Edge Function Secrets.
@@ -6,7 +6,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const RESEND_API_URL = "https://api.resend.com/emails";
-const FROM_ADDRESS = "APES System <onboarding@resend.dev>";
+const DEFAULT_FROM = "APES System <noreply@hdiadventures.com>";
 const APP_URL = "https://enz-to.github.io/APES/";
 
 interface EmailRecipient {
@@ -137,17 +137,37 @@ serve(async (req: Request) => {
       failed++;
       continue;
     }
+    const fromAddress = Deno.env.get("FROM_EMAIL") || DEFAULT_FROM;
     try {
-      const res = await fetch(RESEND_API_URL, {
+      let res = await fetch(RESEND_API_URL, {
         method: "POST",
         headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          from: FROM_ADDRESS,
+          from: fromAddress,
           to: [recipient.email],
           subject: `[Action Required] New Performance Evaluation: ${payload.deploymentTitle}`,
           html: buildEmailHtml(recipient, payload),
         }),
       });
+
+      // If custom domain is not verified yet on Resend, retry with onboarding@resend.dev
+      if (!res.ok) {
+        const errBody = await res.text();
+        if (errBody.includes("domain") || errBody.includes("verify") || errBody.includes("validation_error")) {
+          console.warn(`[send-eval-email] Retrying ${recipient.email} with sandbox sender onboarding@resend.dev...`);
+          res = await fetch(RESEND_API_URL, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from: "APES System <onboarding@resend.dev>",
+              to: [recipient.email],
+              subject: `[Action Required] New Performance Evaluation: ${payload.deploymentTitle}`,
+              html: buildEmailHtml(recipient, payload),
+            }),
+          });
+        }
+      }
+
       if (res.ok) {
         sent++;
         console.log(`[send-eval-email] Sent to ${recipient.email}`);
