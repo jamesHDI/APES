@@ -3,6 +3,7 @@ import { User, Department, EvaluationTemplate, EvaluationDeployment, DeploymentS
 import { getStoredDeployments, saveDeployments, assignNewEvaluationToEmployee, saveSingleEvaluation } from '../../services/storage';
 import { triggerWorkflowNotification } from '../../services/notificationService';
 import { triggerRealtimeBroadcast, isSupabaseConfigured } from '../../services/supabaseClient';
+import { sendEvaluationDeploymentEmail } from '../../services/emailService';
 import { 
   Rocket, 
   PlusCircle, 
@@ -200,6 +201,29 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
         );
       }
       triggerRealtimeBroadcast('data_changed', { type: 'evaluation_deployment', deploymentId });
+
+      // Send Outlook / inbox email notification to each assigned employee
+      const emailRecipients = targetUsers
+        .filter(u => u.email && u.email.includes('@'))
+        .map(u => ({ name: u.name, email: u.email }));
+
+      if (emailRecipients.length > 0) {
+        try {
+          const emailResult = await sendEvaluationDeploymentEmail({
+            recipients: emailRecipients,
+            deploymentTitle: title,
+            period,
+            deadline: endDate,
+            deployedBy: currentUser.name,
+          });
+          if (emailResult) {
+            console.log(`[Deployment] Email notifications: ${emailResult.sent} sent, ${emailResult.failed} failed.`);
+          }
+        } catch (emailErr) {
+          // Email failure should never block the deployment from completing
+          console.warn('[Deployment] Email notification error (non-critical):', emailErr);
+        }
+      }
     }
 
     showToast(`Successfully deployed evaluation cycle to ${targetUsers.length} employee(s)!`);
