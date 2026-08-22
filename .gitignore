@@ -31,3 +31,7 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase
+supabase/.temp/
+.temp/
