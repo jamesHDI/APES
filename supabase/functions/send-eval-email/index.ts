@@ -5,7 +5,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import nodemailer from "npm:nodemailer@6.9.13";
 
-const APP_URL = "https://enz-to.github.io/APES/";
+const APP_URL = "https://apes-eosin.vercel.app/";
 
 interface EmailRecipient {
   name: string;
@@ -18,6 +18,28 @@ interface EvalEmailPayload {
   period: string;
   deadline: string;
   deployedBy: string;
+}
+
+function buildPlainText(recipient: EmailRecipient, payload: EvalEmailPayload): string {
+  const { deploymentTitle, period, deadline, deployedBy } = payload;
+  const formattedDeadline = new Date(deadline).toLocaleDateString("en-US", {
+    year: "numeric", month: "long", day: "numeric",
+  });
+  return `Hello ${recipient.name},
+
+A new performance evaluation cycle has been deployed in APES (Automated Performance Evaluation System) and you are one of the assigned participants.
+
+Evaluation Details:
+- Evaluation: ${deploymentTitle}
+- Period: ${period}
+- Deadline: ${formattedDeadline}
+- Deployed By: ${deployedBy}
+
+Please log in to APES to complete your evaluation:
+${APP_URL}
+
+--
+This is an automated notification from APES. Please do not reply directly to this email.`;
 }
 
 function buildEmailHtml(recipient: EmailRecipient, payload: EvalEmailPayload): string {
@@ -160,6 +182,7 @@ serve(async (req: Request) => {
           from: fromAddress,
           to: recipient.email,
           subject: `[Action Required] New Performance Evaluation: ${payload.deploymentTitle}`,
+          text: buildPlainText(recipient, payload),
           html: buildEmailHtml(recipient, payload),
         });
         sent++;
