@@ -633,10 +633,10 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
                     />
                   </div>
 
-                  {/* Scrollable list */}
-                  <div className="max-h-48 overflow-y-auto space-y-1 pr-1 border border-slate-200 dark:border-slate-800 rounded-xl p-1.5 bg-white dark:bg-slate-950 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
-                    {eligibleUsers
-                      .filter(u => {
+                  {/* Scrollable list grouped by role hierarchy matching Messenger design */}
+                  <div className="max-h-56 overflow-y-auto space-y-2.5 pr-1 border border-slate-200 dark:border-slate-800 rounded-xl p-2 bg-white dark:bg-slate-950 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
+                    {(() => {
+                      const filterFn = (u: User) => {
                         const q = empSearchQuery.toLowerCase().trim();
                         if (!q) return true;
                         return (
@@ -646,59 +646,100 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
                           (u.email || '').toLowerCase().includes(q) ||
                           (u.employeeNumber || '').toLowerCase().includes(q)
                         );
-                      })
-                      .map((u) => {
-                        const isChecked = selectedEmps.includes(u.id);
+                      };
+
+                      const filtered = eligibleUsers.filter(filterFn);
+
+                      const groups = [
+                        {
+                          title: 'People Operations & Executives',
+                          users: filtered.filter(u => ['pod', 'hr_admin', 'president'].includes(u.role)),
+                        },
+                        {
+                          title: 'Department Heads & Supervisors',
+                          users: filtered.filter(u => ['dept_head', 'supervisor'].includes(u.role)),
+                        },
+                        {
+                          title: 'Colleagues & Specialists',
+                          users: filtered.filter(u => !['pod', 'hr_admin', 'president', 'dept_head', 'supervisor'].includes(u.role)),
+                        },
+                      ].filter(g => g.users.length > 0);
+
+                      if (groups.length === 0) {
                         return (
-                          <label
-                            key={u.id}
-                            className={`flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition-colors ${
-                              isChecked ? 'bg-brand-50/70 dark:bg-brand-950/30' : ''
-                            }`}
-                          >
-                            <div className="flex items-center space-x-2.5 min-w-0">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedEmps(prev => [...prev, u.id]);
+                          <p className="text-xs text-slate-400 dark:text-slate-500 italic p-3 text-center">
+                            No employees found matching "{empSearchQuery}".
+                          </p>
+                        );
+                      }
+
+                      return groups.map((g) => {
+                        const allGroupSelected = g.users.length > 0 && g.users.every(u => selectedEmps.includes(u.id));
+                        return (
+                          <div key={g.title} className="space-y-1">
+                            <div className="flex items-center justify-between px-2.5 py-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-lg text-[10.5px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+                              <span>{g.title} ({g.users.length})</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (allGroupSelected) {
+                                    const groupIds = new Set(g.users.map(u => u.id));
+                                    setSelectedEmps(prev => prev.filter(id => !groupIds.has(id)));
                                   } else {
-                                    setSelectedEmps(prev => prev.filter(id => id !== u.id));
+                                    const groupIds = g.users.map(u => u.id);
+                                    setSelectedEmps(prev => Array.from(new Set([...prev, ...groupIds])));
                                   }
                                 }}
-                                className="rounded text-brand-600 focus:ring-brand-500 w-3.5 h-3.5"
-                              />
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
-                                  {u.name}
-                                </p>
-                                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                                  {u.position || 'Employee'} • {u.departmentName || 'No Dept'}
-                                </p>
-                              </div>
+                                className="text-[10px] font-bold text-brand-600 hover:text-brand-700 dark:text-brand-400 hover:underline capitalize"
+                              >
+                                {allGroupSelected ? 'Deselect Group' : 'Select Group'}
+                              </button>
                             </div>
-                            <span className="text-[10px] font-mono text-slate-400 shrink-0 ml-2">
-                              {u.employeeNumber || ''}
-                            </span>
-                          </label>
+                            <div className="space-y-0.5 pl-1">
+                              {g.users.map((u) => {
+                                const isChecked = selectedEmps.includes(u.id);
+                                return (
+                                  <label
+                                    key={u.id}
+                                    className={`flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition-colors ${
+                                      isChecked ? 'bg-brand-50/70 dark:bg-brand-950/30' : ''
+                                    }`}
+                                  >
+                                    <div className="flex items-center space-x-2.5 min-w-0">
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setSelectedEmps(prev => [...prev, u.id]);
+                                          } else {
+                                            setSelectedEmps(prev => prev.filter(id => id !== u.id));
+                                          }
+                                        }}
+                                        className="rounded text-brand-600 focus:ring-brand-500 w-3.5 h-3.5"
+                                      />
+                                      <div className="min-w-0">
+                                        <p className="text-xs text-slate-900 dark:text-white truncate">
+                                          <span className="font-bold">{u.name}</span>
+                                          <span className="text-slate-500 dark:text-slate-400 font-normal">
+                                            {' '}— {u.position || u.role.toUpperCase()} ({u.departmentName || 'Admin'})
+                                          </span>
+                                        </p>
+                                      </div>
+                                    </div>
+                                    {u.employeeNumber && (
+                                      <span className="text-[10px] font-mono text-slate-400 shrink-0 ml-2">
+                                        {u.employeeNumber}
+                                      </span>
+                                    )}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
                         );
-                      })}
-                    {eligibleUsers.filter(u => {
-                      const q = empSearchQuery.toLowerCase().trim();
-                      if (!q) return true;
-                      return (
-                        (u.name || '').toLowerCase().includes(q) ||
-                        (u.position || '').toLowerCase().includes(q) ||
-                        (u.departmentName || '').toLowerCase().includes(q) ||
-                        (u.email || '').toLowerCase().includes(q) ||
-                        (u.employeeNumber || '').toLowerCase().includes(q)
-                      );
-                    }).length === 0 && (
-                      <p className="text-xs text-slate-400 dark:text-slate-500 italic p-3 text-center">
-                        No employees found matching "{empSearchQuery}".
-                      </p>
-                    )}
+                      });
+                    })()}
                   </div>
                 </div>
               )}
