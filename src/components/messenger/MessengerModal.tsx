@@ -72,6 +72,7 @@ export const MessengerModal: React.FC<MessengerModalProps> = ({
 
   // New message form state
   const [newRecipientId, setNewRecipientId] = useState("");
+  const [recipientSearchQuery, setRecipientSearchQuery] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [newMessageText, setNewMessageText] = useState("");
   const [isConcern, setIsConcern] = useState(false);
@@ -550,40 +551,123 @@ export const MessengerModal: React.FC<MessengerModalProps> = ({
                 </div>
 
                 <form onSubmit={handleSendNewMessage} className="space-y-4 max-w-2xl">
-                  {/* Recipient Dropdown */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1.5">
-                      Select Recipient *
-                    </label>
-                    <select
-                      value={newRecipientId}
-                      onChange={(e) => setNewRecipientId(e.target.value)}
-                      required
-                      className="w-full px-3.5 py-2.5 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-[#E96B1A]"
-                    >
-                      <option value="">-- Choose Colleague or Officer --</option>
-                      <optgroup label="People Operations & Executives">
-                        {candidateRecipients.filter(u => ['pod', 'hr_admin', 'president'].includes(u.role)).map(u => (
-                          <option key={u.id} value={u.id}>
-                            {u.name} — {u.position || u.role.toUpperCase()} ({u.departmentName})
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Department Heads & Supervisors">
-                        {candidateRecipients.filter(u => ['dept_head', 'supervisor'].includes(u.role)).map(u => (
-                          <option key={u.id} value={u.id}>
-                            {u.name} — {u.position || u.role.toUpperCase()} ({u.departmentName})
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Colleagues & Specialists">
-                        {candidateRecipients.filter(u => !['pod', 'hr_admin', 'president', 'dept_head', 'supervisor'].includes(u.role)).map(u => (
-                          <option key={u.id} value={u.id}>
-                            {u.name} — {u.position || 'Staff'} ({u.departmentName})
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
+                  {/* Recipient Selection (Matching Deployment Searchable List Design) */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
+                        Select Recipient *
+                      </label>
+                      {newRecipientId && (
+                        <button
+                          type="button"
+                          onClick={() => setNewRecipientId("")}
+                          className="text-[11px] font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 hover:underline"
+                        >
+                          Clear Selection
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Search Input */}
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={recipientSearchQuery}
+                        onChange={(e) => setRecipientSearchQuery(e.target.value)}
+                        placeholder="Search by name, position, or department..."
+                        className="w-full pl-9 pr-3.5 py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#E96B1A]"
+                      />
+                    </div>
+
+                    {/* Scrollable Recipient List */}
+                    <div className="max-h-48 overflow-y-auto space-y-2 pr-1 border border-slate-200 dark:border-slate-750 rounded-xl p-2 bg-white dark:bg-slate-900 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
+                      {(() => {
+                        const filterFn = (u: User) => {
+                          const q = recipientSearchQuery.toLowerCase().trim();
+                          if (!q) return true;
+                          return (
+                            (u.name || "").toLowerCase().includes(q) ||
+                            (u.position || "").toLowerCase().includes(q) ||
+                            (u.departmentName || "").toLowerCase().includes(q) ||
+                            (u.email || "").toLowerCase().includes(q) ||
+                            (u.employeeNumber || "").toLowerCase().includes(q)
+                          );
+                        };
+
+                        const filtered = candidateRecipients.filter(filterFn);
+
+                        const groups = [
+                          {
+                            title: "People Operations & Executives",
+                            users: filtered.filter((u) => ["pod", "hr_admin", "president"].includes(u.role)),
+                          },
+                          {
+                            title: "Department Heads & Supervisors",
+                            users: filtered.filter((u) => ["dept_head", "supervisor"].includes(u.role)),
+                          },
+                          {
+                            title: "Colleagues & Specialists",
+                            users: filtered.filter((u) => !["pod", "hr_admin", "president", "dept_head", "supervisor"].includes(u.role)),
+                          },
+                        ].filter((g) => g.users.length > 0);
+
+                        if (groups.length === 0) {
+                          return (
+                            <p className="text-xs text-slate-400 dark:text-slate-500 italic p-3 text-center">
+                              No colleagues found matching "{recipientSearchQuery}".
+                            </p>
+                          );
+                        }
+
+                        return groups.map((g) => (
+                          <div key={g.title} className="space-y-1">
+                            <div className="px-2 py-0.5 bg-slate-100/90 dark:bg-slate-800/90 rounded-md text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
+                              {g.title} ({g.users.length})
+                            </div>
+                            <div className="space-y-0.5">
+                              {g.users.map((u) => {
+                                const isSelected = newRecipientId === u.id;
+                                return (
+                                  <div
+                                    key={u.id}
+                                    onClick={() => setNewRecipientId(u.id)}
+                                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all border ${
+                                      isSelected
+                                        ? "bg-orange-50/80 dark:bg-orange-950/40 border-[#E96B1A] text-slate-900 dark:text-white shadow-sm"
+                                        : "border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-200"
+                                    }`}
+                                  >
+                                    <div className="flex items-center space-x-2.5 min-w-0">
+                                      <input
+                                        type="radio"
+                                        name="messengerRecipient"
+                                        checked={isSelected}
+                                        onChange={() => setNewRecipientId(u.id)}
+                                        className="text-[#E96B1A] focus:ring-[#E96B1A] w-3.5 h-3.5"
+                                      />
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                          {u.name}
+                                        </p>
+                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                                          {u.position || u.role.toUpperCase()} • {u.departmentName || "Admin"}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    {u.employeeNumber && (
+                                      <span className="text-[10px] font-mono text-slate-400 shrink-0 ml-2">
+                                        {u.employeeNumber}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
                   </div>
 
                   {/* Flag as Concern Checkbox */}

@@ -595,13 +595,13 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
                 </div>
               )}
 
-              {/* Specific Employees Selection (Exact Messenger Dropdown Design) */}
+              {/* Specific Employees Selection List */}
               {assignmentType === 'employees' && (
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
-                      Select Target Recipient / Employee *
-                    </label>
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                      Select Target Employees ({selectedEmps.length} selected):
+                    </p>
                     <div className="flex items-center space-x-2 text-[11px]">
                       <button
                         type="button"
@@ -610,90 +610,96 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
                       >
                         Select All ({eligibleUsers.length})
                       </button>
-                      {selectedEmps.length > 0 && (
-                        <>
-                          <span className="text-slate-300 dark:text-slate-600">|</span>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedEmps([])}
-                            className="font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 hover:underline"
-                          >
-                            Clear
-                          </button>
-                        </>
-                      )}
+                      <span className="text-slate-300 dark:text-slate-600">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEmps([])}
+                        className="font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 hover:underline"
+                      >
+                        Clear
+                      </button>
                     </div>
                   </div>
 
-                  {/* Dropdown matching Messenger Modal */}
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      const empId = e.target.value;
-                      if (empId && !selectedEmps.includes(empId)) {
-                        setSelectedEmps(prev => [...prev, empId]);
-                      }
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-[#E96B1A] outline-none"
-                  >
-                    <option value="">-- Choose Colleague or Officer --</option>
-                    <optgroup label="People Operations & Executives">
-                      {eligibleUsers.filter(u => ['pod', 'hr_admin', 'president'].includes(u.role)).map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} — {u.position || u.role.toUpperCase()} ({u.departmentName || 'Admin'})
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Department Heads & Supervisors">
-                      {eligibleUsers.filter(u => ['dept_head', 'supervisor'].includes(u.role)).map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} — {u.position || u.role.toUpperCase()} ({u.departmentName || 'Admin'})
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Colleagues & Specialists">
-                      {eligibleUsers.filter(u => !['pod', 'hr_admin', 'president', 'dept_head', 'supervisor'].includes(u.role)).map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} — {u.position || 'Staff'} ({u.departmentName || 'Admin'})
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
+                  {/* Search input */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={empSearchQuery}
+                      onChange={(e) => setEmpSearchQuery(e.target.value)}
+                      placeholder="Search by name, position, or department..."
+                      className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-brand-500"
+                    />
+                  </div>
 
-                  {/* Selected Employees Badges / Chips */}
-                  {selectedEmps.length > 0 && (
-                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-bold text-slate-700 dark:text-slate-300">
-                          Selected Employees ({selectedEmps.length}):
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
-                        {selectedEmps.map(empId => {
-                          const u = eligibleUsers.find(user => user.id === empId);
-                          if (!u) return null;
-                          return (
-                            <span
-                              key={empId}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 border border-amber-300 dark:border-amber-700"
-                            >
-                              <span>{u.name}</span>
-                              <span className="text-[10px] text-amber-700 dark:text-amber-400 font-normal">
-                                ({u.departmentName || 'Admin'})
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedEmps(prev => prev.filter(id => id !== empId))}
-                                className="ml-1 text-amber-800 dark:text-amber-300 hover:text-red-600 dark:hover:text-red-400 font-bold text-sm leading-none"
-                              >
-                                &times;
-                              </button>
+                  {/* Scrollable list */}
+                  <div className="max-h-48 overflow-y-auto space-y-1 pr-1 border border-slate-200 dark:border-slate-800 rounded-xl p-1.5 bg-white dark:bg-slate-950 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
+                    {eligibleUsers
+                      .filter(u => {
+                        const q = empSearchQuery.toLowerCase().trim();
+                        if (!q) return true;
+                        return (
+                          (u.name || '').toLowerCase().includes(q) ||
+                          (u.position || '').toLowerCase().includes(q) ||
+                          (u.departmentName || '').toLowerCase().includes(q) ||
+                          (u.email || '').toLowerCase().includes(q) ||
+                          (u.employeeNumber || '').toLowerCase().includes(q)
+                        );
+                      })
+                      .map((u) => {
+                        const isChecked = selectedEmps.includes(u.id);
+                        return (
+                          <label
+                            key={u.id}
+                            className={`flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition-colors ${
+                              isChecked ? 'bg-orange-50/80 dark:bg-orange-950/30' : ''
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2.5 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedEmps(prev => [...prev, u.id]);
+                                  } else {
+                                    setSelectedEmps(prev => prev.filter(id => id !== u.id));
+                                  }
+                                }}
+                                className="rounded text-[#E96B1A] focus:ring-[#E96B1A] w-3.5 h-3.5"
+                              />
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                                  {u.name}
+                                </p>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                                  {u.position || 'Employee'} • {u.departmentName || 'No Dept'}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-mono text-slate-400 shrink-0 ml-2">
+                              {u.employeeNumber || ''}
                             </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                          </label>
+                        );
+                      })}
+                    {eligibleUsers.filter(u => {
+                      const q = empSearchQuery.toLowerCase().trim();
+                      if (!q) return true;
+                      return (
+                        (u.name || '').toLowerCase().includes(q) ||
+                        (u.position || '').toLowerCase().includes(q) ||
+                        (u.departmentName || '').toLowerCase().includes(q) ||
+                        (u.email || '').toLowerCase().includes(q) ||
+                        (u.employeeNumber || '').toLowerCase().includes(q)
+                      );
+                    }).length === 0 && (
+                      <p className="text-xs text-slate-400 dark:text-slate-500 italic p-3 text-center">
+                        No employees found matching "{empSearchQuery}".
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
