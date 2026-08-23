@@ -1,12 +1,10 @@
 // supabase/functions/send-eval-email/index.ts
 // Deno-based Supabase Edge Function
-// Sends evaluation deployment notification emails via Resend API.
-// RESEND_API_KEY must be set in Supabase Dashboard -> Settings -> Edge Function Secrets.
+// Sends evaluation deployment notification emails to Outlook, Gmail, or any corporate inbox via Gmail SMTP (Nodemailer).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import nodemailer from "npm:nodemailer@6.9.13";
 
-const RESEND_API_URL = "https://api.resend.com/emails";
-const DEFAULT_FROM = "APES System <noreply@hdiadventures.com>";
 const APP_URL = "https://enz-to.github.io/APES/";
 
 interface EmailRecipient {
@@ -51,7 +49,7 @@ body{margin:0;padding:0;background:#f5f5f5;font-family:"Segoe UI",Arial,sans-ser
 .info-value{color:#1a1a1a;font-weight:600}
 .deadline-value{color:#E96B1A;font-weight:700}
 .cta-wrap{text-align:center;margin-bottom:28px}
-.cta-btn{display:inline-block;background:linear-gradient(135deg,#F28C28,#E96B1A);color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 36px;border-radius:8px;letter-spacing:.3px}
+.cta-btn{display:inline-block;background:linear-gradient(135deg,#F28C28,#E96B1A);color:#fff !important;text-decoration:none;font-size:15px;font-weight:700;padding:14px 36px;border-radius:8px;letter-spacing:.3px}
 .note{font-size:13px;color:#888;line-height:1.6;padding:16px;background:#f8f8f8;border-radius:8px}
 .footer{background:#fafafa;border-top:1px solid #eee;padding:20px 40px;text-align:center}
 .footer p{font-size:12px;color:#aaa;margin:4px 0}
@@ -75,7 +73,7 @@ body{margin:0;padding:0;background:#f5f5f5;font-family:"Segoe UI",Arial,sans-ser
     <div class="info-row"><span class="info-label">Deadline:</span><span class="deadline-value">&#9888; ${formattedDeadline}</span></div>
     <div class="info-row"><span class="info-label">Deployed by:</span><span class="info-value">${deployedBy}</span></div>
   </div>
-  <div class="cta-wrap"><a href="${APP_URL}" class="cta-btn">Open APES &amp; Start Evaluation</a></div>
+  <div class="cta-wrap"><a href="${APP_URL}" class="cta-btn" style="color:#ffffff;">Open APES &amp; Start Evaluation</a></div>
   <div class="note">Tip: Log in using your employee credentials. Navigate to <em>My Evaluations</em> to find this campaign and submit your self-assessment before the deadline.</div>
 </div>
 <div class="footer">
@@ -104,10 +102,13 @@ serve(async (req: Request) => {
     });
   }
 
+  const SMTP_USER = Deno.env.get("SMTP_USER") || Deno.env.get("GMAIL_USER");
+  const SMTP_PASS = Deno.env.get("SMTP_PASS") || Deno.env.get("GMAIL_APP_PASSWORD");
   const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-  if (!RESEND_API_KEY) {
-    console.error("[send-eval-email] RESEND_API_KEY is not set.");
-    return new Response(JSON.stringify({ error: "Email service not configured. RESEND_API_KEY missing." }), {
+
+  if (!SMTP_USER && !RESEND_API_KEY) {
+    console.error("[send-eval-email] Neither SMTP_USER nor RESEND_API_KEY is configured.");
+    return new Response(JSON.stringify({ error: "Email credentials not configured in Supabase Secrets." }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -128,6 +129,17 @@ serve(async (req: Request) => {
     });
   }
 
+  let transporter: any = null;
+  if (SMTP_USER && SMTP_PASS) {
+    transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: SMTP_USER,
+        pass: SMTP_PASS.replace(/\s+/g, ""), // strip any spaces from 16-char app passwords
+      },
+    });
+  }
+
   let sent = 0, failed = 0;
   const errors: string[] = [];
 
@@ -137,50 +149,46 @@ serve(async (req: Request) => {
       failed++;
       continue;
     }
-    const fromAddress = Deno.env.get("FROM_EMAIL") || DEFAULT_FROM;
+
+    const senderName = Deno.env.get("FROM_NAME") || "APES System";
+    const fromAddress = `"${senderName}" <${SMTP_USER || "noreply@hdiadventures.com"}>`;
+
     try {
-      let res = await fetch(RESEND_API_URL, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
+      if (transporter) {
+        // Send via Gmail SMTP (Direct to Outlook, Gmail, Yahoo, etc.)
+        await transporter.sendMail({
           from: fromAddress,
-          to: [recipient.email],
+          to: recipient.email,
           subject: `[Action Required] New Performance Evaluation: ${payload.deploymentTitle}`,
           html: buildEmailHtml(recipient, payload),
-        }),
-      });
-
-      // If custom domain is not verified yet on Resend, retry with onboarding@resend.dev
-      if (!res.ok) {
-        const errBody = await res.text();
-        if (errBody.includes("domain") || errBody.includes("verify") || errBody.includes("validation_error")) {
-          console.warn(`[send-eval-email] Retrying ${recipient.email} with sandbox sender onboarding@resend.dev...`);
-          res = await fetch(RESEND_API_URL, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              from: "APES System <onboarding@resend.dev>",
-              to: [recipient.email],
-              subject: `[Action Required] New Performance Evaluation: ${payload.deploymentTitle}`,
-              html: buildEmailHtml(recipient, payload),
-            }),
-          });
+        });
+        sent++;
+        console.log(`[send-eval-email] [SMTP] Sent successfully to ${recipient.email}`);
+      } else if (RESEND_API_KEY) {
+        // Fallback to Resend API
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from: "APES System <onboarding@resend.dev>",
+            to: [recipient.email],
+            subject: `[Action Required] New Performance Evaluation: ${payload.deploymentTitle}`,
+            html: buildEmailHtml(recipient, payload),
+          }),
+        });
+        if (res.ok) {
+          sent++;
+          console.log(`[send-eval-email] [Resend] Sent to ${recipient.email}`);
+        } else {
+          const errText = await res.text();
+          failed++;
+          errors.push(`${recipient.email}: ${errText}`);
         }
       }
-
-      if (res.ok) {
-        sent++;
-        console.log(`[send-eval-email] Sent to ${recipient.email}`);
-      } else {
-        const errBody = await res.text();
-        console.error(`[send-eval-email] Failed for ${recipient.email}: ${errBody}`);
-        failed++;
-        errors.push(`${recipient.email}: ${errBody}`);
-      }
-    } catch (err) {
-      console.error(`[send-eval-email] Exception for ${recipient.email}:`, err);
+    } catch (err: any) {
+      console.error(`[send-eval-email] Failed for ${recipient.email}:`, err);
       failed++;
-      errors.push(`${recipient.email}: ${String(err)}`);
+      errors.push(`${recipient.email}: ${String(err?.message || err)}`);
     }
   }
 
@@ -188,3 +196,4 @@ serve(async (req: Request) => {
     status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
+
