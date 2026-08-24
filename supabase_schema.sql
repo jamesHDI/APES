@@ -762,19 +762,30 @@ INSERT INTO public.employees (
     'pod', 'a0000000-0000-0000-0000-000000000009', 'People Operations (HR)', 'Department Head - People Operations (HR)', 'Regular', '2024-01-01',
     true, true, 'approved', false, true, 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80'
   )
-ON CONFLICT (email) DO UPDATE 
-SET name = EXCLUDED.name, position = EXCLUDED.position, role = EXCLUDED.role, is_active = true, is_approved = true;
+ON CONFLICT (employee_number) DO UPDATE 
+SET 
+  name = EXCLUDED.name,
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = EXCLUDED.email,
+  username = EXCLUDED.username,
+  position = EXCLUDED.position,
+  role = EXCLUDED.role,
+  department_id = EXCLUDED.department_id,
+  department_name = EXCLUDED.department_name,
+  is_active = true,
+  is_approved = true;
 
 -- Update department head user IDs in departments table
-UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000002' WHERE code = 'ACC';
-UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000003' WHERE code = 'ADM';
-UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000004' WHERE code = 'BMC';
-UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000005' WHERE code = 'FOP';
-UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000006' WHERE code = 'GAW';
-UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000007' WHERE code = 'LGL';
-UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000008' WHERE code = 'MKT';
-UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000009' WHERE code = 'OPS';
-UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000010' WHERE code = 'POHR';
+UPDATE public.departments SET head_user_id = (SELECT id FROM public.employees WHERE employee_number = 'DH-ACC-01') WHERE code = 'ACC';
+UPDATE public.departments SET head_user_id = (SELECT id FROM public.employees WHERE employee_number = 'DH-ADM-01') WHERE code = 'ADM';
+UPDATE public.departments SET head_user_id = (SELECT id FROM public.employees WHERE employee_number = 'DH-BMC-01') WHERE code = 'BMC';
+UPDATE public.departments SET head_user_id = (SELECT id FROM public.employees WHERE employee_number = 'DH-FOP-01') WHERE code = 'FOP';
+UPDATE public.departments SET head_user_id = (SELECT id FROM public.employees WHERE employee_number = 'DH-GAW-01') WHERE code = 'GAW';
+UPDATE public.departments SET head_user_id = (SELECT id FROM public.employees WHERE employee_number = 'DH-LGL-01') WHERE code = 'LGL';
+UPDATE public.departments SET head_user_id = (SELECT id FROM public.employees WHERE employee_number = 'DH-MKT-01') WHERE code = 'MKT';
+UPDATE public.departments SET head_user_id = (SELECT id FROM public.employees WHERE employee_number = 'DH-OPS-01') WHERE code = 'OPS';
+UPDATE public.departments SET head_user_id = (SELECT id FROM public.employees WHERE employee_number = 'DH-POHR-01') WHERE code = 'POHR';
 
 -- ==============================================================================
 -- INITIAL SEED DATA: EVALUATION CYCLES
