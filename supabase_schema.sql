@@ -690,7 +690,8 @@ VALUES
   ('a0000000-0000-0000-0000-000000000007', 'MKT', 'Marketing', 'Pam Fernando', 16, true),
   ('a0000000-0000-0000-0000-000000000008', 'OPS', 'Operations', 'Jun Embuido', 25, true),
   ('a0000000-0000-0000-0000-000000000009', 'POHR', 'People Operations (HR)', 'Malene Pellazo', 9, true),
-  ('a0000000-0000-0000-0000-000000000010', 'SLS', 'Sales', 'Sales Dept Head', 22, true)
+  ('a0000000-0000-0000-0000-000000000010', 'SLS', 'Sales', 'Sales Dept Head', 22, true),
+  ('a0000000-0000-0000-0000-000000000011', 'CRT', 'Creatives', 'Department Head', 8, true)
 ON CONFLICT (code) DO UPDATE 
 SET name = EXCLUDED.name, head_name = EXCLUDED.head_name, employee_count = EXCLUDED.employee_count;
 

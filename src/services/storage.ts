@@ -233,6 +233,7 @@ export const SEED_DEPARTMENTS: Department[] = [
   { id: 'dept_acc', name: 'Accounting', code: 'ACC', headId: 'usr_dh_acc', headName: 'Mary Anne Murphy', employeeCount: 10, isActive: true },
   { id: 'dept_adm', name: 'Admin', code: 'ADM', headId: 'usr_dh_adm', headName: 'James Ivan Abendan', employeeCount: 8, isActive: true },
   { id: 'dept_bmc', name: 'BMC', code: 'BMC', headId: 'usr_dh_bmc', headName: 'Rara Carrillo', employeeCount: 12, isActive: true },
+  { id: 'dept_crt', name: 'Creatives', code: 'CRT', headId: '', headName: 'Department Head', employeeCount: 8, isActive: true },
   { id: 'dept_fop', name: 'Finance / Office of the President', code: 'FOP', headId: 'usr_dh_fop', headName: 'Emman Buenaventura', employeeCount: 15, isActive: true },
   { id: 'dept_gaw', name: 'GA & World', code: 'GAW', headId: 'usr_dh_gaw', headName: 'Melette Floresca', employeeCount: 14, isActive: true },
   { id: 'dept_leg', name: 'Legal', code: 'LGL', headId: 'usr_dh_leg', headName: 'Jem delos Santos', employeeCount: 6, isActive: true },
@@ -333,12 +334,17 @@ export const getStoredDepartments = (): Department[] => {
     try {
       const depts: Department[] = JSON.parse(data);
       const filtered = depts.filter(d => d.name !== 'HDI Adventures' && d.id !== 'dept_hdi');
-      // Ensure key departments (Marketing, Operations) are always included
-      const hasMkt = filtered.some(d => d.code === 'MKT' || d.name === 'Marketing');
-      const hasOps = filtered.some(d => d.code === 'OPS' || d.name === 'Operations');
-      if (hasMkt && hasOps && filtered.length >= 10) {
-        return filtered;
+      // Ensure all seed departments (including Creatives, Marketing, Operations) exist in the list
+      const merged = [...filtered];
+      for (const seedDept of SEED_DEPARTMENTS) {
+        if (!merged.some(d => d.code === seedDept.code || d.id === seedDept.id || d.name.toLowerCase() === seedDept.name.toLowerCase())) {
+          merged.push(seedDept);
+        }
       }
+      if (merged.length > filtered.length) {
+        localStorage.setItem(DEPARTMENTS_KEY, JSON.stringify(merged));
+      }
+      return merged;
     } catch {}
   }
   localStorage.setItem(DEPARTMENTS_KEY, JSON.stringify(SEED_DEPARTMENTS));
