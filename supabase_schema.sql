@@ -126,43 +126,6 @@ ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS reviewed_at TIM
 ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS start_date DATE;
 ALTER TABLE public.evaluation_templates ADD COLUMN IF NOT EXISTS end_date DATE;
 
--- ==============================================================================
--- CHANGE 2: CALIBRATION REQUESTS TABLE
--- ==============================================================================
-CREATE TABLE IF NOT EXISTS public.calibration_requests (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    evaluation_id UUID REFERENCES public.evaluations(id) ON DELETE CASCADE,
-    employee_id UUID REFERENCES public.employees(id) ON DELETE CASCADE,
-    employee_name VARCHAR(150) NOT NULL,
-    department_id UUID REFERENCES public.departments(id) ON DELETE SET NULL,
-    department_name VARCHAR(100) NOT NULL,
-    evaluation_title VARCHAR(200),
-    requested_component VARCHAR(200) NOT NULL,
-    current_value TEXT,
-    requested_value TEXT NOT NULL,
-    employee_remark TEXT,
-    status VARCHAR(50) NOT NULL DEFAULT 'pending_dept_head'
-        CHECK (status IN ('pending_dept_head','accepted','rejected','resubmitted_to_pod','pod_approved','pod_rejected','deployed')),
-    dept_head_decision VARCHAR(50),
-    dept_head_remark TEXT,
-    dept_head_reviewed_at TIMESTAMPTZ,
-    pod_decision VARCHAR(50),
-    pod_remark TEXT,
-    pod_reviewed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-ALTER TABLE public.calibration_requests ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow public calibration_requests all" ON public.calibration_requests;
-CREATE POLICY "Allow public calibration_requests all" ON public.calibration_requests FOR ALL USING (true) WITH CHECK (true);
-
-CREATE INDEX IF NOT EXISTS idx_calibration_requests_employee_id ON public.calibration_requests(employee_id);
-CREATE INDEX IF NOT EXISTS idx_calibration_requests_evaluation_id ON public.calibration_requests(evaluation_id);
-CREATE INDEX IF NOT EXISTS idx_calibration_requests_department_id ON public.calibration_requests(department_id);
-CREATE INDEX IF NOT EXISTS idx_calibration_requests_status ON public.calibration_requests(status);
-
-
 -- 5B. CORE VALUES TABLE (template-scoped Part 1B definitions)
 CREATE TABLE IF NOT EXISTS public.core_values (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -173,9 +136,6 @@ CREATE TABLE IF NOT EXISTS public.core_values (
     sort_order INT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
-CREATE INDEX IF NOT EXISTS idx_core_values_template_id ON public.core_values(template_id);
-CREATE INDEX IF NOT EXISTS idx_kpis_template_id ON public.kpis(template_id);
 
 -- 6. KRA CATEGORIES & KPIS TABLE
 CREATE TABLE IF NOT EXISTS public.kpis (
@@ -188,6 +148,9 @@ CREATE TABLE IF NOT EXISTS public.kpis (
     evidence_required BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_core_values_template_id ON public.core_values(template_id);
+CREATE INDEX IF NOT EXISTS idx_kpis_template_id ON public.kpis(template_id);
 
 -- 7. EVALUATIONS TABLE (SCORECARDS)
 CREATE TABLE IF NOT EXISTS public.evaluations (
@@ -227,6 +190,42 @@ CREATE TABLE IF NOT EXISTS public.evaluations (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ==============================================================================
+-- CALIBRATION REQUESTS TABLE (Placed after evaluations & employees exist)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.calibration_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    evaluation_id UUID REFERENCES public.evaluations(id) ON DELETE CASCADE,
+    employee_id UUID REFERENCES public.employees(id) ON DELETE CASCADE,
+    employee_name VARCHAR(150) NOT NULL,
+    department_id UUID REFERENCES public.departments(id) ON DELETE SET NULL,
+    department_name VARCHAR(100) NOT NULL,
+    evaluation_title VARCHAR(200),
+    requested_component VARCHAR(200) NOT NULL,
+    current_value TEXT,
+    requested_value TEXT NOT NULL,
+    employee_remark TEXT,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending_dept_head'
+        CHECK (status IN ('pending_dept_head','accepted','rejected','resubmitted_to_pod','pod_approved','pod_rejected','deployed')),
+    dept_head_decision VARCHAR(50),
+    dept_head_remark TEXT,
+    dept_head_reviewed_at TIMESTAMPTZ,
+    pod_decision VARCHAR(50),
+    pod_remark TEXT,
+    pod_reviewed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.calibration_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public calibration_requests all" ON public.calibration_requests;
+CREATE POLICY "Allow public calibration_requests all" ON public.calibration_requests FOR ALL USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_calibration_requests_employee_id ON public.calibration_requests(employee_id);
+CREATE INDEX IF NOT EXISTS idx_calibration_requests_evaluation_id ON public.calibration_requests(evaluation_id);
+CREATE INDEX IF NOT EXISTS idx_calibration_requests_department_id ON public.calibration_requests(department_id);
+CREATE INDEX IF NOT EXISTS idx_calibration_requests_status ON public.calibration_requests(status);
 
 -- Ensure existing database instances add missing columns safely
 ALTER TABLE public.evaluations ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.employees(id) ON DELETE CASCADE;
@@ -323,6 +322,36 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     read_by_users JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 12B. DIRECT MESSAGES & CONCERNS TABLE
+CREATE TABLE IF NOT EXISTS public.direct_messages (
+    id VARCHAR(100) PRIMARY KEY,
+    sender_id VARCHAR(100) NOT NULL,
+    sender_name VARCHAR(150) NOT NULL,
+    sender_role VARCHAR(50),
+    sender_avatar_url TEXT,
+    sender_department VARCHAR(100),
+    recipient_id VARCHAR(100) NOT NULL,
+    recipient_name VARCHAR(150) NOT NULL,
+    recipient_role VARCHAR(50),
+    recipient_avatar_url TEXT,
+    recipient_department VARCHAR(100),
+    subject VARCHAR(200),
+    message TEXT NOT NULL,
+    is_concern BOOLEAN DEFAULT FALSE,
+    category VARCHAR(100),
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.direct_messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public direct_messages all" ON public.direct_messages;
+CREATE POLICY "Allow public direct_messages all" ON public.direct_messages FOR ALL USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_direct_messages_sender_id ON public.direct_messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_direct_messages_recipient_id ON public.direct_messages(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_direct_messages_created_at ON public.direct_messages(created_at);
 
 -- 13. AUDIT LOGS TABLE
 CREATE TABLE IF NOT EXISTS public.audit_logs (
