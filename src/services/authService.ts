@@ -188,7 +188,9 @@ export const changeUserPassword = async (userIdOrEmail: string, newPassword: str
   }
 
   saveUsers(users);
-  setCurrentUserStore(targetUser);
+  if (sessionStorage.getItem('apes_session_active_v3') === 'true') {
+    setCurrentUserStore(targetUser);
+  }
 
   if (isSupabaseConfigured && supabase) {
     try {

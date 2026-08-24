@@ -260,6 +260,16 @@ export const App: React.FC = () => {
 
     const initSession = async () => {
       try {
+        const isSessionActive = sessionStorage.getItem('apes_session_active_v3') === 'true';
+        if (!isSessionActive) {
+          clearCurrentUserStore();
+          if (isMounted) {
+            setIsAuthenticated(false);
+            setIsSessionLoading(false);
+          }
+          return;
+        }
+
         const rawSavedTab = sessionStorage.getItem('apes_active_tab_v3');
         try {
           localStorage.removeItem('apes_active_tab_v3'); // Ensure no cross-tab state leakage
@@ -290,15 +300,18 @@ export const App: React.FC = () => {
               setActiveTab(validTab);
             }
           } else {
+            clearCurrentUserStore();
             if (isMounted) setIsAuthenticated(false);
           }
         } else {
+          clearCurrentUserStore();
           if (isMounted) {
             setIsAuthenticated(false);
           }
         }
       } catch (err) {
         console.warn('Error restoring session:', err);
+        clearCurrentUserStore();
         if (isMounted) setIsAuthenticated(false);
       } finally {
         if (isMounted) {
@@ -626,9 +639,9 @@ export const App: React.FC = () => {
   }, [currentUser, isAuthenticated, handleLogout]);
 
   const handleRegisterNewUser = async (newUser: User) => {
-    const updated = [newUser, ...users];
+    const updated = [newUser, ...users.filter(u => u.id !== newUser.id && u.email.toLowerCase() !== newUser.email.toLowerCase())];
     setUsers(updated);
-    await handleSaveUsers(updated);
+    saveUsers(updated);
   };
 
   const handleApproveUser = async (approvedUser: User) => {
@@ -692,8 +705,8 @@ export const App: React.FC = () => {
       throw new Error(errorMessage);
     }
 
-    // Sync current logged-in user if their profile was updated
-    if (currentUser) {
+    // Sync current logged-in user ONLY IF user is actively authenticated
+    if (currentUser && isAuthenticated) {
       const matchMe = updatedUsers.find(u => u.id === currentUser.id || u.email.toLowerCase() === currentUser.email.toLowerCase());
       if (matchMe) {
         setCurrentUser(matchMe);

@@ -294,13 +294,17 @@ export const saveUsers = (users: User[]) => {
 };
 
 export const getStoredCurrentUser = (): User | null => {
-  const sessionData = sessionStorage.getItem(CURRENT_USER_KEY);
-  if (sessionData) {
-    try {
+  try {
+    const isSessionActive = sessionStorage.getItem('apes_session_active_v3') === 'true';
+    if (!isSessionActive) {
+      return null;
+    }
+    const sessionData = sessionStorage.getItem(CURRENT_USER_KEY);
+    if (sessionData) {
       const user: User = JSON.parse(sessionData);
       if (user && user.id) return user;
-    } catch {}
-  }
+    }
+  } catch {}
   return null;
 };
 
@@ -313,9 +317,13 @@ export const setCurrentUserStore = (user: User) => {
 export const clearCurrentUserStore = () => {
   try {
     sessionStorage.removeItem(CURRENT_USER_KEY);
+    sessionStorage.removeItem('apes_session_active_v3');
+    sessionStorage.removeItem('apes_active_tab_v3');
   } catch (e) {}
   try {
     localStorage.removeItem(CURRENT_USER_KEY);
+    localStorage.removeItem('apes_session_active_v3');
+    localStorage.removeItem('apes_active_tab_v3');
   } catch (e) {}
 };
 
