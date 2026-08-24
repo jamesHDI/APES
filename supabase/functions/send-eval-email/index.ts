@@ -153,13 +153,59 @@ serve(async (req: Request) => {
 
   let transporter: any = null;
   if (SMTP_USER && SMTP_PASS) {
-    transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS.replace(/\s+/g, ""), // strip any spaces from 16-char app passwords
-      },
-    });
+    const SMTP_HOST = Deno.env.get("SMTP_HOST");
+    const SMTP_PORT = Deno.env.get("SMTP_PORT") ? parseInt(Deno.env.get("SMTP_PORT")!) : 587;
+    const SMTP_SECURE = Deno.env.get("SMTP_SECURE") === "true";
+    const SMTP_SERVICE = Deno.env.get("SMTP_SERVICE")?.toLowerCase();
+
+    const isOutlook = SMTP_SERVICE?.includes("outlook") ||
+                      SMTP_SERVICE?.includes("office") ||
+                      SMTP_SERVICE?.includes("hotmail") ||
+                      SMTP_USER.toLowerCase().includes("@outlook.") ||
+                      SMTP_USER.toLowerCase().includes("@hotmail.") ||
+                      SMTP_USER.toLowerCase().includes("@live.") ||
+                      SMTP_HOST?.includes("office365") ||
+                      SMTP_HOST?.includes("outlook");
+
+    if (SMTP_HOST) {
+      transporter = nodemailer.createTransport({
+        host: SMTP_HOST,
+        port: SMTP_PORT,
+        secure: SMTP_SECURE,
+        auth: {
+          user: SMTP_USER,
+          pass: SMTP_PASS,
+        },
+        tls: {
+          ciphers: "SSLv3",
+          rejectUnauthorized: false,
+        },
+      });
+    } else if (isOutlook) {
+      // Direct Outlook / Microsoft 365 SMTP configuration
+      transporter = nodemailer.createTransport({
+        host: "smtp-mail.outlook.com",
+        port: 587,
+        secure: false, // STARTTLS
+        auth: {
+          user: SMTP_USER,
+          pass: SMTP_PASS,
+        },
+        tls: {
+          ciphers: "SSLv3",
+          rejectUnauthorized: false,
+        },
+      });
+    } else {
+      // Default to Gmail service
+      transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: SMTP_USER,
+          pass: SMTP_PASS.replace(/\s+/g, ""), // strip spaces if app password
+        },
+      });
+    }
   }
 
   let sent = 0, failed = 0;
