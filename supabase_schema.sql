@@ -677,38 +677,146 @@ CREATE TRIGGER trg_supersede_older_drafts
   EXECUTE FUNCTION public.supersede_older_drafts();
 
 -- ==============================================================================
--- 15. CALIBRATION REQUESTS TABLE
+-- INITIAL SEED DATA: DEPARTMENTS
 -- ==============================================================================
-CREATE TABLE IF NOT EXISTS public.calibration_requests (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    evaluation_id UUID,
-    employee_id UUID,
-    employee_name VARCHAR(150),
-    department_id UUID,
-    department_name VARCHAR(100),
-    evaluation_title VARCHAR(200),
-    requested_component VARCHAR(200) NOT NULL,
-    current_value TEXT,
-    requested_value TEXT NOT NULL,
-    employee_remark TEXT,
-    status VARCHAR(50) DEFAULT 'pending_dept_head' CHECK (status IN ('pending_dept_head', 'accepted', 'rejected', 'resubmitted_to_pod', 'pod_approved', 'pod_rejected', 'deployed')),
-    dept_head_decision VARCHAR(50),
-    dept_head_remark TEXT,
-    dept_head_reviewed_at TIMESTAMPTZ,
-    pod_decision VARCHAR(50),
-    pod_remark TEXT,
-    pod_reviewed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+INSERT INTO public.departments (id, code, name, head_name, employee_count, is_active)
+VALUES
+  ('a0000000-0000-0000-0000-000000000001', 'ACC', 'Accounting', 'Mary Anne Murphy', 10, true),
+  ('a0000000-0000-0000-0000-000000000002', 'ADM', 'Admin', 'James Ivan Abendan', 8, true),
+  ('a0000000-0000-0000-0000-000000000003', 'BMC', 'BMC', 'Rara Carrillo', 12, true),
+  ('a0000000-0000-0000-0000-000000000004', 'FOP', 'Finance / Office of the President', 'Emman Buenaventura', 15, true),
+  ('a0000000-0000-0000-0000-000000000005', 'GAW', 'GA & World', 'Melette Floresca', 14, true),
+  ('a0000000-0000-0000-0000-000000000006', 'LGL', 'Legal', 'Jem delos Santos', 6, true),
+  ('a0000000-0000-0000-0000-000000000007', 'MKT', 'Marketing', 'Pam Fernando', 16, true),
+  ('a0000000-0000-0000-0000-000000000008', 'OPS', 'Operations', 'Jun Embuido', 25, true),
+  ('a0000000-0000-0000-0000-000000000009', 'POHR', 'People Operations (HR)', 'Malene Pellazo', 9, true),
+  ('a0000000-0000-0000-0000-000000000010', 'SLS', 'Sales', 'Sales Dept Head', 22, true)
+ON CONFLICT (code) DO UPDATE 
+SET name = EXCLUDED.name, head_name = EXCLUDED.head_name, employee_count = EXCLUDED.employee_count;
 
-ALTER TABLE public.calibration_requests ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public read-write for calibration_requests"
-  ON public.calibration_requests FOR ALL
-  USING (true)
-  WITH CHECK (true);
+-- ==============================================================================
+-- INITIAL SEED DATA: EMPLOYEES / USERS
+-- ==============================================================================
+INSERT INTO public.employees (
+  id, employee_number, first_name, middle_name, last_name, name, email, username, password,
+  role, department_id, department_name, position, employment_status, date_hired,
+  is_active, is_approved, approval_status, requires_password_change, is_department_head, avatar_url
+) VALUES
+  (
+    'b0000000-0000-0000-0000-000000000001', 'ADMIN-001', 'System', '', 'Administrator', 'System Administrator',
+    'Admin.Systemad@hdiadventures.com', 'Admin.Systemad', 'ADMIN',
+    'system_admin', 'a0000000-0000-0000-0000-000000000002', 'Admin', 'System Administrator', 'Regular', '2024-01-01',
+    true, true, 'approved', true, false, 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80'
+  ),
+  (
+    'b0000000-0000-0000-0000-000000000002', 'DH-ACC-01', 'Mary Anne', '', 'Murphy', 'Mary Anne Murphy',
+    'maryanne.murphy@hdiadventures.com', 'maryanne.murphy', 'password',
+    'dept_head', 'a0000000-0000-0000-0000-000000000001', 'Accounting', 'Department Head - Accounting', 'Regular', '2024-01-01',
+    true, true, 'approved', false, true, 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
+  ),
+  (
+    'b0000000-0000-0000-0000-000000000003', 'DH-ADM-01', 'James Ivan', '', 'Abendan', 'James Ivan Abendan',
+    'james.abendan@hdiadventures.com', 'james.abendan', 'password',
+    'dept_head', 'a0000000-0000-0000-0000-000000000002', 'Admin', 'Department Head - Admin', 'Regular', '2024-01-01',
+    true, true, 'approved', false, true, 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80'
+  ),
+  (
+    'b0000000-0000-0000-0000-000000000004', 'DH-BMC-01', 'Rara', '', 'Carrillo', 'Rara Carrillo',
+    'rara.carrillo@hdiadventures.com', 'rara.carrillo', 'password',
+    'dept_head', 'a0000000-0000-0000-0000-000000000003', 'BMC', 'Department Head - BMC', 'Regular', '2024-01-01',
+    true, true, 'approved', false, true, 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80'
+  ),
+  (
+    'b0000000-0000-0000-0000-000000000005', 'DH-FOP-01', 'Emman', '', 'Buenaventura', 'Emman Buenaventura',
+    'emman.buenaventura@hdiadventures.com', 'emman.buenaventura', 'password',
+    'president', 'a0000000-0000-0000-0000-000000000004', 'Finance / Office of the President', 'President & Department Head', 'Regular', '2024-01-01',
+    true, true, 'approved', false, true, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
+  ),
+  (
+    'b0000000-0000-0000-0000-000000000006', 'DH-GAW-01', 'Melette', '', 'Floresca', 'Melette Floresca',
+    'melette.floresca@hdiadventures.com', 'melette.floresca', 'password',
+    'dept_head', 'a0000000-0000-0000-0000-000000000005', 'GA & World', 'Department Head - GA & World', 'Regular', '2024-01-01',
+    true, true, 'approved', false, true, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+  ),
+  (
+    'b0000000-0000-0000-0000-000000000007', 'DH-LGL-01', 'Jem', '', 'delos Santos', 'Jem delos Santos',
+    'jem.delossantos@hdiadventures.com', 'jem.delossantos', 'password',
+    'dept_head', 'a0000000-0000-0000-0000-000000000006', 'Legal', 'Department Head - Legal', 'Regular', '2024-01-01',
+    true, true, 'approved', false, true, 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80'
+  ),
+  (
+    'b0000000-0000-0000-0000-000000000008', 'DH-MKT-01', 'Pam', '', 'Fernando', 'Pam Fernando',
+    'pam.fernando@hdiadventures.com', 'pam.fernando', 'password',
+    'dept_head', 'a0000000-0000-0000-0000-000000000007', 'Marketing', 'Department Head - Marketing', 'Regular', '2024-01-01',
+    true, true, 'approved', false, true, 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
+  ),
+  (
+    'b0000000-0000-0000-0000-000000000009', 'DH-OPS-01', 'Jun', '', 'Embuido', 'Jun Embuido',
+    'jun.embuido@hdiadventures.com', 'jun.embuido', 'password',
+    'dept_head', 'a0000000-0000-0000-0000-000000000008', 'Operations', 'Department Head - Operations', 'Regular', '2024-01-01',
+    true, true, 'approved', false, true, 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80'
+  ),
+  (
+    'b0000000-0000-0000-0000-000000000010', 'DH-POHR-01', 'Malene', '', 'Pellazo', 'Malene Pellazo',
+    'malene.pellazo@hdiadventures.com', 'malene.pellazo', 'password',
+    'pod', 'a0000000-0000-0000-0000-000000000009', 'People Operations (HR)', 'Department Head - People Operations (HR)', 'Regular', '2024-01-01',
+    true, true, 'approved', false, true, 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80'
+  )
+ON CONFLICT (email) DO UPDATE 
+SET name = EXCLUDED.name, position = EXCLUDED.position, role = EXCLUDED.role, is_active = true, is_approved = true;
 
-CREATE INDEX IF NOT EXISTS idx_calibration_requests_employee_id ON public.calibration_requests(employee_id);
-CREATE INDEX IF NOT EXISTS idx_calibration_requests_department_id ON public.calibration_requests(department_id);
-CREATE INDEX IF NOT EXISTS idx_calibration_requests_status ON public.calibration_requests(status);
+-- Update department head user IDs in departments table
+UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000002' WHERE code = 'ACC';
+UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000003' WHERE code = 'ADM';
+UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000004' WHERE code = 'BMC';
+UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000005' WHERE code = 'FOP';
+UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000006' WHERE code = 'GAW';
+UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000007' WHERE code = 'LGL';
+UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000008' WHERE code = 'MKT';
+UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000009' WHERE code = 'OPS';
+UPDATE public.departments SET head_user_id = 'b0000000-0000-0000-0000-000000000010' WHERE code = 'POHR';
+
+-- ==============================================================================
+-- INITIAL SEED DATA: EVALUATION CYCLES
+-- ==============================================================================
+INSERT INTO public.evaluation_cycles (id, name, period, start_date, end_date, status, total_assigned, completed_count)
+VALUES (
+  'c0000000-0000-0000-0000-000000000001',
+  'FY 2025 Annual Performance Evaluation',
+  'January 1, 2025 - December 31, 2025',
+  '2025-01-01',
+  '2025-12-31',
+  'active',
+  137,
+  42
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- ==============================================================================
+-- INITIAL SEED DATA: EVALUATION TEMPLATES
+-- ==============================================================================
+INSERT INTO public.evaluation_templates (
+  id, title, department_id, department_name, evaluation_period, eligibility_weight, core_values_weight, is_active, status
+) VALUES (
+  'd0000000-0000-0000-0000-000000000001',
+  'Sales Performance Evaluation Master Scorecard',
+  'a0000000-0000-0000-0000-000000000010',
+  'Sales',
+  'January-September 2025',
+  85.00,
+  15.00,
+  true,
+  'approved'
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed Core Values for Master Template
+INSERT INTO public.core_values (id, template_id, name, description, weight_percent, sort_order)
+VALUES
+  ('e0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'Integrity & Ethics', 'Upholds highest standards of honesty, fairness, and business ethics.', 3.75, 1),
+  ('e0000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000001', 'Excellence & Performance', 'Consistently delivers top-tier results and strives for continuous improvement.', 3.75, 2),
+  ('e0000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000001', 'Teamwork & Collaboration', 'Fosters positive collaboration across departments and supports team goals.', 3.75, 3),
+  ('e0000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000001', 'Accountability & Ownership', 'Takes full ownership of duties, commitments, and professional conduct.', 3.75, 4)
+ON CONFLICT (id) DO NOTHING;
+
 
