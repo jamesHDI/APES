@@ -254,6 +254,41 @@ serve(async (req: Request) => {
           errors.push(`${recipient.email}: ${errText}`);
         }
       }
+
+      // Optional: Dispatch Microsoft Teams 1:1 Direct Message Notification
+      const TEAMS_WEBHOOK_URL = Deno.env.get("TEAMS_WEBHOOK_URL") || Deno.env.get("MS_TEAMS_WORKFLOW_URL");
+      if (TEAMS_WEBHOOK_URL) {
+        try {
+          const formattedDeadline = new Date(payload.deadline).toLocaleDateString("en-US", {
+            year: "numeric", month: "long", day: "numeric",
+          });
+          const teamsPayload = {
+            recipientEmail: recipient.email,
+            recipientName: recipient.name,
+            deploymentTitle: payload.deploymentTitle,
+            period: payload.period,
+            deadline: formattedDeadline,
+            deployedBy: payload.deployedBy,
+            appUrl: APP_URL,
+            message: `Hello ${recipient.name}, you have been assigned a new performance evaluation: **${payload.deploymentTitle}** (Period: ${payload.period} | Deadline: ${formattedDeadline}). Please log in to APES to start your evaluation: ${APP_URL}`
+          };
+
+          const teamsRes = await fetch(TEAMS_WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(teamsPayload)
+          });
+
+          if (teamsRes.ok) {
+            console.log(`[send-eval-email] [Teams DM] Sent successfully to ${recipient.email}`);
+          } else {
+            const tErr = await teamsRes.text();
+            console.warn(`[send-eval-email] [Teams DM Note for ${recipient.email}]:`, tErr);
+          }
+        } catch (tErr) {
+          console.warn(`[send-eval-email] [Teams DM Warning for ${recipient.email}]:`, tErr);
+        }
+      }
     } catch (err: any) {
       console.error(`[send-eval-email] Failed for ${recipient.email}:`, err);
       failed++;
