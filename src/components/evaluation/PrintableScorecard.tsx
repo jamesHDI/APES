@@ -224,29 +224,47 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
       const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
       const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
 
-      if (page1Elem) {
-        const canvas1 = await html2canvas(page1Elem, {
+      const addElementToPdf = async (elem: HTMLElement, isFirst: boolean) => {
+        const canvas = await html2canvas(elem, {
           scale: 2,
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff',
         });
-        const imgData1 = canvas1.toDataURL('image/jpeg', 0.95);
-        const imgHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
-        pdf.addImage(imgData1, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight1, pdfHeight));
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        if (!isFirst) {
+          pdf.addPage();
+        }
+
+        // If element fits on 1 page (or is within 12% over), fit it seamlessly on the single page
+        if (imgHeight <= pdfHeight * 1.12) {
+          const fitHeight = Math.min(imgHeight, pdfHeight);
+          pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, fitHeight);
+        } else {
+          // If content genuinely exceeds 1 page by more than 12%, paginate cleanly
+          let heightLeft = imgHeight;
+          let position = 0;
+
+          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
+          heightLeft -= pdfHeight;
+
+          while (heightLeft > 8) { // 8mm threshold to avoid empty trailing whitespace pages
+            position -= pdfHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
+            heightLeft -= pdfHeight;
+          }
+        }
+      };
+
+      if (page1Elem) {
+        await addElementToPdf(page1Elem, true);
       }
 
       if (page2Elem) {
-        pdf.addPage();
-        const canvas2 = await html2canvas(page2Elem, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-        });
-        const imgData2 = canvas2.toDataURL('image/jpeg', 0.95);
-        const imgHeight2 = (canvas2.height * pdfWidth) / canvas2.width;
-        pdf.addImage(imgData2, 'JPEG', 0, 0, pdfWidth, Math.min(imgHeight2, pdfHeight));
+        await addElementToPdf(page2Elem, false);
       }
 
       const safeName = (employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -376,7 +394,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
 
                     {/* KPI rows — one row per standard, matching original paper layout */}
                     {standards.length > 0 ? standards.map((st, stIdx) => (
-                      <tr key={`${kpi.kpiId}_st_${st.rating}`} className={activeRating === st.rating ? 'bg-brand-50' : ''}>
+                      <tr key={`${kpi.kpiId}_st_${st.rating}`}>
                         {/* KRA column: only on the first standard row, spans all standard rows */}
                         {stIdx === 0 && (
                           <td
@@ -388,13 +406,13 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                         )}
                         {/* PERFORMANCE INDICATORS (KPI): the standard description */}
                         <td className={`border border-slate-400 p-1.5 align-middle text-[10px] ${
-                          activeRating === st.rating ? 'font-bold text-brand-700' : 'text-slate-700'
+                          activeRating === st.rating ? 'font-bold text-[#ea580c]' : 'text-slate-700'
                         }`}>
                           {st.description}
                         </td>
                         {/* SCALE */}
                         <td className={`border border-slate-400 p-1.5 text-center align-middle text-[10px] ${
-                          activeRating === st.rating ? 'font-bold text-brand-700 underline' : 'text-slate-600'
+                          activeRating === st.rating ? 'font-bold text-[#ea580c] underline' : 'text-slate-600'
                         }`}>
                           {st.rating} - {st.rating === 4 ? 'Exceeds' : st.rating === 3 ? 'Meets' : st.rating === 2 ? 'Barely Meets' : 'Did Not Meet'}
                         </td>
@@ -607,25 +625,25 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
           </div>
 
           {/* PART 2A: PERSONAL DEVELOPMENT PLAN */}
-          <div className="border border-slate-400 p-3 mb-4 space-y-2">
-            <h4 className="font-bold text-[11px] uppercase bg-slate-100 p-1 border-b border-slate-300">
+          <div className="border border-slate-400 p-3 mb-4 space-y-3 bg-white">
+            <h4 className="font-bold text-[11px] uppercase bg-slate-100 p-1.5 border-b border-slate-300 text-slate-900">
               PART 2A: PERSONAL DEVELOPMENT PLAN
             </h4>
-            <div>
-              <p className="font-bold text-[10px] text-slate-700 uppercase">1. KEY STRENGTHS:</p>
-              <p className="p-1.5 bg-slate-50 border border-slate-200 min-h-[40px] text-[10.5px]">
+            <div className="space-y-1">
+              <div className="font-bold text-[10px] text-slate-800 uppercase tracking-wide">1. KEY STRENGTHS:</div>
+              <div className="p-2 bg-slate-50 border border-slate-300 text-[10px] leading-relaxed text-slate-800" style={{ minHeight: '36px', wordBreak: 'break-word', display: 'block' }}>
                 {devPlan.strengths || 'N/A'}
-              </p>
+              </div>
             </div>
-            <div>
-              <p className="font-bold text-[10px] text-slate-700 uppercase">2. AREAS FOR IMPROVEMENT:</p>
-              <p className="p-1.5 bg-slate-50 border border-slate-200 min-h-[40px] text-[10.5px]">
+            <div className="space-y-1">
+              <div className="font-bold text-[10px] text-slate-800 uppercase tracking-wide">2. AREAS FOR IMPROVEMENT:</div>
+              <div className="p-2 bg-slate-50 border border-slate-300 text-[10px] leading-relaxed text-slate-800" style={{ minHeight: '36px', wordBreak: 'break-word', display: 'block' }}>
                 {devPlan.areasForImprovement || 'N/A'}
-              </p>
+              </div>
             </div>
-            <div>
-              <p className="font-bold text-[10px] text-slate-700 uppercase">3. WORKPLACE LEARNING & DEVELOPMENT NEEDS (Programs/Courses):</p>
-              <ul className="list-disc pl-4 space-y-0.5 text-[10.5px]">
+            <div className="space-y-1">
+              <div className="font-bold text-[10px] text-slate-800 uppercase tracking-wide">3. WORKPLACE LEARNING & DEVELOPMENT NEEDS (Programs/Courses):</div>
+              <ul className="list-disc pl-4 space-y-1 text-[10px] leading-relaxed text-slate-800">
                 {learningNeeds.length > 0 ? (
                   learningNeeds.map((need, idx) => (
                     <li key={need.id || `need_${idx}`}>
