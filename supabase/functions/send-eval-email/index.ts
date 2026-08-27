@@ -95,7 +95,28 @@ body{margin:0;padding:0;background:#f5f5f5;font-family:"Segoe UI",Arial,sans-ser
     <div class="info-row"><span class="info-label">Deadline:</span><span class="deadline-value">&#9888; ${formattedDeadline}</span></div>
     <div class="info-row"><span class="info-label">Deployed by:</span><span class="info-value">${deployedBy}</span></div>
   </div>
-  <div class="cta-wrap"><a href="${APP_URL}" class="cta-btn" style="color:#ffffff;">Open APES &amp; Start Evaluation</a></div>
+
+  <!-- Bulletproof Outlook Button (Visible in Dark Mode & Light Mode) -->
+  <div style="text-align:center; margin: 30px 0 20px 0;">
+    <table border="0" cellspacing="0" cellpadding="0" style="margin: 0 auto; border-collapse: separate;">
+      <tr>
+        <td align="center" bgcolor="#F28C28" style="background-color: #F28C28; border-radius: 8px; padding: 14px 32px; border: 2px solid #E96B1A;">
+          <a href="${APP_URL}" target="_blank" style="font-family: 'Segoe UI', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff !important; text-decoration: none; display: inline-block;">
+            🚀 Open APES &amp; Start Evaluation
+          </a>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Visible High-Contrast Orange Fallback Link for Outlook Dark Mode -->
+  <div style="text-align: center; margin-bottom: 24px;">
+    <span style="font-size: 12px; color: #888888;">Or click direct link: </span>
+    <a href="${APP_URL}" target="_blank" style="color: #F28C28 !important; font-weight: 700; font-size: 13px; text-decoration: underline;">
+      https://apes-eosin.vercel.app/
+    </a>
+  </div>
+
   <div class="note">Tip: Log in using your employee credentials. Navigate to <em>My Evaluations</em> to find this campaign and submit your self-assessment before the deadline.</div>
 </div>
 <div class="footer">
