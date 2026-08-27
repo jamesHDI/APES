@@ -185,6 +185,11 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
     #scorecard-page-2 {
       width: 100%; margin: 0; padding: 6mm 4mm;
       page-break-before: always; break-before: page;
+      page-break-after: always; break-after: page;
+    }
+    #scorecard-page-3 {
+      width: 100%; margin: 0; padding: 6mm 4mm;
+      page-break-before: always; break-before: page;
     }
     table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
     tr    { page-break-inside: avoid; }
@@ -216,6 +221,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
     try {
       const page1Elem = document.getElementById('scorecard-page-1');
       const page2Elem = document.getElementById('scorecard-page-2');
+      const page3Elem = document.getElementById('scorecard-page-3');
 
       const html2canvas = (await import('html2canvas')).default;
       const { jsPDF } = await import('jspdf');
@@ -238,19 +244,19 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
           pdf.addPage();
         }
 
-        // If element fits on 1 page (or is within 12% over), fit it seamlessly on the single page
-        if (imgHeight <= pdfHeight * 1.12) {
+        // If element fits on 1 page (or within 15% margin), fit seamlessly onto the single page
+        if (imgHeight <= pdfHeight * 1.15) {
           const fitHeight = Math.min(imgHeight, pdfHeight);
           pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, fitHeight);
         } else {
-          // If content genuinely exceeds 1 page by more than 12%, paginate cleanly
+          // If content genuinely overflows, split across pages without squashing
           let heightLeft = imgHeight;
           let position = 0;
 
           pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
           heightLeft -= pdfHeight;
 
-          while (heightLeft > 8) { // 8mm threshold to avoid empty trailing whitespace pages
+          while (heightLeft > 8) {
             position -= pdfHeight;
             pdf.addPage();
             pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
@@ -265,6 +271,10 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
 
       if (page2Elem) {
         await addElementToPdf(page2Elem, false);
+      }
+
+      if (page3Elem) {
+        await addElementToPdf(page3Elem, false);
       }
 
       const safeName = (employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -484,7 +494,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
             </tbody>
           </table>
           <div className="pt-2 text-right text-[9px] text-slate-400 font-bold uppercase">
-            HDI HIVE • STRICTLY CONFIDENTIAL • Page 1 of 2
+            HDI HIVE • STRICTLY CONFIDENTIAL • Page 1 of 3
           </div>
         </div>
 
@@ -494,6 +504,24 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
         {/* PAGE 2 CONTENT */}
         <div id="scorecard-page-2" className="bg-white text-black p-8 sm:p-10 rounded-none shadow-xl border border-slate-300 space-y-6 leading-snug">
           
+          {/* Compact Page 2 Header */}
+          <div className="flex items-center justify-between border-b-2 border-hdi-red pb-2 mb-3">
+            <div className="flex items-center space-x-2">
+              <img src="/hdi-logo.png" alt="HDI Hive" className="h-7 w-auto object-contain" />
+              <div>
+                <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-900">
+                  SCORECARD / PERFORMANCE EVALUATION
+                </h2>
+                <p className="text-[8px] text-slate-500 font-semibold uppercase tracking-wider">
+                  HDI HIVE • STRICTLY CONFIDENTIAL
+                </p>
+              </div>
+            </div>
+            <div className="text-right text-[10px]">
+              <span className="font-bold">{employeeName}</span> | <span>{departmentName}</span> | <span className="text-slate-500">{appraisalPeriod}</span>
+            </div>
+          </div>
+
           {/* PART 1B: CORE VALUES */}
           <div className="bg-slate-100 p-2 font-bold text-center border border-slate-400 uppercase text-[11px] mb-2">
             PART 1B: EVALUATION ON SUITABILITY FACTORS (CORE VALUES - WEIGHT: {coreValuesWeight}%)
@@ -654,6 +682,36 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
                   <li className="text-slate-500 italic">No specific learning programs assigned.</li>
                 )}
               </ul>
+            </div>
+          </div>
+
+          <div className="pt-4 text-right text-[9px] text-slate-400 font-bold uppercase">
+            HDI HIVE • STRICTLY CONFIDENTIAL • Page 2 of 3
+          </div>
+
+        </div>
+
+        {/* Page Break demarcation */}
+        <div className="page-break"></div>
+
+        {/* PAGE 3 CONTENT */}
+        <div id="scorecard-page-3" className="bg-white text-black p-8 sm:p-10 rounded-none shadow-xl border border-slate-300 space-y-6 leading-snug">
+          
+          {/* Compact Page 3 Header */}
+          <div className="flex items-center justify-between border-b-2 border-hdi-red pb-2 mb-3">
+            <div className="flex items-center space-x-2">
+              <img src="/hdi-logo.png" alt="HDI Hive" className="h-7 w-auto object-contain" />
+              <div>
+                <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-900">
+                  SCORECARD / PERFORMANCE EVALUATION
+                </h2>
+                <p className="text-[8px] text-slate-500 font-semibold uppercase tracking-wider">
+                  HDI HIVE • STRICTLY CONFIDENTIAL
+                </p>
+              </div>
+            </div>
+            <div className="text-right text-[10px]">
+              <span className="font-bold">{employeeName}</span> | <span>{departmentName}</span> | <span className="text-slate-500">{appraisalPeriod}</span>
             </div>
           </div>
 
@@ -830,7 +888,7 @@ export const PrintableScorecard: React.FC<PrintableScorecardProps> = ({ evaluati
           </div>
 
           <div className="pt-4 text-right text-[9px] text-slate-400 font-bold uppercase">
-            HDI HIVE • STRICTLY CONFIDENTIAL • Page 2 of 2
+            HDI HIVE • STRICTLY CONFIDENTIAL • Page 3 of 3
           </div>
 
         </div>
