@@ -45,6 +45,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
   // Editable fields
   const [firstName, setFirstName] = useState(currentUser.firstName || '');
   const [lastName, setLastName] = useState(currentUser.lastName || '');
+  const [email, setEmail] = useState(currentUser.email || '');
   const [position, setPosition] = useState(currentUser.position || '');
   const [departmentName, setDepartmentName] = useState(currentUser.departmentName || '');
   const [employeeNumber, setEmployeeNumber] = useState(currentUser.employeeNumber || '');
@@ -52,7 +53,6 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
   const [immediateSuperiorName, setImmediateSuperiorName] = useState(currentUser.immediateSuperiorName || '');
   const [departmentHeadName, setDepartmentHeadName] = useState(currentUser.departmentHeadName || '');
   const [contactNumber, setContactNumber] = useState(currentUser.contactNumber || '');
-  const [personalEmail, setPersonalEmail] = useState(currentUser.personalEmail || '');
   const [avatarPreview, setAvatarPreview] = useState(currentUser.avatarUrl || '');
 
   // Profile Picture Size Adjustment State
@@ -94,6 +94,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       activeUserIdRef.current = currentUser.id;
       setFirstName(currentUser.firstName || currentUser.name?.split(' ')[0] || '');
       setLastName(currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || '');
+      setEmail(currentUser.email || '');
       setPosition(currentUser.position || '');
       setDepartmentName(currentUser.departmentName || '');
       setEmployeeNumber(currentUser.employeeNumber || '');
@@ -101,7 +102,6 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       setImmediateSuperiorName(currentUser.immediateSuperiorName || '');
       setDepartmentHeadName(currentUser.departmentHeadName || '');
       setContactNumber(currentUser.contactNumber || '');
-      setPersonalEmail(currentUser.personalEmail || '');
       setAvatarPreview(currentUser.avatarUrl || '');
     }
   }, [currentUser.id]);
@@ -186,6 +186,10 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       showProfileFeedback('error', 'First name and last name are required.');
       return;
     }
+    if (!email.trim() || !email.includes('@')) {
+      showProfileFeedback('error', 'A valid email address is required.');
+      return;
+    }
     setIsSaving(true);
 
     const updatedUser: User = {
@@ -193,6 +197,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       name: `${firstName.trim()} ${lastName.trim()}`,
+      email: email.trim().toLowerCase(),
       position: position.trim(),
       departmentName: departmentName.trim(),
       employeeNumber: employeeNumber.trim(),
@@ -200,13 +205,12 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       immediateSuperiorName: immediateSuperiorName.trim(),
       departmentHeadName: departmentHeadName.trim(),
       contactNumber: contactNumber.trim(),
-      personalEmail: personalEmail.trim(),
       avatarUrl: avatarPreview || currentUser.avatarUrl,
     };
 
     onUpdateUser(updatedUser);
     setIsSaving(false);
-    showProfileFeedback('success', 'Profile and Employment Information updated successfully!');
+    showProfileFeedback('success', 'Profile and account email updated successfully!');
   };
 
   const handleChangePassword = async () => {
@@ -529,16 +533,19 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Personal Email
+                  Account Email <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="email"
-                  value={personalEmail}
-                  onChange={e => setPersonalEmail(e.target.value)}
-                  placeholder="personal@email.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="employee@hdiadventures.com"
                   className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-[#F28C28] focus:ring-4 focus:ring-[#F28C28]/12 transition-all"
-                 />
-               </div>
+                />
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                  Official login email address used for signing in and notifications.
+                </p>
+              </div>
              </div>
 
              <div className="flex justify-end pt-2">

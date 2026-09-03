@@ -190,25 +190,10 @@ export const findEmployeeInSupabase = async (cleanId: string): Promise<User | nu
   try {
     const target = (cleanId || '').trim();
     const targetLower = target.toLowerCase();
-    const mappedUuid = isValidUuid(target) ? target : ensureUuid(target);
 
-    console.log(`[Supabase Auth] Trace Profile Loading - Searching employees table for identifier: "${target}" (mapped UUID: ${mappedUuid})...`);
+    console.log(`[Supabase Auth] Trace Profile Loading - Searching employees table for identifier: "${target}"...`);
 
-    // 1. Query by ID (mapped UUID or raw ID)
-    if (isValidUuid(mappedUuid)) {
-      const { data: byId, error: errId } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('id', mappedUuid)
-        .maybeSingle();
-
-      if (byId && !errId) {
-        console.log(`[Supabase Auth] SINGLE SOURCE OF TRUTH: Loaded employee record directly from Supabase DB by ID: ${byId.id} (${byId.email})`);
-        return mapRowToUser(byId);
-      }
-    }
-
-    // 2. Query by Email
+    // 1. If identifier is an Email, search strictly by email in Supabase
     if (targetLower.includes('@')) {
       const { data: byEmail, error: errEmail } = await supabase
         .from('employees')
@@ -220,9 +205,52 @@ export const findEmployeeInSupabase = async (cleanId: string): Promise<User | nu
         console.log(`[Supabase Auth] SINGLE SOURCE OF TRUTH: Loaded employee record directly from Supabase DB by Email: ${byEmail.email}`);
         return mapRowToUser(byEmail);
       }
+
+      // Check personal_email in DB as fallback
+      const { data: byPersonalEmail, error: errPersonalEmail } = await supabase
+        .from('employees')
+        .select('*')
+        .ilike('personal_email', targetLower)
+        .maybeSingle();
+
+      if (byPersonalEmail && !errPersonalEmail) {
+        console.log(`[Supabase Auth] SINGLE SOURCE OF TRUTH: Loaded employee record directly from Supabase DB by Personal Email: ${byPersonalEmail.personal_email}`);
+        return mapRowToUser(byPersonalEmail);
+      }
+
+      // If searched by email and not found in Supabase DB, return null immediately (do not resurrect old seed emails)
+      console.log(`[Supabase Auth] No active employee record found in Supabase with email: "${targetLower}"`);
+      return null;
     }
 
-    // 3. Query by Employee Number
+    // 2. Query by ID (if valid UUID)
+    if (isValidUuid(target)) {
+      const { data: byId, error: errId } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('id', target)
+        .maybeSingle();
+
+      if (byId && !errId) {
+        console.log(`[Supabase Auth] SINGLE SOURCE OF TRUTH: Loaded employee record directly from Supabase DB by ID: ${byId.id} (${byId.email})`);
+        return mapRowToUser(byId);
+      }
+    }
+
+    // 3. Query by mapped Seed ID
+    if (SEED_UUID_MAP[target]) {
+      const { data: bySeedId, error: errSeedId } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('id', SEED_UUID_MAP[target])
+        .maybeSingle();
+
+      if (bySeedId && !errSeedId) {
+        return mapRowToUser(bySeedId);
+      }
+    }
+
+    // 4. Query by Employee Number
     const { data: byNum, error: errNum } = await supabase
       .from('employees')
       .select('*')
@@ -234,7 +262,7 @@ export const findEmployeeInSupabase = async (cleanId: string): Promise<User | nu
       return mapRowToUser(byNum);
     }
 
-    // 4. Query by Username
+    // 5. Query by Username
     const { data: byUser, error: errUser } = await supabase
       .from('employees')
       .select('*')
@@ -244,57 +272,6 @@ export const findEmployeeInSupabase = async (cleanId: string): Promise<User | nu
     if (byUser && !errUser) {
       console.log(`[Supabase Auth] SINGLE SOURCE OF TRUTH: Loaded employee record directly from Supabase DB by Username: ${byUser.username}`);
       return mapRowToUser(byUser);
-    }
-
-    // 5. Query by Email fallback
-    const { data: byEmailFallback } = await supabase
-      .from('employees')
-      .select('*')
-      .ilike('email', targetLower)
-      .maybeSingle();
-
-    if (byEmailFallback) {
-      console.log(`[Supabase Auth] SINGLE SOURCE OF TRUTH: Loaded employee record directly from Supabase DB by Email fallback: ${byEmailFallback.email}`);
-      return mapRowToUser(byEmailFallback);
-    }
-
-    // Fallback Seed ONLY if account is completely missing from Supabase DB
-    const { SEED_USERS } = await import('./storage');
-    const matchedSeed = SEED_USERS.find(
-      (u) =>
-        u.id === target ||
-        ensureUuid(u.id) === mappedUuid ||
-        u.email.toLowerCase() === targetLower ||
-        (u.employeeNumber && u.employeeNumber.toLowerCase() === targetLower) ||
-        (u.username && u.username.toLowerCase() === targetLower)
-    );
-
-    if (matchedSeed) {
-      const seedUuid = ensureUuid(matchedSeed.id);
-      // Check if user already exists in Supabase DB by seed UUID or email
-      const { data: checkDb } = await supabase
-        .from('employees')
-        .select('*')
-        .or(`id.eq.${seedUuid},email.ilike.${matchedSeed.email}`)
-        .maybeSingle();
-
-      if (checkDb) {
-        console.log(`[Supabase Auth] SINGLE SOURCE OF TRUTH: Found authoritative database record for "${checkDb.email}" in Supabase DB. Returning DB record without overwriting.`);
-        return mapRowToUser(checkDb);
-      }
-
-      console.log(`[Supabase Auth] Account "${matchedSeed.email}" absent from Supabase DB. Provisioning initial seed record...`);
-      await saveEmployeeToSupabase(matchedSeed);
-      const { data: newDbRecord } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('email', matchedSeed.email.trim().toLowerCase())
-        .maybeSingle();
-      if (newDbRecord) {
-        console.log(`[Supabase Auth] Provisioned DB record for "${matchedSeed.email}" with UUID: ${newDbRecord.id}`);
-        return mapRowToUser(newDbRecord);
-      }
-      return matchedSeed;
     }
 
     return null;

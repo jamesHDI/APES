@@ -132,12 +132,15 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
     }
   }
 
-  // Save session state
+  // Save session state & synchronize local cache with authoritative DB record
   const currentUsers = getStoredUsers();
-  if (!currentUsers.some(u => u.id === matchedUser!.id || u.email.toLowerCase() === matchedUser!.email.toLowerCase())) {
-    currentUsers.push(matchedUser);
-    saveUsers(currentUsers);
+  const existingIndex = currentUsers.findIndex(u => u.id === matchedUser!.id);
+  if (existingIndex >= 0) {
+    currentUsers[existingIndex] = matchedUser!;
+  } else {
+    currentUsers.push(matchedUser!);
   }
+  saveUsers(currentUsers);
   setCurrentUserStore(matchedUser);
   return { user: matchedUser };
 };
