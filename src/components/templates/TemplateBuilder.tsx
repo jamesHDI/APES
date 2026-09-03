@@ -1123,8 +1123,8 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 <div className="space-y-3">
                   {kra.kpis.map((kpi) => (
                     <div key={kpi.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="w-full space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1">
                           <input
                             type="text"
                             value={kpi.name}
@@ -1136,18 +1136,6 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                             }}
                             className="w-full font-bold text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
                             placeholder="KPI Name"
-                          />
-                          <textarea
-                            value={kpi.description}
-                            disabled={!canEdit}
-                            onChange={(e) => {
-                              const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, description: e.target.value } : item);
-                              const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
-                              setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
-                            }}
-                            rows={2}
-                            className="w-full text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 resize-none disabled:opacity-60"
-                            placeholder="KPI Description / Goals"
                           />
                         </div>
 
@@ -1182,6 +1170,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                         </div>
                       </div>
 
+                      {/* 4 Boxes of Ratings (Placed on TOP of the comment/description bar) */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
                         {kpi.standards.map((st, sIdx) => (
                           <div key={sIdx} className="p-2.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
@@ -1203,6 +1192,22 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                             />
                           </div>
                         ))}
+                      </div>
+
+                      {/* Comment / KPI Description Bar (Placed UNDER the 4 rating boxes) */}
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                        <textarea
+                          value={kpi.description}
+                          disabled={!canEdit}
+                          onChange={(e) => {
+                            const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, description: e.target.value } : item);
+                            const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
+                            setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
+                          }}
+                          rows={2}
+                          className="w-full text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 resize-none disabled:opacity-60"
+                          placeholder="KPI Description / Goals"
+                        />
                       </div>
                     </div>
                   ))}
