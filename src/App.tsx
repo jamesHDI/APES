@@ -683,18 +683,39 @@ export const App: React.FC = () => {
   };
 
   const handleSaveUsers = async (updatedUsers: User[]) => {
+    const prevUsers = users;
     setUsers(updatedUsers);
     saveUsers(updatedUsers);
 
     let supabaseErrors: string[] = [];
     if (isSupabaseConfigured) {
       for (const u of updatedUsers) {
-        const result = await saveEmployeeToSupabaseDetailed(u);
-        if (!result.success) {
-          const err = (result.error || {}) as Record<string, any>;
-          const errorMsg = err.message || err.code || 'Unknown error';
-          supabaseErrors.push(`${u.email}: ${errorMsg}`);
-          console.warn(`[App] Failed to sync user ${u.email} to Supabase:`, err);
+        const prev = prevUsers.find(
+          oldU => oldU.id === u.id || (oldU.employeeNumber && oldU.employeeNumber === u.employeeNumber)
+        );
+        const prevEmail = prev?.email;
+        const hasChanged = !prev || 
+          prev.email !== u.email || 
+          prev.name !== u.name || 
+          prev.role !== u.role || 
+          prev.position !== u.position || 
+          prev.departmentId !== u.departmentId || 
+          prev.departmentName !== u.departmentName ||
+          prev.isActive !== u.isActive || 
+          prev.isApproved !== u.isApproved || 
+          prev.approvalStatus !== u.approvalStatus ||
+          prev.password !== u.password ||
+          prev.requiresPasswordChange !== u.requiresPasswordChange ||
+          prev.isDepartmentHead !== u.isDepartmentHead;
+
+        if (hasChanged) {
+          const result = await saveEmployeeToSupabaseDetailed(u, prevEmail);
+          if (!result.success) {
+            const err = (result.error || {}) as Record<string, any>;
+            const errorMsg = err.message || err.code || 'Unknown error';
+            supabaseErrors.push(`${u.email}: ${errorMsg}`);
+            console.warn(`[App] Failed to sync user ${u.email} to Supabase:`, err);
+          }
         }
       }
     }
@@ -714,22 +735,34 @@ export const App: React.FC = () => {
       }
     }
 
-    // Sync active evaluations to match updated employee departments & names
+    // Sync active evaluations to match updated employee departments, emails & names
     let evalsChanged = false;
     const syncedEvals = evaluations.map(ev => {
       const matchedUser = updatedUsers.find(u => 
         (ev.employeeId && (u.id === ev.employeeId || u.employeeNumber === ev.employeeId)) ||
         (ev.employeeEmail && u.email.toLowerCase() === ev.employeeEmail.toLowerCase())
       );
-      if (matchedUser && (ev.departmentName !== matchedUser.departmentName || ev.departmentId !== matchedUser.departmentId)) {
-        evalsChanged = true;
-        const updatedEv: Evaluation = {
-          ...ev,
-          departmentName: matchedUser.departmentName,
-          departmentId: matchedUser.departmentId || ev.departmentId,
-          updatedAt: new Date().toISOString()
-        };
-        return updatedEv;
+      if (matchedUser) {
+        let evChanged = false;
+        const updatedEv: Evaluation = { ...ev };
+        if (matchedUser.email && ev.employeeEmail !== matchedUser.email) {
+          updatedEv.employeeEmail = matchedUser.email;
+          evChanged = true;
+        }
+        if (matchedUser.name && ev.employeeName !== matchedUser.name) {
+          updatedEv.employeeName = matchedUser.name;
+          evChanged = true;
+        }
+        if (matchedUser.departmentName && (ev.departmentName !== matchedUser.departmentName || ev.departmentId !== matchedUser.departmentId)) {
+          updatedEv.departmentName = matchedUser.departmentName;
+          updatedEv.departmentId = matchedUser.departmentId || ev.departmentId;
+          evChanged = true;
+        }
+        if (evChanged) {
+          evalsChanged = true;
+          updatedEv.updatedAt = new Date().toISOString();
+          return updatedEv;
+        }
       }
       return ev;
     });
@@ -739,10 +772,39 @@ export const App: React.FC = () => {
       saveEvaluations(syncedEvals);
     }
 
+    // Also sync departments if any department head changed
+    let deptsChanged = false;
+    const syncedDepts = departments.map(d => {
+      const matchedHead = updatedUsers.find(u => 
+        (u.isDepartmentHead || u.role === 'dept_head') && 
+        (u.departmentId === d.id || u.departmentName?.toLowerCase() === d.name?.toLowerCase() || d.headId === u.id || (d.headName && d.headName.toLowerCase() === u.name.toLowerCase()))
+      );
+      if (matchedHead && (d.headName !== matchedHead.name || d.headId !== matchedHead.id)) {
+        deptsChanged = true;
+        return {
+          ...d,
+          headId: matchedHead.id,
+          headName: matchedHead.name
+        };
+      }
+      return d;
+    });
+
+    if (deptsChanged) {
+      setDepartments(syncedDepts);
+      saveDepartments(syncedDepts);
+      if (isSupabaseConfigured) {
+        for (const d of syncedDepts) {
+          saveDepartmentToSupabase(d);
+        }
+      }
+    }
+
     triggerRealtimeBroadcast('data_changed', { type: 'employee' });
   };
 
   const handleUpdateCurrentUser = async (updatedUser: User) => {
+    const prevEmail = currentUser?.email;
     setCurrentUser(updatedUser);
     setCurrentUserStore(updatedUser);
     const updatedUsers = users.map(u => (u.id === updatedUser.id || u.email.toLowerCase() === updatedUser.email.toLowerCase()) ? updatedUser : u);
@@ -750,7 +812,7 @@ export const App: React.FC = () => {
     saveUsers(updatedUsers);
 
     if (isSupabaseConfigured) {
-      const saveRes = await saveEmployeeToSupabaseDetailed(updatedUser);
+      const saveRes = await saveEmployeeToSupabaseDetailed(updatedUser, prevEmail);
       if (saveRes.success) {
         const freshUser = (saveRes.id ? await findEmployeeInSupabase(saveRes.id) : null) || (await findEmployeeInSupabase(updatedUser.id)) || (await findEmployeeInSupabase(updatedUser.email));
         if (freshUser) {

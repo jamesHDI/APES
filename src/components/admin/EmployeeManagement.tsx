@@ -23,7 +23,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { RegisterEmployeeModal } from '../auth/RegisterEmployeeModal';
-import { deleteEmployeeFromSupabase, saveEmployeeToSupabase } from '../../services/supabaseService';
+import { deleteEmployeeFromSupabase, saveEmployeeToSupabase, saveEmployeeToSupabaseDetailed } from '../../services/supabaseService';
 import { isHashedPassword } from '../../utils/crypto';
 import * as XLSX from 'xlsx';
 
@@ -233,7 +233,12 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     if (editingUser) {
       const cleanPw = formData.passwordInput.trim();
       const isNewPasswordEntered = cleanPw.length > 0 && !isHashedPassword(cleanPw);
+      if (isNewPasswordEntered && cleanPw.length < 6) {
+        alert('Password must be at least 6 characters.');
+        return;
+      }
       const finalPassword = isNewPasswordEntered ? cleanPw : (editingUser.password || '');
+      const previousEmail = editingUser.email;
 
       const updated = userList.map((u) => {
         if (u.id === editingUser.id) {
@@ -264,18 +269,25 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
       });
       setUserList(updated);
       try {
-        await onSaveUsers(updated);
         if (savedTargetUser) {
-          await saveEmployeeToSupabase(savedTargetUser);
+          const saveRes = await saveEmployeeToSupabaseDetailed(savedTargetUser, previousEmail);
+          if (!saveRes.success) {
+            const errMsg = saveRes.error?.message || 'Failed to update profile. Please try again.';
+            showToast(errMsg);
+            console.error('Failed to save employee to Supabase:', saveRes.error);
+            return;
+          }
         }
+        await onSaveUsers(updated);
         showToast(`Updated personnel profile for ${fullName}`);
-      } catch (err) {
-        showToast('Failed to update profile. Please try again.');
+        setShowAddModal(false);
+      } catch (err: any) {
+        showToast(err?.message || 'Failed to update profile. Please try again.');
         console.error('Failed to save employee:', err);
       }
+    } else {
+      setShowAddModal(false);
     }
-
-    setShowAddModal(false);
   };
 
   const handleRegisterNewUser = async (newUser: User) => {

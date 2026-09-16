@@ -126,6 +126,7 @@ const SEED_UUID_MAP: Record<string, string> = {
   'usr_dh_fop': '00000000-0000-4000-8000-000000000013',
   'usr_dh_gaw': '00000000-0000-4000-8000-000000000014',
   'usr_dh_lgl': '00000000-0000-4000-8000-000000000015',
+  'usr_dh_leg': '00000000-0000-4000-8000-000000000015',
   'usr_dh_mkt': '00000000-0000-4000-8000-000000000016',
   'usr_dh_ops': '00000000-0000-4000-8000-000000000017',
   'usr_dh_pohr': '00000000-0000-4000-8000-000000000018',
@@ -370,48 +371,187 @@ export const uploadAvatarToSupabase = async (file: File | Blob, userId: string):
   return null;
 };
 
-export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<SupabaseSaveResult> => {
+export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?: string): Promise<SupabaseSaveResult> => {
   if (!isSupabaseConfigured || !supabase) {
     return { success: false, error: { code: 'NO_SB_CONFIG', message: 'Supabase cloud client is not configured.' } };
   }
 
   try {
     const cleanEmail = (user.email || '').trim().toLowerCase();
+    const cleanPrevEmail = (previousEmail || '').trim().toLowerCase();
     const mappedUuid = isValidUuid(user.id) ? user.id : ensureUuid(user.id);
 
     console.log(`[Supabase DB Update] Preparing UPDATE/UPSERT for Employee:`, {
       id: user.id,
       mappedUuid,
       email: cleanEmail,
+      previousEmail: cleanPrevEmail,
+      employeeNumber: user.employeeNumber,
       username: user.username,
       name: user.name,
       avatarUrl: user.avatarUrl
     });
 
-    // Check if employee already exists in Supabase by UUID or email
+    // Comprehensive multi-strategy lookup for existing Supabase DB record
     let existingId: string | null = null;
-    try {
-      let checkQuery = supabase.from('employees').select('id, email');
-      if (isValidUuid(mappedUuid)) {
-        checkQuery = checkQuery.or(`id.eq.${mappedUuid},email.ilike.${cleanEmail}`);
-      } else {
-        checkQuery = checkQuery.ilike('email', cleanEmail);
+    let existingRecord: any = null;
+
+    // Strategy 1: Check by exact ID if valid UUID
+    if (isValidUuid(user.id)) {
+      try {
+        const { data, error } = await supabase
+          .from('employees')
+          .select('id, email, employee_number, username, password')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (data && data.id && !error) {
+          existingId = data.id;
+          existingRecord = data;
+          console.log(`[Supabase DB Update] Matched existing DB record by valid UUID: ${existingId}`);
+        }
+      } catch (e) {
+        console.warn('[Supabase DB Update] UUID search note:', e);
       }
-      const { data: existing, error: checkErr } = await checkQuery.maybeSingle();
-      if (checkErr) {
-        console.error('[Supabase DB Update] SELECT failed with full error:', JSON.stringify(checkErr, null, 2));
+    }
+
+    // Strategy 2: Check by mapped seed ID
+    if (!existingId && user.id && SEED_UUID_MAP[user.id]) {
+      try {
+        const { data, error } = await supabase
+          .from('employees')
+          .select('id, email, employee_number, username, password')
+          .eq('id', SEED_UUID_MAP[user.id])
+          .maybeSingle();
+        if (data && data.id && !error) {
+          existingId = data.id;
+          existingRecord = data;
+          console.log(`[Supabase DB Update] Matched existing DB record by seed ID map: ${existingId}`);
+        }
+      } catch (e) {
+        console.warn('[Supabase DB Update] Seed ID search note:', e);
       }
-      if (existing && existing.id) {
-        existingId = existing.id;
-        console.log(`[Supabase DB Update] Matched existing DB record ID: ${existingId}`);
+    }
+
+    // Strategy 3: Check by mappedUuid (ensureUuid)
+    if (!existingId && mappedUuid && isValidUuid(mappedUuid)) {
+      try {
+        const { data, error } = await supabase
+          .from('employees')
+          .select('id, email, employee_number, username, password')
+          .eq('id', mappedUuid)
+          .maybeSingle();
+        if (data && data.id && !error) {
+          existingId = data.id;
+          existingRecord = data;
+          console.log(`[Supabase DB Update] Matched existing DB record by ensureUuid: ${existingId}`);
+        }
+      } catch (e) {
+        console.warn('[Supabase DB Update] mappedUuid search note:', e);
       }
-    } catch (e) {
-      console.error('[Supabase DB Update] SELECT exception:', e);
+    }
+
+    // Strategy 4: Check by previous email if supplied and different from new email
+    if (!existingId && cleanPrevEmail && cleanPrevEmail.includes('@')) {
+      try {
+        const { data, error } = await supabase
+          .from('employees')
+          .select('id, email, employee_number, username, password')
+          .ilike('email', cleanPrevEmail)
+          .maybeSingle();
+        if (data && data.id && !error) {
+          existingId = data.id;
+          existingRecord = data;
+          console.log(`[Supabase DB Update] Matched existing DB record by previous email (${cleanPrevEmail}): ${existingId}`);
+        }
+      } catch (e) {
+        console.warn('[Supabase DB Update] Previous email search note:', e);
+      }
+    }
+
+    // Strategy 5: Check by employee_number (unique business identifier)
+    if (!existingId && user.employeeNumber && user.employeeNumber.trim().length > 0) {
+      try {
+        const { data, error } = await supabase
+          .from('employees')
+          .select('id, email, employee_number, username, password')
+          .ilike('employee_number', user.employeeNumber.trim())
+          .maybeSingle();
+        if (data && data.id && !error) {
+          existingId = data.id;
+          existingRecord = data;
+          console.log(`[Supabase DB Update] Matched existing DB record by employee number (${user.employeeNumber}): ${existingId}`);
+        }
+      } catch (e) {
+        console.warn('[Supabase DB Update] Employee number search note:', e);
+      }
+    }
+
+    // Strategy 6: Check by username
+    if (!existingId && user.username && user.username.trim().length > 0) {
+      try {
+        const { data, error } = await supabase
+          .from('employees')
+          .select('id, email, employee_number, username, password')
+          .ilike('username', user.username.trim())
+          .maybeSingle();
+        if (data && data.id && !error) {
+          existingId = data.id;
+          existingRecord = data;
+          console.log(`[Supabase DB Update] Matched existing DB record by username (${user.username}): ${existingId}`);
+        }
+      } catch (e) {
+        console.warn('[Supabase DB Update] Username search note:', e);
+      }
+    }
+
+    // Strategy 7: Check by current email
+    if (!existingId && cleanEmail && cleanEmail.includes('@')) {
+      try {
+        const { data, error } = await supabase
+          .from('employees')
+          .select('id, email, employee_number, username, password')
+          .ilike('email', cleanEmail)
+          .maybeSingle();
+        if (data && data.id && !error) {
+          existingId = data.id;
+          existingRecord = data;
+          console.log(`[Supabase DB Update] Matched existing DB record by current email (${cleanEmail}): ${existingId}`);
+        }
+      } catch (e) {
+        console.warn('[Supabase DB Update] Current email search note:', e);
+      }
+    }
+
+    // Check if cleanEmail conflicts with ANOTHER existing employee
+    if (existingId && cleanEmail) {
+      try {
+        const { data: conflictUser } = await supabase
+          .from('employees')
+          .select('id, email, name')
+          .ilike('email', cleanEmail)
+          .neq('id', existingId)
+          .maybeSingle();
+        if (conflictUser && conflictUser.id) {
+          return {
+            success: false,
+            error: {
+              code: 'EMAIL_ALREADY_EXISTS',
+              message: `The email address "${cleanEmail}" is already in use by ${conflictUser.name || 'another account'}. Please use a different email address.`
+            }
+          };
+        }
+      } catch (e) {
+        console.warn('[Supabase DB Update] Email conflict check note:', e);
+      }
     }
 
     const targetId = existingId || mappedUuid;
 
+    // Handle password preservation and hashing
     let passwordToStore = user.password || '';
+    if (!passwordToStore && existingRecord?.password) {
+      passwordToStore = existingRecord.password;
+    }
     if (passwordToStore && !isHashedPassword(passwordToStore)) {
       passwordToStore = await hashPassword(passwordToStore);
     }
@@ -497,11 +637,12 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
         console.error('[Supabase DB Update] UPDATE full error:', JSON.stringify(updateErr, null, 2));
       }
       saveErr = updateErr;
-    } else if (cleanEmail) {
-      console.log(`[Supabase DB Update] Executing UPSERT query on employees table for Email: ${cleanEmail}...`);
+    } else {
+      // For new records, upsert on PRIMARY KEY id (never on email)
+      console.log(`[Supabase DB Update] Executing UPSERT on employees table by ID: ${targetId}...`);
       const { error: upsertErr } = await supabase
         .from('employees')
-        .upsert(payload, { onConflict: 'email' });
+        .upsert(payload, { onConflict: 'id' });
       if (upsertErr) {
         console.error('[Supabase DB Update] UPSERT full error:', JSON.stringify(upsertErr, null, 2));
       }
@@ -511,11 +652,25 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
     if (saveErr) {
       console.warn('[Supabase DB Update] Primary save note, attempting fallback UPDATE...', saveErr);
       delete payload.id;
-      const { error: fallbackErr } = await supabase
-        .from('employees')
-        .update(payload)
-        .or(`id.eq.${targetId},email.ilike.${cleanEmail}`);
-      saveErr = fallbackErr;
+      if (existingId) {
+        const { error: fallbackErr } = await supabase
+          .from('employees')
+          .update(payload)
+          .eq('id', existingId);
+        saveErr = fallbackErr;
+      } else if (cleanPrevEmail) {
+        const { error: fallbackErr } = await supabase
+          .from('employees')
+          .update(payload)
+          .ilike('email', cleanPrevEmail);
+        saveErr = fallbackErr;
+      } else {
+        const { error: fallbackErr } = await supabase
+          .from('employees')
+          .update(payload)
+          .eq('id', targetId);
+        saveErr = fallbackErr;
+      }
     }
 
     if (saveErr && (saveErr.code === 'PGRST204' || saveErr.code === '42703' || saveErr.message.includes('column'))) {
@@ -530,8 +685,8 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
       if (existingId) {
         const { error: coreErr } = await supabase.from('employees').update(corePayload).eq('id', existingId);
         saveErr = coreErr;
-      } else if (cleanEmail) {
-        const { error: coreErr } = await supabase.from('employees').upsert(corePayload, { onConflict: 'email' });
+      } else {
+        const { error: coreErr } = await supabase.from('employees').upsert({ id: targetId, ...corePayload }, { onConflict: 'id' });
         saveErr = coreErr;
       }
     }
@@ -551,8 +706,16 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
         userFriendlyMessage = 'Authentication token expired. Please refresh and try again.';
       } else if (errorMessage.includes('permission') || errorMessage.includes('denied')) {
         userFriendlyMessage = 'Permission denied. Please check Row Level Security (RLS) policies in Supabase.';
-      } else if (errorMessage.includes('duplicate key') || errorMessage.includes('already exists')) {
-        userFriendlyMessage = 'A record with this information already exists.';
+      } else if (errorCode === '23505' || errorMessage.includes('duplicate key') || errorMessage.includes('unique constraint') || errorCode === '409' || errorMessage.includes('conflict')) {
+        if (errorMessage.includes('email') || errorDetails.includes('email')) {
+          userFriendlyMessage = `An employee with the email "${cleanEmail}" already exists in the system.`;
+        } else if (errorMessage.includes('employee_number') || errorDetails.includes('employee_number')) {
+          userFriendlyMessage = `The employee number "${payload.employee_number}" is already assigned to another account.`;
+        } else if (errorMessage.includes('username') || errorDetails.includes('username')) {
+          userFriendlyMessage = `The username "${payload.username}" is already taken.`;
+        } else {
+          userFriendlyMessage = 'A duplicate record conflict occurred. Please ensure email, employee number, and username are unique.';
+        }
       }
 
       return {
@@ -614,8 +777,8 @@ export const saveEmployeeToSupabaseDetailed = async (user: User): Promise<Supaba
   }
 };
 
-export const saveEmployeeToSupabase = async (user: User): Promise<boolean> => {
-  const result = await saveEmployeeToSupabaseDetailed(user);
+export const saveEmployeeToSupabase = async (user: User, previousEmail?: string): Promise<boolean> => {
+  const result = await saveEmployeeToSupabaseDetailed(user, previousEmail);
   return result.success;
 };
 
