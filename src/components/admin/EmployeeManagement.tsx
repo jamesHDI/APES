@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, Department, Role, EmploymentStatus, isPendingUser } from '../../types';
 import { 
   Users, 
@@ -39,8 +39,14 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
   onSaveUsers,
 }) => {
   const [userList, setUserList] = useState<User[]>(users);
+
+  useEffect(() => {
+    setUserList(users);
+  }, [users]);
   const [activeTab, setActiveTab] = useState<'all' | 'dept_heads' | 'employees'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const suppressAutofillUntilRef = useRef<number>(0);
   const [filterDept, setFilterDept] = useState('ALL');
   const [filterPosition, setFilterPosition] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'PENDING' | 'INACTIVE'>('ALL');
@@ -148,6 +154,9 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
   };
 
   const handleOpenEdit = (user: User) => {
+    suppressAutofillUntilRef.current = Date.now() + 1500;
+    setSearchTerm('');
+    if (searchInputRef.current) searchInputRef.current.value = '';
     setEditingUser(user);
     // Find matching department by ID first, then by name, then leave blank
     const matchedDept = departments.find(d => d.id === user.departmentId) ||
@@ -169,6 +178,17 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     });
     setShowPassword(false);
     setShowAddModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    suppressAutofillUntilRef.current = Date.now() + 2000;
+    setShowAddModal(false);
+    setSearchTerm('');
+    if (searchInputRef.current) searchInputRef.current.value = '';
+    setTimeout(() => {
+      setSearchTerm('');
+      if (searchInputRef.current) searchInputRef.current.value = '';
+    }, 100);
   };
 
   const handleToggleStatus = async (userId: string) => {
@@ -280,7 +300,22 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
         }
         await onSaveUsers(updated);
         showToast(`Updated personnel profile for ${fullName}`);
+        suppressAutofillUntilRef.current = Date.now() + 2500;
         setShowAddModal(false);
+        setSearchTerm('');
+        if (searchInputRef.current) searchInputRef.current.value = '';
+        setTimeout(() => {
+          setSearchTerm('');
+          if (searchInputRef.current) searchInputRef.current.value = '';
+        }, 50);
+        setTimeout(() => {
+          setSearchTerm('');
+          if (searchInputRef.current) searchInputRef.current.value = '';
+        }, 150);
+        setTimeout(() => {
+          setSearchTerm('');
+          if (searchInputRef.current) searchInputRef.current.value = '';
+        }, 500);
       } catch (err: any) {
         showToast(err?.message || 'Failed to update profile. Please try again.');
         console.error('Failed to save employee:', err);
@@ -495,14 +530,50 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
       <div className="card p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* Search */}
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
-            type="text"
+            ref={searchInputRef}
+            type="search"
+            name="directory_search_filter"
+            id="directory_search_filter"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            data-lpignore="true"
+            data-form-type="other"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              if (Date.now() < suppressAutofillUntilRef.current) {
+                if (searchInputRef.current) searchInputRef.current.value = '';
+                setSearchTerm('');
+                return;
+              }
+              setSearchTerm(e.target.value);
+            }}
+            onInput={(e) => {
+              if (Date.now() < suppressAutofillUntilRef.current) {
+                const target = e.target as HTMLInputElement;
+                target.value = '';
+                setSearchTerm('');
+              }
+            }}
             placeholder="Search by name, email, employee ID, position..."
-            className="search-bar-input"
+            className="search-bar-input pr-8"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm('');
+                if (searchInputRef.current) searchInputRef.current.value = '';
+              }}
+              title="Clear search filter"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         {/* Filters */}
@@ -589,7 +660,14 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
       {/* Edit Personnel Profile & Credentials Modal (Matching Screenshot UI) */}
       {showAddModal && editingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
+          <form
+            autoComplete="off"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSaveEmployee();
+            }}
+            className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto"
+          >
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
@@ -607,7 +685,8 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 </div>
               </div>
               <button
-                onClick={() => setShowAddModal(false)}
+                type="button"
+                onClick={handleCloseEditModal}
                 className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -620,6 +699,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">First Name *</label>
                 <input
                   type="text"
+                  autoComplete="off"
                   required
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
@@ -632,6 +712,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Middle Name</label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={formData.middleName}
                   onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
                   placeholder="Middle name..."
@@ -643,6 +724,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Last Name *</label>
                 <input
                   type="text"
+                  autoComplete="off"
                   required
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
@@ -655,6 +737,10 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Email Address *</label>
                 <input
                   type="email"
+                  name="edit_user_email_address"
+                  id="edit_user_email_address"
+                  autoComplete="off"
+                  data-lpignore="true"
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -684,6 +770,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Position Title</label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={formData.position}
                   onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                   placeholder="Position title..."
@@ -750,6 +837,10 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
+                      name="edit_user_new_password"
+                      id="edit_user_new_password"
+                      autoComplete="new-password"
+                      data-lpignore="true"
                       value={formData.passwordInput}
                       onChange={(e) => setFormData({ ...formData, passwordInput: e.target.value })}
                       placeholder={editingUser?.password ? "••••••••" : "Enter password..."}
@@ -784,14 +875,13 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end space-x-3">
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
+                onClick={handleCloseEditModal}
                 className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 Cancel
               </button>
               <button
-                type="button"
-                onClick={handleSaveEmployee}
+                type="submit"
                 className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md flex items-center space-x-1.5 transition-colors"
               >
                 <Check className="w-4 h-4" />
@@ -799,7 +889,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
               </button>
             </div>
 
-          </div>
+          </form>
         </div>
       )}
 
