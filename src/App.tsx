@@ -90,28 +90,28 @@ export const isTabAllowedForRole = (tab: string, role?: Role): boolean => {
 
   switch (role) {
     case 'employee':
-      return ['dashboard', 'evaluations', 'calibration_request', 'my_history', 'my_profile'].includes(tab);
+      return ['dashboard', 'evaluations', 'my_template', 'calibration_request', 'my_history', 'my_profile'].includes(tab);
     case 'supervisor':
-      return ['dashboard', 'evaluations', 'team_reviews', 'reports', 'my_history', 'my_profile'].includes(tab);
+      return ['dashboard', 'evaluations', 'my_template', 'team_reviews', 'template_builder', 'reports', 'my_history', 'my_profile'].includes(tab);
     case 'dept_head':
-      return ['dashboard', 'evaluations', 'dept_actions', 'template_builder', 'calibration_requests', 'reports', 'my_history', 'my_profile'].includes(tab);
+      return ['dashboard', 'evaluations', 'my_template', 'dept_actions', 'template_builder', 'calibration_requests', 'reports', 'my_history', 'my_profile'].includes(tab);
     case 'president':
-      return ['dashboard', 'evaluations', 'dept_head_reviews', 'reports', 'my_history', 'my_profile'].includes(tab);
+      return ['dashboard', 'evaluations', 'my_template', 'dept_head_reviews', 'reports', 'my_history', 'my_profile'].includes(tab);
     case 'pod':
       return [
-        'dashboard', 'evaluations', 'pod_validation', 'employee_mgmt', 'pending_approvals',
+        'dashboard', 'evaluations', 'my_template', 'pod_validation', 'employee_mgmt', 'pending_approvals',
         'dept_mgmt', 'org_hierarchy', 'workflow_monitoring', 'evaluation_deployment',
         'template_builder', 'calibration_pod_review', 'admin_panel', 'my_history', 'reports', 'my_profile'
       ].includes(tab);
     case 'hr_admin':
       return [
-        'dashboard', 'evaluations', 'employee_mgmt', 'pending_approvals',
+        'dashboard', 'evaluations', 'my_template', 'employee_mgmt', 'pending_approvals',
         'dept_mgmt', 'org_hierarchy', 'workflow_monitoring', 'evaluation_deployment',
         'template_builder', 'admin_panel', 'my_history', 'reports', 'my_profile'
       ].includes(tab);
     case 'system_admin':
       return [
-        'dashboard', 'employee_mgmt', 'pending_approvals', 'dept_mgmt',
+        'dashboard', 'my_template', 'employee_mgmt', 'pending_approvals', 'dept_mgmt',
         'org_hierarchy', 'workflow_monitoring', 'evaluation_deployment',
         'template_builder', 'admin_panel', 'my_history', 'reports', 'my_profile'
       ].includes(tab);
@@ -1028,10 +1028,13 @@ export const App: React.FC = () => {
           <SupervisorDashboard
             currentUser={currentUser}
             evaluations={evaluations}
+            allUsers={users}
+            templates={templates}
             onOpenEvaluation={(id) => {
               setSelectedEvalId(id);
               setActiveTab('evaluations');
             }}
+            onOpenTemplateBuilder={() => setActiveTab('template_builder')}
           />
         );
       case 'dept_head':
@@ -1223,10 +1226,12 @@ export const App: React.FC = () => {
       );
     }
 
-    if (activeTab === 'template_builder') {
+    if (activeTab === 'template_builder' || activeTab === 'my_template') {
       return (
         <TemplateBuilder
           currentUser={currentUser}
+          users={users}
+          mode={activeTab === 'my_template' ? 'employee' : 'all'}
           templates={templates}
           departments={departments}
           evaluations={evaluations}

@@ -81,6 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (currentRole === 'employee') {
       items = [
         ...common,
+        { id: 'my_template', label: 'My Evaluation Template', icon: SlidersHorizontal },
         { id: 'calibration_request', label: 'Calibration Request', icon: MessageSquare },
         { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'my_profile', label: 'My Profile', icon: UserCircle },
@@ -88,6 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     } else if (currentRole === 'supervisor') {
       items = [
         ...common,
+        { id: 'my_template', label: 'My Evaluation Template', icon: SlidersHorizontal },
         { id: 'team_reviews', label: 'Team Reviews', icon: CheckSquare, badge: pendingCount > 0 ? pendingCount : undefined },
         { id: 'reports', label: 'Reports', icon: BarChart3 },
         { id: 'my_history', label: 'Evaluation History', icon: History },
