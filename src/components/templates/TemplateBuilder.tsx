@@ -441,13 +441,41 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       const deployed: EvaluationTemplate = {
         ...activeTemplate,
         status: 'deployed',
+        isLocked: true,
+        deployedAt: new Date().toISOString(),
         reviewedAt: new Date().toISOString(),
       };
 
       onSaveTemplate(deployed);
       setActiveTemplate(deployed);
-      showToast('Evaluation template deployed successfully! Employees can now begin self-evaluations.');
+      showToast('Evaluation template deployed successfully! Template is now locked and active for self-evaluations.');
     }
+  };
+
+  const handleCreateRevision = () => {
+    const nextVersion = (activeTemplate.version || 1) + 1;
+    const revision: EvaluationTemplate = {
+      ...activeTemplate,
+      id: generateUuid(),
+      title: `${activeTemplate.title.replace(/\s*\(v\d+\)$/i, '')} (v${nextVersion})`,
+      version: nextVersion,
+      status: 'draft',
+      isLocked: false,
+      createdAt: new Date().toISOString().substring(0, 10),
+      submittedAt: undefined,
+      reviewedAt: undefined,
+      isApprovedAt: undefined,
+      podApprovedAt: undefined,
+      deployedAt: undefined,
+      isReviewRemarks: undefined,
+      podRemarks: undefined,
+    };
+
+    currentLoadedTemplateIdRef.current = revision.id;
+    onSaveTemplate(revision);
+    setActiveTemplate(revision);
+    setSelectedTemplateId(revision.id);
+    showToast(`Created new draft Revision v${nextVersion}! Original deployed template remains locked & immutable.`);
   };
 
   const handleDeleteTemplateAction = (templateId: string, e?: React.MouseEvent) => {
@@ -1291,8 +1319,20 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               </button>
             </div>
 
-            <div className="flex items-center space-x-2.5">
-              {canEdit && (
+            <div className="flex items-center space-x-2.5 flex-wrap gap-2">
+              {activeTemplate.status === 'deployed' && (
+                <button
+                  type="button"
+                  onClick={handleCreateRevision}
+                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-extrabold flex items-center space-x-1.5 shadow-sm transition-all"
+                  title="Create a new draft revision without altering the deployed immutable template"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create New Revision (v{(activeTemplate.version || 1) + 1})</span>
+                </button>
+              )}
+
+              {canEdit && !activeTemplate.isLocked && (
                 <button
                   type="button"
                   onClick={handleSave}

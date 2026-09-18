@@ -34,7 +34,7 @@ export interface User {
   companyName?: string;
   departmentId: string;
   departmentName: string;
-  position: string;
+  position?: string;
   employmentStatus?: EmploymentStatus;
   dateHired?: string;
   avatarUrl?: string;
@@ -181,6 +181,8 @@ export interface EvaluationTemplate {
   isApprovedAt?: string;
   podApprovedAt?: string;
   deployedAt?: string;
+  version?: number;
+  isLocked?: boolean;
   revisionHistory?: any[];
 }
 
