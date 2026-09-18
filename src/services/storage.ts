@@ -1,4 +1,4 @@
-﻿import { User, Department, EvaluationTemplate, EvaluationCycle, EvaluationDeployment, Evaluation, AuditLog, Role, EvaluationHistory, EvaluationScorecardArchive, CalibrationRequest, DirectMessage } from '../types';
+import { User, Department, EvaluationTemplate, EvaluationCycle, EvaluationDeployment, Evaluation, AuditLog, Role, EvaluationHistory, EvaluationScorecardArchive, CalibrationRequest, DirectMessage } from '../types';
 import { MASTER_SALES_EVALUATION_TEMPLATE } from '../constants/masterSalesTemplate';
 import { MASTER_EMPLOYEES, MASTER_COMPANIES } from '../constants/masterOrganization';
 import { 
@@ -89,16 +89,48 @@ const isExcludedUser = (u: User) =>
   u.employeeNumber === 'SUP-SLS-01';
 
 export const getStoredUsers = (): User[] => {
+  const userMap = new Map<string, User>();
+
+  // 1. Seed all 60 master employees first
+  for (const emp of MASTER_EMPLOYEES) {
+    if (emp && emp.id && !isExcludedUser(emp)) {
+      userMap.set(emp.id, emp);
+      if (emp.employeeNumber) userMap.set(`num_${emp.employeeNumber.toLowerCase()}`, emp);
+      if (emp.email) userMap.set(`email_${emp.email.toLowerCase()}`, emp);
+    }
+  }
+
+  // 2. Overlay any updated stored users from localStorage
   const data = localStorage.getItem(USERS_KEY);
   if (data) {
     try {
-      const users: User[] = JSON.parse(data);
-      if (users && users.length > 0) {
-        return users.filter(u => !isExcludedUser(u));
+      const storedList: User[] = JSON.parse(data);
+      if (Array.isArray(storedList)) {
+        for (const u of storedList) {
+          if (u && u.id && !isExcludedUser(u)) {
+            const existing = userMap.get(u.id) ||
+                             (u.employeeNumber ? userMap.get(`num_${u.employeeNumber.toLowerCase()}`) : null) ||
+                             (u.email ? userMap.get(`email_${u.email.toLowerCase()}`) : null);
+            if (existing) {
+              userMap.set(existing.id, { ...existing, ...u });
+            } else {
+              userMap.set(u.id, u);
+            }
+          }
+        }
       }
     } catch {}
   }
-  return SEED_USERS.filter(u => !isExcludedUser(u));
+
+  const result: User[] = [];
+  const seen = new Set<string>();
+  for (const u of userMap.values()) {
+    if (u && u.id && !seen.has(u.id)) {
+      seen.add(u.id);
+      result.push(u);
+    }
+  }
+  return result;
 };
 
 export const saveUsers = (users: User[]) => {

@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { User, Department } from '../../types';
 import { MASTER_COMPANIES } from '../../constants/masterOrganization';
 import { 
@@ -43,7 +43,12 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
 
   // Companies list (derived dynamically from MASTER_COMPANIES + existing users)
   const availableCompanies = MASTER_COMPANIES.map(c => {
-    const companyUsers = users.filter(u => u.companyName === c.name || u.companyId === c.id);
+    const companyUsers = users.filter(u => {
+      if (!u) return false;
+      if (u.companyId && (u.companyId === c.id || u.companyId.toLowerCase() === c.id.toLowerCase())) return true;
+      if (u.companyName && (u.companyName.trim().toLowerCase() === c.name.trim().toLowerCase())) return true;
+      return false;
+    });
     return {
       ...c,
       employeeCount: companyUsers.length,
@@ -118,7 +123,7 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
             <div className="relative p-6 rounded-3xl bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 text-white shadow-2xl border-2 border-amber-300/40 text-center space-y-2">
               <div className="inline-flex items-center justify-center space-x-1.5 px-3 py-1 rounded-full bg-amber-950/40 border border-amber-300/30 text-amber-200 text-[10px] font-black uppercase tracking-wider mb-1">
                 <Crown className="w-3.5 h-3.5 text-amber-300" />
-                <span>Executive Office ΓÇó HDI Organization</span>
+                <span>Executive Office • HDI Organization</span>
               </div>
 
               <h3 className="font-black text-2xl tracking-tight text-white leading-snug">{ceo.name}</h3>
@@ -137,7 +142,12 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
         {/* Tier 2: Companies & Groups */}
         <div className="space-y-10">
           {displayedCompanies.map(company => {
-            const companyEmployees = users.filter(u => u.companyName === company.name || u.companyId === company.id);
+            const companyEmployees = users.filter(u => {
+              if (!u) return false;
+              if (u.companyId && (u.companyId === company.id || u.companyId.toLowerCase() === company.id.toLowerCase())) return true;
+              if (u.companyName && (u.companyName.trim().toLowerCase() === company.name.trim().toLowerCase())) return true;
+              return false;
+            });
 
             // Group by Department
             const deptNames = Array.from(new Set(companyEmployees.map(u => u.departmentName || 'General'))).sort();

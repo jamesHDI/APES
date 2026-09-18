@@ -1,6 +1,41 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, Role, Evaluation, EvaluationTemplate, Department, EvaluationCycle, Notification, isPendingUser, EvaluationScorecardArchive, DevelopmentPlan, PersonnelAction, DirectMessage } from './types';
 import { MASTER_SALES_EVALUATION_TEMPLATE } from './constants/masterSalesTemplate';
+import { MASTER_EMPLOYEES } from './constants/masterOrganization';
+
+const mergeMasterWithSupabaseUsers = (sbUsers: User[]): User[] => {
+  const userMap = new Map<string, User>();
+  for (const emp of MASTER_EMPLOYEES) {
+    if (emp && emp.id) {
+      userMap.set(emp.id, emp);
+      if (emp.employeeNumber) userMap.set(`num_${emp.employeeNumber.toLowerCase()}`, emp);
+      if (emp.email) userMap.set(`email_${emp.email.toLowerCase()}`, emp);
+    }
+  }
+  if (Array.isArray(sbUsers)) {
+    for (const u of sbUsers) {
+      if (u && u.id) {
+        const existing = userMap.get(u.id) ||
+                         (u.employeeNumber ? userMap.get(`num_${u.employeeNumber.toLowerCase()}`) : null) ||
+                         (u.email ? userMap.get(`email_${u.email.toLowerCase()}`) : null);
+        if (existing) {
+          userMap.set(existing.id, { ...existing, ...u });
+        } else {
+          userMap.set(u.id, u);
+        }
+      }
+    }
+  }
+  const result: User[] = [];
+  const seen = new Set<string>();
+  for (const u of userMap.values()) {
+    if (u && u.id && !seen.has(u.id)) {
+      seen.add(u.id);
+      result.push(u);
+    }
+  }
+  return result;
+};
 import { 
   getStoredUsers, 
   saveUsers,
@@ -391,7 +426,9 @@ export const App: React.FC = () => {
           const sbUsers = await fetchEmployeesFromSupabase();
           if (!isMounted) return;
           if (sbUsers && sbUsers.length > 0) {
-            setUsers(sbUsers);
+            const mergedUsers = mergeMasterWithSupabaseUsers(sbUsers);
+            setUsers(mergedUsers);
+            saveUsers(mergedUsers);
             
             // Live profile sync across devices for logged-in user
             if (isAuthenticated) {
