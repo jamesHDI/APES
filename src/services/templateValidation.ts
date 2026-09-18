@@ -72,7 +72,7 @@ export function validateEvaluationTemplate(template: EvaluationTemplate): Templa
           if (!kpi.standards || kpi.standards.length !== 4) {
             errors.push(`Rating Scale Error: KPI "${kpi.name || kpiIdx + 1}" must have complete 4-point rating standards (1, 2, 3, 4).`);
           } else {
-            const ratings = kpi.standards.map(s => s.rating);
+            const ratings = kpi.standards.map((s: any) => s.rating);
             if (!ratings.includes(1) || !ratings.includes(2) || !ratings.includes(3) || !ratings.includes(4)) {
               errors.push(`Rating Scale Error: KPI "${kpi.name || kpiIdx + 1}" rating scale must cover ratings 1, 2, 3, and 4.`);
             }

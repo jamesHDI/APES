@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Role } from '../../types';
 import {
   LayoutDashboard,
@@ -81,6 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (currentRole === 'employee') {
       items = [
         ...common,
+        { id: 'my_template', label: 'My Evaluation Template', icon: SlidersHorizontal },
         { id: 'calibration_request', label: 'Calibration Request', icon: MessageSquare },
         { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'my_profile', label: 'My Profile', icon: UserCircle },
@@ -88,6 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     } else if (currentRole === 'supervisor') {
       items = [
         ...common,
+        { id: 'my_template', label: 'My Evaluation Template', icon: SlidersHorizontal },
         { id: 'team_reviews', label: 'Team Reviews', icon: CheckSquare, badge: pendingCount > 0 ? pendingCount : undefined },
         { id: 'reports', label: 'Reports', icon: BarChart3 },
         { id: 'my_history', label: 'Evaluation History', icon: History },
@@ -445,7 +447,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {isOpen ? (
             <div className="flex flex-col items-center text-center gap-0.5">
               <p className="text-xs font-black text-[#E96B1A] dark:text-brand-400 tracking-wider uppercase whitespace-nowrap">
-                HDI HIVE · APES 3.0
+                HDI HIVE ┬╖ APES 3.0
               </p>
               <p className="text-[9.5px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
                 Strictly Confidential

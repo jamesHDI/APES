@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { User, Evaluation } from '../../types';
 import { Building2, Clock, FileCheck, ArrowRight, TrendingUp, Users, AlertCircle, Search, ShieldCheck } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
@@ -62,7 +62,10 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
     if (e.employeeId === currentUser.id) return false;
     const sameDept = isSameDepartment(e.departmentName || e.departmentId, currentUser.departmentName || currentUser.departmentId);
     const empUser = allUsers.find(u => u.id === e.employeeId || u.employeeNumber === e.employeeId || (e.employeeEmail && u.email.toLowerCase() === e.employeeEmail.toLowerCase()));
-    const assignedToMe = Boolean(empUser?.departmentHeadId && (empUser.departmentHeadId === currentUser.id || empUser.departmentHeadId === currentUser.employeeNumber));
+    const assignedToMe = Boolean(
+      (empUser?.departmentHeadId && (empUser.departmentHeadId === currentUser.id || empUser.departmentHeadId === currentUser.employeeNumber)) ||
+      (empUser?.immediateSuperiorId && (empUser.immediateSuperiorId === currentUser.id || empUser.immediateSuperiorId === currentUser.employeeNumber || empUser.immediateSuperiorName === currentUser.name))
+    );
     return sameDept || assignedToMe;
   });
 
@@ -79,7 +82,7 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
 
   const avgDeptScore = deptEvaluations.length > 0
     ? (deptEvaluations.reduce((acc, e) => acc + e.finalRating, 0) / deptEvaluations.length).toFixed(2)
-    : '—';
+    : 'ΓÇö';
 
   const filteredEvaluations = deptEvaluations.filter((ev) => {
     const matchesSearch = 
@@ -109,7 +112,7 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{getGreeting()}</p>
             <h2 className="text-xl font-bold mt-0.5 text-slate-900 dark:text-white">{currentUser.name}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              Department Head &nbsp;·&nbsp; <span className="text-[#F28C28] font-semibold">{currentUser.departmentName}</span>
+              Department Head &nbsp;┬╖&nbsp; <span className="text-[#F28C28] font-semibold">{currentUser.departmentName}</span>
             </p>
           </div>
           <div className="bg-[#FFF4EA] dark:bg-brand-950/40 px-5 py-4 rounded-2xl border border-[#F28C28]/20 text-center shrink-0">

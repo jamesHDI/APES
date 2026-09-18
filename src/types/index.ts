@@ -11,6 +11,14 @@ export type EmploymentStatus = 'Regular' | 'Probationary' | 'Contractual' | 'Pro
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 
+export interface Company {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  isActive?: boolean;
+}
+
 export interface User {
   id: string;
   employeeNumber?: string;
@@ -22,14 +30,18 @@ export interface User {
   email: string;
   contactNumber?: string;
   role: Role;
+  companyId?: string;
+  companyName?: string;
   departmentId: string;
   departmentName: string;
-  position: string;
+  position?: string;
   employmentStatus?: EmploymentStatus;
   dateHired?: string;
   avatarUrl?: string;
   immediateSuperiorId?: string;
   immediateSuperiorName?: string;
+  immediateSupervisorId?: string;
+  immediateSupervisorName?: string;
   departmentHeadId?: string;
   departmentHeadName?: string;
   defaultTemplateId?: string;
@@ -67,10 +79,13 @@ export interface Department {
   id: string;
   name: string;
   code: string;
+  companyId?: string;
+  companyName?: string;
   headId?: string;
   headName: string;
   defaultTemplateId?: string;
-  employeeCount: number;
+  employeeCount?: number;
+  memberCount?: number;
   isActive?: boolean;
 }
 
@@ -82,8 +97,13 @@ export interface Position {
 }
 
 export interface RatingStandard {
-  rating: 1 | 2 | 3 | 4;
-  label: string; 
+  rating: 1 | 2 | 3 | 4 | 5;
+  label?: string;
+  description: string;
+}
+
+export interface KPIStandard {
+  rating: 1 | 2 | 3 | 4 | 5;
   description: string;
 }
 
@@ -94,41 +114,64 @@ export interface KPITemplateItem {
   name: string;
   description: string;
   weightPercent: number;
-  standards: RatingStandard[];
-  evidenceRequired: boolean;
+  standards?: RatingStandard[];
+  evidenceRequired?: boolean;
+}
+
+export interface KPI {
+  id: string;
+  name: string;
+  description: string;
+  weight: number; // percentage (e.g., 25 for 25%)
+  target?: string;
+  standards?: KPIStandard[];
 }
 
 export interface KRACategory {
   id: string;
   name: string;
-  categoryWeightPercent: number;
-  kpis: KPITemplateItem[];
+  weight?: number; // percentage (e.g., 60 for 60%)
+  categoryWeightPercent?: number;
+  kpis: KPITemplateItem[] | KPI[] | any[];
 }
 
 export type TemplateStatus = 
   | 'draft' 
+  | 'submitted_to_is'
+  | 'is_review'
+  | 'returned_by_is'
+  | 'is_approved'
   | 'submitted_to_pod' 
   | 'returned_for_revision' 
   | 'resubmitted_to_pod' 
   | 'pod_review' 
+  | 'returned_by_pod'
+  | 'pod_approved'
   | 'approved' 
   | 'deployed';
 
 export interface EvaluationTemplate {
   id: string;
   title: string;
+  companyId?: string;
+  companyName?: string;
   departmentId: string;
   departmentName: string;
   evaluationPeriod: string;
-  startDate?: string;   // ISO date string, e.g. "2026-01-01" (Change 3)
-  endDate?: string;     // ISO date string, e.g. "2026-12-31" (Change 3)
+  startDate?: string;   // ISO date string, e.g. "2026-01-01"
+  endDate?: string;     // ISO date string, e.g. "2026-12-31"
+  isCustomPeriod?: boolean;
+  customPeriodStart?: string;
+  customPeriodEnd?: string;
+  kraWeight?: number; // typically 85
+  coreValuesWeight?: number; // typically 15
   kraCategories: KRACategory[];
   formulaConfig: {
     eligibilityWeight: number;
     coreValuesWeight: number;
   };
   coreValues: CoreValue[];
-  classificationRanges: {
+  classificationRanges?: {
     min: number;
     max: number;
     label: string;
@@ -137,14 +180,35 @@ export interface EvaluationTemplate {
   }[];
   isActive: boolean;
   createdAt: string;
-  // Change 1 — Template workflow fields
+  // Template workflow & ownership fields
   status?: TemplateStatus;
   createdByRole?: string;
   createdByUserId?: string;
   createdByName?: string;
+  createdForEmployeeId?: string;
+  createdForEmployeeName?: string;
+  createdForUserId?: string;
+  createdForName?: string;
+  createdForEmployeeNumber?: string;
+  createdForPosition?: string;
+  templateSource?: 'EMPLOYEE' | 'IS' | 'POD' | 'DEPT_HEAD';
+  immediateSuperiorId?: string;
+  immediateSuperiorName?: string;
+  immediateSupervisorId?: string;
+  immediateSupervisorName?: string;
+  currentReviewerId?: string;
+  currentReviewerName?: string;
+  isRemarks?: string;
+  isReviewRemarks?: string;
   podRemarks?: string;
   submittedAt?: string;
   reviewedAt?: string;
+  isApprovedAt?: string;
+  podApprovedAt?: string;
+  deployedAt?: string;
+  version?: number;
+  isLocked?: boolean;
+  revisionHistory?: any[];
 }
 
 export type DeploymentStatus = 'draft' | 'scheduled' | 'active' | 'closed' | 'archived';
@@ -365,9 +429,15 @@ export interface EvaluationScorecardArchive {
   employeeId: string;
   employeeName: string;
   employeeEmail?: string;
+  companyId?: string;
+  companyName?: string;
   departmentName: string;
   departmentId?: string;
   position: string;
+  immediateSuperiorId?: string;
+  immediateSuperiorName?: string;
+  immediateSupervisorId?: string;
+  immediateSupervisorName?: string;
   appraisalPeriod: string;
   cycleId?: string;
   templateId?: string;
@@ -413,9 +483,15 @@ export interface Evaluation {
   userId: string;
   employeeName: string;
   employeeEmail?: string;
+  companyId?: string;
+  companyName?: string;
   departmentName: string;
   departmentId?: string;
   position: string;
+  immediateSuperiorId?: string;
+  immediateSuperiorName?: string;
+  immediateSupervisorId?: string;
+  immediateSupervisorName?: string;
   isDepartmentHead?: boolean;
   appraisalPeriod: string;
   appraisalDate: string;

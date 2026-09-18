@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { User, Department, Role, EmploymentStatus, isPendingUser } from '../../types';
 import { 
   Users, 
@@ -96,9 +96,9 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     return Boolean(
       u.isDepartmentHead || 
       u.role === 'dept_head' || 
-      u.position.toLowerCase().includes('department head') || 
-      u.position.toLowerCase().includes('head of') ||
-      u.position.toLowerCase().endsWith(' head')
+      u.position?.toLowerCase().includes('department head') || 
+      u.position?.toLowerCase().includes('head of') ||
+      u.position?.toLowerCase().endsWith(' head')
     );
   };
 
@@ -117,7 +117,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     const matchesSearch = 
       fullName.includes(searchTerm.toLowerCase()) || 
       u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (u.position && u.position.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (u.employeeNumber && u.employeeNumber.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesDept = filterDept === 'ALL' || u.departmentName === filterDept;
@@ -759,7 +759,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                   }}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-500"
                 >
-                  <option value="">— Select Department —</option>
+                  <option value="">ΓÇö Select Department ΓÇö</option>
                   {departments.map((d) => (
                     <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
@@ -843,7 +843,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                       data-lpignore="true"
                       value={formData.passwordInput}
                       onChange={(e) => setFormData({ ...formData, passwordInput: e.target.value })}
-                      placeholder={editingUser?.password ? "••••••••" : "Enter password..."}
+                      placeholder={editingUser?.password ? "ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó" : "Enter password..."}
                       className="w-full px-3.5 py-2 pr-10 rounded-xl border border-amber-200 dark:border-amber-800/60 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs outline-none focus:ring-2 focus:ring-amber-500"
                     />
                     <button
