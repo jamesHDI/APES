@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, Department, Role, EmploymentStatus, isPendingUser } from '../../types';
 import { 
   Users, 
@@ -23,7 +23,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { RegisterEmployeeModal } from '../auth/RegisterEmployeeModal';
-import { deleteEmployeeFromSupabase, saveEmployeeToSupabase, saveEmployeeToSupabaseDetailed } from '../../services/supabaseService';
+import { deleteEmployeeFromSupabase, saveEmployeeToSupabase, saveEmployeeToSupabaseDetailed, syncAllMasterEmployeesToSupabase } from '../../services/supabaseService';
 import { isHashedPassword } from '../../utils/crypto';
 import * as XLSX from 'xlsx';
 
@@ -39,6 +39,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
   onSaveUsers,
 }) => {
   const [userList, setUserList] = useState<User[]>(users);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     setUserList(users);
@@ -423,6 +424,20 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     );
   };
 
+  const handleSyncMasterAccounts = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await syncAllMasterEmployeesToSupabase();
+      setToastMsg(`Successfully synchronized ${res.successCount} permanent employee accounts to database.`);
+      setTimeout(() => setToastMsg(''), 4000);
+    } catch (e: any) {
+      setToastMsg(`Sync encountered an issue: ${e.message || e}`);
+      setTimeout(() => setToastMsg(''), 4000);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12">
       
@@ -446,6 +461,15 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <button 
+              onClick={handleSyncMasterAccounts} 
+              disabled={isSyncing}
+              className="btn btn-secondary btn-sm"
+              title="Ensure all master employee accounts are permanently written to Supabase database"
+            >
+              <ShieldCheck className={`w-4 h-4 text-[#F28C28] ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Syncing...' : 'Sync Database Accounts'}
+            </button>
             <button onClick={handleExportCSV} className="btn btn-secondary btn-sm">
               <Download className="w-4 h-4" />
               Export Excel

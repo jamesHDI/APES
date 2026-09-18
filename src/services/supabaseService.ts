@@ -2,6 +2,7 @@ import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './supa
 import { User, Department, Evaluation, Notification, EvaluationHistory, EvaluationScorecardArchive, EvidenceFile, EvaluationTemplate, KRACategory, KPITemplateItem, CoreValue, DirectMessage } from '../types';
 import { hashPassword, isHashedPassword } from '../utils/crypto';
 import { MASTER_SALES_EVALUATION_TEMPLATE, createMasterBasedTemplate } from '../constants/masterSalesTemplate';
+import { MASTER_EMPLOYEES } from '../constants/masterOrganization';
 
 export const logEmployeesSchema = async (): Promise<void> => {
   if (!isSupabaseConfigured || !supabase) return;
@@ -318,6 +319,7 @@ export const fetchEmployeesFromSupabase = async (): Promise<User[] | null> => {
 export interface SupabaseSaveResult {
   success: boolean;
   id?: string;
+  verifiedUser?: User;
   error?: {
     code?: string;
     message: string;
@@ -611,6 +613,8 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       is_approved: user.isApproved ?? true,
       approval_status: user.approvalStatus || 'approved',
       hr_rejection_remarks: user.hrRejectionRemarks || null,
+      company_id: user.companyId || null,
+      company_name: user.companyName || null,
       is_department_head: user.isDepartmentHead || false,
       immediate_superior_name: user.immediateSuperiorName || '',
       department_head_name: user.departmentHeadName || '',
@@ -680,7 +684,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
         username, password, requires_password_change, avatar_url,
         employment_status, date_hired, approval_status, hr_rejection_remarks,
         is_department_head, immediate_superior_name, department_head_name,
-        immediate_superior_id, department_head_id, ...corePayload
+        immediate_superior_id, department_head_id, company_id, company_name, ...corePayload
       } = payload;
       if (existingId) {
         const { error: coreErr } = await supabase.from('employees').update(corePayload).eq('id', existingId);
@@ -761,10 +765,12 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       };
     }
 
-    triggerRealtimeBroadcast('data_changed', { type: 'employee', email: cleanEmail });
-    return { success: true, id: targetId };
+    return {
+      success: true,
+      verifiedUser: verifiedRow ? mapRowToUser(verifiedRow) : undefined
+    };
   } catch (err: any) {
-    console.error('[Supabase DB Update] Exception Error:', err);
+    console.error('[Supabase DB Update] Exception saving employee to Supabase:', err);
     return {
       success: false,
       error: {
@@ -775,6 +781,32 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       }
     };
   }
+};
+
+export const syncAllMasterEmployeesToSupabase = async (): Promise<{ total: number; successCount: number; errors: string[] }> => {
+  if (!isSupabaseConfigured || !supabase) {
+    return { total: MASTER_EMPLOYEES.length, successCount: 0, errors: ['Supabase not configured'] };
+  }
+  
+  console.log(`[Supabase Sync] Starting master employee synchronization for ${MASTER_EMPLOYEES.length} employees...`);
+  const errors: string[] = [];
+  let successCount = 0;
+
+  for (const emp of MASTER_EMPLOYEES) {
+    try {
+      const res = await saveEmployeeToSupabaseDetailed(emp);
+      if (res.success) {
+        successCount++;
+      } else {
+        errors.push(`${emp.name} (${emp.employeeNumber}): ${res.error?.message || 'Save failed'}`);
+      }
+    } catch (e: any) {
+      errors.push(`${emp.name} (${emp.employeeNumber}): ${e?.message || String(e)}`);
+    }
+  }
+
+  console.log(`[Supabase Sync] Master employee synchronization completed: ${successCount}/${MASTER_EMPLOYEES.length} successful.`);
+  return { total: MASTER_EMPLOYEES.length, successCount, errors };
 };
 
 export const saveEmployeeToSupabase = async (user: User, previousEmail?: string): Promise<boolean> => {

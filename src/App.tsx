@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, Role, Evaluation, EvaluationTemplate, Department, EvaluationCycle, Notification, isPendingUser, EvaluationScorecardArchive, DevelopmentPlan, PersonnelAction, DirectMessage } from './types';
 import { MASTER_SALES_EVALUATION_TEMPLATE } from './constants/masterSalesTemplate';
 import { 
@@ -41,7 +41,8 @@ import {
   saveEvaluationTemplateToSupabase,
   fetchEvaluationTemplatesFromSupabase,
   deleteEvaluationTemplateFromSupabase,
-  deleteEmployeeFromSupabase
+  deleteEmployeeFromSupabase,
+  syncAllMasterEmployeesToSupabase
 } from './services/supabaseService';
 import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './services/supabaseClient';
 import { 
@@ -336,6 +337,11 @@ export const App: React.FC = () => {
       setScorecardArchives(getStoredScorecardArchives());
 
       if (isSupabaseConfigured) {
+        // Synchronize and permanently provision all 60 Excel Master Employees into Supabase PostgreSQL employees table
+        syncAllMasterEmployeesToSupabase().catch((err) => {
+          console.warn('[App Init] Background master employee sync note:', err);
+        });
+
         // Proactively purge deprecated hardcoded accounts from Supabase cloud
         deleteEmployeeFromSupabase('usr_sup_sales_01', 'supervisor.sales@hdiadventures.com', 'SUP-SLS-01').catch(() => {});
 
