@@ -11,14 +11,6 @@ export type EmploymentStatus = 'Regular' | 'Probationary' | 'Contractual' | 'Pro
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 
-export interface Company {
-  id: string;
-  name: string;
-  code: string;
-  description?: string;
-  isActive?: boolean;
-}
-
 export interface User {
   id: string;
   employeeNumber?: string;
@@ -30,11 +22,9 @@ export interface User {
   email: string;
   contactNumber?: string;
   role: Role;
-  companyId?: string;
-  companyName?: string;
   departmentId: string;
   departmentName: string;
-  position?: string;
+  position: string;
   employmentStatus?: EmploymentStatus;
   dateHired?: string;
   avatarUrl?: string;
@@ -77,8 +67,6 @@ export interface Department {
   id: string;
   name: string;
   code: string;
-  companyId?: string;
-  companyName?: string;
   headId?: string;
   headName: string;
   defaultTemplateId?: string;
@@ -119,24 +107,16 @@ export interface KRACategory {
 
 export type TemplateStatus = 
   | 'draft' 
-  | 'submitted_to_is'
-  | 'is_review'
-  | 'returned_by_is'
-  | 'is_approved'
   | 'submitted_to_pod' 
   | 'returned_for_revision' 
   | 'resubmitted_to_pod' 
   | 'pod_review' 
-  | 'returned_by_pod'
-  | 'pod_approved'
   | 'approved' 
   | 'deployed';
 
 export interface EvaluationTemplate {
   id: string;
   title: string;
-  companyId?: string;
-  companyName?: string;
   departmentId: string;
   departmentName: string;
   evaluationPeriod: string;
@@ -157,33 +137,14 @@ export interface EvaluationTemplate {
   }[];
   isActive: boolean;
   createdAt: string;
-  // Template workflow & ownership fields
+  // Change 1 — Template workflow fields
   status?: TemplateStatus;
   createdByRole?: string;
   createdByUserId?: string;
   createdByName?: string;
-  createdForEmployeeId?: string;
-  createdForEmployeeName?: string;
-  createdForUserId?: string;
-  createdForName?: string;
-  createdForEmployeeNumber?: string;
-  createdForPosition?: string;
-  templateSource?: 'EMPLOYEE' | 'IS' | 'POD' | 'DEPT_HEAD';
-  immediateSupervisorId?: string;
-  immediateSupervisorName?: string;
-  currentReviewerId?: string;
-  currentReviewerName?: string;
-  isRemarks?: string;
-  isReviewRemarks?: string;
   podRemarks?: string;
   submittedAt?: string;
   reviewedAt?: string;
-  isApprovedAt?: string;
-  podApprovedAt?: string;
-  deployedAt?: string;
-  version?: number;
-  isLocked?: boolean;
-  revisionHistory?: any[];
 }
 
 export type DeploymentStatus = 'draft' | 'scheduled' | 'active' | 'closed' | 'archived';
@@ -404,13 +365,9 @@ export interface EvaluationScorecardArchive {
   employeeId: string;
   employeeName: string;
   employeeEmail?: string;
-  companyId?: string;
-  companyName?: string;
   departmentName: string;
   departmentId?: string;
   position: string;
-  immediateSupervisorId?: string;
-  immediateSupervisorName?: string;
   appraisalPeriod: string;
   cycleId?: string;
   templateId?: string;
@@ -456,13 +413,9 @@ export interface Evaluation {
   userId: string;
   employeeName: string;
   employeeEmail?: string;
-  companyId?: string;
-  companyName?: string;
   departmentName: string;
   departmentId?: string;
   position: string;
-  immediateSupervisorId?: string;
-  immediateSupervisorName?: string;
   isDepartmentHead?: boolean;
   appraisalPeriod: string;
   appraisalDate: string;

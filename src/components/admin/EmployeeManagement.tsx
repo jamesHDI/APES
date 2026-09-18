@@ -96,9 +96,9 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     return Boolean(
       u.isDepartmentHead || 
       u.role === 'dept_head' || 
-      u.position?.toLowerCase().includes('department head') || 
-      u.position?.toLowerCase().includes('head of') ||
-      u.position?.toLowerCase().endsWith(' head')
+      u.position.toLowerCase().includes('department head') || 
+      u.position.toLowerCase().includes('head of') ||
+      u.position.toLowerCase().endsWith(' head')
     );
   };
 
@@ -117,7 +117,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     const matchesSearch = 
       fullName.includes(searchTerm.toLowerCase()) || 
       u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (u.position && u.position.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      u.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (u.employeeNumber && u.employeeNumber.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesDept = filterDept === 'ALL' || u.departmentName === filterDept;

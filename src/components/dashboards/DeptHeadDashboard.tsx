@@ -62,10 +62,7 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
     if (e.employeeId === currentUser.id) return false;
     const sameDept = isSameDepartment(e.departmentName || e.departmentId, currentUser.departmentName || currentUser.departmentId);
     const empUser = allUsers.find(u => u.id === e.employeeId || u.employeeNumber === e.employeeId || (e.employeeEmail && u.email.toLowerCase() === e.employeeEmail.toLowerCase()));
-    const assignedToMe = Boolean(
-      (empUser?.departmentHeadId && (empUser.departmentHeadId === currentUser.id || empUser.departmentHeadId === currentUser.employeeNumber)) ||
-      (empUser?.immediateSuperiorId && (empUser.immediateSuperiorId === currentUser.id || empUser.immediateSuperiorId === currentUser.employeeNumber || empUser.immediateSuperiorName === currentUser.name))
-    );
+    const assignedToMe = Boolean(empUser?.departmentHeadId && (empUser.departmentHeadId === currentUser.id || empUser.departmentHeadId === currentUser.employeeNumber));
     return sameDept || assignedToMe;
   });
 

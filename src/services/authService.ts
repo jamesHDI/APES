@@ -37,16 +37,13 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
     } catch (e) {
       console.error('[Supabase Auth] Error during Supabase employee lookup:', e);
     }
-  }
-
-  // Fallback to local stored / master users so all Excel master employees can log in immediately
-  if (!matchedUser) {
+  } else {
+    // Development fallback when Supabase is completely unconfigured
     const users = getStoredUsers();
     matchedUser = users.find(
       (u) => u.email.toLowerCase() === cleanId || 
              (u.employeeNumber && u.employeeNumber.toLowerCase() === cleanId) ||
-             (u.username && u.username.toLowerCase() === cleanId) ||
-             (u.id && u.id.toLowerCase() === cleanId)
+             (u.username && u.username.toLowerCase() === cleanId)
     ) || null;
   }
 
