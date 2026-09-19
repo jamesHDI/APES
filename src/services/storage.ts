@@ -35,29 +35,41 @@ const DIRECT_MESSAGES_KEY = 'apes_direct_messages_v1';
 export const SEED_USERS: User[] = MASTER_EMPLOYEES;
 
 export const SEED_DEPARTMENTS: Department[] = [
+  // HDI WORLD
   { id: 'dept_ops_hdiw', name: 'Operations', code: 'OPS-HDIW', companyName: 'HDI WORLD', headId: 'usr_r132', headName: 'Ma. Emily Floresca', employeeCount: 4, isActive: true },
   { id: 'dept_wh_hdiw', name: 'Warehouse', code: 'WH-HDIW', companyName: 'HDI WORLD', headId: 'usr_e1572', headName: 'Lucil Osorio', employeeCount: 2, isActive: true },
   { id: 'dept_cebu_hdiw', name: 'Cebu Branch', code: 'CEBU-HDIW', companyName: 'HDI WORLD', headId: 'usr_r132', headName: 'Ma. Emily Floresca', employeeCount: 3, isActive: true },
   { id: 'dept_acctg_ga_hdiw', name: 'Acctg and GA', code: 'ACC-HDIW', companyName: 'HDI WORLD', headId: 'usr_e1714', headName: 'Dana Miran', employeeCount: 1, isActive: true },
+  { id: 'dept_branch_ops_hdiw', name: 'Branch Operations', code: 'BOPS-HDIW', companyName: 'HDI WORLD', headId: 'usr_r132', headName: 'Ma. Emily Floresca', employeeCount: 1, isActive: true },
   { id: 'dept_davao_hdiw', name: 'Davao branch', code: 'DAV-HDIW', companyName: 'HDI WORLD', headId: 'usr_e1396', headName: 'Junielyn Nuique', employeeCount: 1, isActive: true },
+
+  // HILLCROFT PROPERTIES
   { id: 'dept_ga_hill', name: 'General Affairs', code: 'GA-HILL', companyName: 'Hillcroft Properties', headId: 'usr_r132', headName: 'Ma. Emily Floresca', employeeCount: 2, isActive: true },
   { id: 'dept_fa_hill', name: 'Finance and Accounting', code: 'FA-HILL', companyName: 'Hillcroft Properties', headId: 'usr_e1806', headName: 'Mary Anne Murphy', employeeCount: 1, isActive: true },
+
+  // CAPITAL GROWTH PROPERTIES
   { id: 'dept_cb_cgp', name: 'Compensation & Benefits', code: 'CB-CGP', companyName: 'Capital Growth Properties', headId: 'usr_e984', headName: 'Judycel Delos Reyes', employeeCount: 3, isActive: true },
   { id: 'dept_chair_cgp', name: 'Office of the Chairman', code: 'CHAIR-CGP', companyName: 'Capital Growth Properties', headId: 'usr_ceo_brandon', headName: 'Brandon Chia', employeeCount: 1, isActive: true },
   { id: 'dept_ga_cgp', name: 'General Affairs', code: 'GA-CGP', companyName: 'Capital Growth Properties', headId: 'usr_r132', headName: 'Ma. Emily Floresca', employeeCount: 2, isActive: true },
   { id: 'dept_fa_cgp', name: 'Finance and Accounting', code: 'FA-CGP', companyName: 'Capital Growth Properties', headId: 'usr_e1714', headName: 'Dana Miran', employeeCount: 1, isActive: true },
   { id: 'dept_legal_cgp', name: 'Legal', code: 'LEG-CGP', companyName: 'Capital Growth Properties', headId: 'usr_e1813', headName: 'Jemimah Naomi De Los Santos', employeeCount: 1, isActive: true },
+
+  // ERMINLAND PROPERTIES
   { id: 'dept_ga_erm', name: 'General Affairs', code: 'GA-ERM', companyName: 'Erminland Properties', headId: 'usr_r132', headName: 'Ma. Emily Floresca', employeeCount: 1, isActive: true },
   { id: 'dept_fin_erm', name: 'Finance', code: 'FIN-ERM', companyName: 'Erminland Properties', headId: 'usr_e1806', headName: 'Mary Anne Murphy', employeeCount: 1, isActive: true },
   { id: 'dept_bmc_erm', name: 'BMC', code: 'BMC-ERM', companyName: 'Erminland Properties', headId: 'usr_e1538', headName: 'Pamela Maureen Fernando', employeeCount: 1, isActive: true },
+
+  // STANFORD
   { id: 'dept_ops_stan', name: 'Operations', code: 'OPS-STAN', companyName: 'Stanford', headId: 'usr_ceo_brandon', headName: 'Brandon Chia', employeeCount: 1, isActive: true },
-  { id: 'dept_ops_adv', name: 'Operations', code: 'OPS-ADV', companyName: 'Adventures', headId: 'usr_e1115', headName: 'Manuel, Jr. Embuido', employeeCount: 11, isActive: true },
+
+  // ADVENTURES
+  { id: 'dept_ops_adv', name: 'Operations', code: 'OPS-ADV', companyName: 'Adventures', headId: 'usr_e1115', headName: 'Manuel, Jr. Embuido', employeeCount: 8, isActive: true },
   { id: 'dept_sales_adv', name: 'Sales', code: 'SLS-ADV', companyName: 'Adventures', headId: 'usr_e1147', headName: 'Gracia Esguerra', employeeCount: 4, isActive: true },
   { id: 'dept_fa_adv', name: 'Finance and Accounting', code: 'FA-ADV', companyName: 'Adventures', headId: 'usr_e1752', headName: 'Emmanuel Buenaventura', employeeCount: 6, isActive: true },
   { id: 'dept_pod_adv', name: 'Peoples Ops', code: 'POD-ADV', companyName: 'Adventures', headId: 'usr_e1527', headName: 'Maria Elena Pellazo', employeeCount: 1, isActive: true },
   { id: 'dept_legal_adv', name: 'Peoples Ops Legal', code: 'LEG-ADV', companyName: 'Adventures', headId: 'usr_e1813', headName: 'Jemimah Naomi De Los Santos', employeeCount: 3, isActive: true },
   { id: 'dept_bmc_adv', name: 'BMC', code: 'BMC-ADV', companyName: 'Adventures', headId: 'usr_e1302', headName: 'Anmer Carrillo', employeeCount: 4, isActive: true },
-  { id: 'dept_adm_adv', name: 'Administration', code: 'ADM-ADV', companyName: 'Adventures', headId: 'usr_e1787', headName: 'James Ivan Luigi Abendan', employeeCount: 6, isActive: true },
+  { id: 'dept_adm_adv', name: 'Administration', code: 'ADM-ADV', companyName: 'Adventures', headId: 'usr_e1787', headName: 'James Ivan Luigi Abendan', employeeCount: 7, isActive: true },
 ];
 
 export const SEED_CYCLES: EvaluationCycle[] = [
@@ -181,16 +193,27 @@ export const getStoredDepartments = (): Department[] => {
     try {
       const depts: Department[] = JSON.parse(data);
       const filtered = depts.filter(d => d.name !== 'HDI Adventures' && d.id !== 'dept_hdi');
-      // Ensure all seed departments (including Creatives, Marketing, Operations) exist in the list
+      // Ensure all seed departments exist in the list per company
       const merged = [...filtered];
       for (const seedDept of SEED_DEPARTMENTS) {
-        if (!merged.some(d => d.code === seedDept.code || d.id === seedDept.id || d.name.toLowerCase() === seedDept.name.toLowerCase())) {
+        const existingIdx = merged.findIndex(d => 
+          d.id === seedDept.id || 
+          (d.code === seedDept.code && (d.companyName || '').toLowerCase() === (seedDept.companyName || '').toLowerCase()) ||
+          (d.name.toLowerCase() === seedDept.name.toLowerCase() && (d.companyName || '').toLowerCase() === (seedDept.companyName || '').toLowerCase())
+        );
+        if (existingIdx === -1) {
           merged.push(seedDept);
+        } else {
+          merged[existingIdx] = {
+            ...seedDept,
+            ...merged[existingIdx],
+            name: seedDept.name,
+            companyName: seedDept.companyName,
+            code: seedDept.code,
+          };
         }
       }
-      if (merged.length > filtered.length) {
-        localStorage.setItem(DEPARTMENTS_KEY, JSON.stringify(merged));
-      }
+      localStorage.setItem(DEPARTMENTS_KEY, JSON.stringify(merged));
       return merged;
     } catch {}
   }

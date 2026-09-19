@@ -785,7 +785,9 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 >
                   <option value="">— Select Department —</option>
                   {departments.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
+                    <option key={d.id} value={d.id}>
+                      {d.name}{d.companyName ? ` (${d.companyName})` : ''}
+                    </option>
                   ))}
                 </select>
               </div>

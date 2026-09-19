@@ -283,19 +283,129 @@ export const findEmployeeInSupabase = async (cleanId: string): Promise<User | nu
   }
 };
 
+export const syncAllEmployeesToSupabase = async (customUsers?: User[]): Promise<{ total: number; inserted: number; updated: number; failed: number }> => {
+  if (!isSupabaseConfigured || !supabase) {
+    return { total: 0, inserted: 0, updated: 0, failed: 0 };
+  }
+
+  try {
+    const targetList = customUsers && customUsers.length > 0 ? customUsers : MASTER_EMPLOYEES;
+    
+    // Fetch existing records from Supabase
+    const { data: existingRows, error: fetchErr } = await supabase.from('employees').select('id, employee_number, email, username, password');
+    if (fetchErr) {
+      console.warn('[Supabase Sync] Could not fetch existing employees for sync:', fetchErr);
+    }
+
+    const byId = new Map<string, any>();
+    const byEmpNum = new Map<string, any>();
+    const byEmail = new Map<string, any>();
+    const byUsername = new Map<string, any>();
+
+    (existingRows || []).forEach((row: any) => {
+      if (row.id) byId.set(row.id.toLowerCase(), row);
+      if (row.employee_number) byEmpNum.set(row.employee_number.toLowerCase().trim(), row);
+      if (row.email) byEmail.set(row.email.toLowerCase().trim(), row);
+      if (row.username) byUsername.set(row.username.toLowerCase().trim(), row);
+    });
+
+    let inserted = 0;
+    let updated = 0;
+    let failed = 0;
+
+    for (const emp of targetList) {
+      if (!emp || !emp.id) continue;
+      const targetUuid = ensureUuid(emp.id);
+      const existing = (emp.employeeNumber ? byEmpNum.get(emp.employeeNumber.toLowerCase().trim()) : null) ||
+                       (byId.get(targetUuid.toLowerCase())) ||
+                       (emp.email ? byEmail.get(emp.email.toLowerCase().trim()) : null) ||
+                       (emp.username ? byUsername.get(emp.username.toLowerCase().trim()) : null);
+
+      const recordId = existing ? existing.id : targetUuid;
+      const safeFirstName = emp.firstName || emp.name?.split(' ')[0] || 'Employee';
+      const safeLastName = emp.lastName || emp.name?.split(' ').slice(1).join(' ') || 'User';
+      const safeName = (emp.name || `${safeFirstName} ${safeLastName}`).trim();
+      const cleanEmail = (emp.email || `${emp.username || emp.employeeNumber}@hdiadventures.com`).toLowerCase().trim();
+
+      let passwordToStore = existing?.password || emp.password || '';
+      if (passwordToStore && !isHashedPassword(passwordToStore)) {
+        passwordToStore = await hashPassword(passwordToStore);
+      }
+
+      const payload: any = {
+        id: recordId,
+        employee_number: emp.employeeNumber || (existing ? existing.employee_number : `EMP-${Date.now().toString().slice(-6)}`),
+        first_name: safeFirstName,
+        middle_name: emp.middleName || '',
+        last_name: safeLastName,
+        suffix: emp.suffix || '',
+        name: safeName,
+        email: cleanEmail,
+        personal_email: emp.personalEmail || '',
+        contact_number: emp.contactNumber || '',
+        department_id: isValidUuid(emp.departmentId) ? emp.departmentId : null,
+        department_name: emp.departmentName || 'General',
+        position: emp.position || 'Staff',
+        role: emp.role || 'employee',
+        employment_status: emp.employmentStatus || 'Regular',
+        date_hired: emp.dateHired || '2026-01-01',
+        immediate_superior_id: isValidUuid(emp.immediateSuperiorId) ? emp.immediateSuperiorId : null,
+        immediate_superior_name: emp.immediateSuperiorName || '',
+        department_head_id: isValidUuid(emp.departmentHeadId) ? emp.departmentHeadId : null,
+        department_head_name: emp.departmentHeadName || '',
+        default_template_id: isValidUuid(emp.defaultTemplateId) ? emp.defaultTemplateId : null,
+        username: emp.username || cleanEmail.split('@')[0],
+        password: passwordToStore,
+        requires_password_change: emp.requiresPasswordChange ?? (emp.id === 'usr_default_admin' || !existing),
+        avatar_url: emp.avatarUrl || '',
+        is_active: emp.isActive ?? true,
+        is_approved: emp.isApproved ?? true,
+        approval_status: emp.approvalStatus || 'approved',
+        hr_rejection_remarks: emp.hrRejectionRemarks || null,
+        is_department_head: emp.isDepartmentHead || false,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error: upsertErr } = await supabase
+        .from('employees')
+        .upsert(payload, { onConflict: 'id' });
+
+      if (upsertErr) {
+        console.warn(`[Supabase Sync] Upsert failed for ${emp.name}:`, upsertErr);
+        failed++;
+      } else {
+        if (existing) updated++;
+        else inserted++;
+      }
+    }
+
+    console.log(`[Supabase Sync] Completed sync for ${targetList.length} employees: ${inserted} inserted, ${updated} updated, ${failed} failed.`);
+    return { total: targetList.length, inserted, updated, failed };
+  } catch (err) {
+    console.error('[Supabase Sync] Sync exception:', err);
+    return { total: 0, inserted: 0, updated: 0, failed: 0 };
+  }
+};
+
 export const fetchEmployeesFromSupabase = async (): Promise<User[] | null> => {
   if (!isSupabaseConfigured || !supabase) return null;
 
   try {
     const { data, error } = await supabase.from('employees').select('*');
-    if (error || !data || data.length === 0) {
-      const { SEED_USERS } = await import('./storage');
-      console.log('[Supabase Sync] Auto-seeding SEED_USERS into Supabase employees table...');
-      for (const u of SEED_USERS) {
-        await saveEmployeeToSupabase(u);
-      }
+    if (error) {
+      console.warn('Error fetching employees from Supabase:', error);
+      return null;
+    }
+
+    // Check if any master employees are missing from database
+    const dbEmpCount = data ? data.length : 0;
+    if (dbEmpCount < MASTER_EMPLOYEES.length) {
+      console.log(`[Supabase Sync] Database has ${dbEmpCount} employees, syncing all ${MASTER_EMPLOYEES.length} master employees...`);
+      await syncAllEmployeesToSupabase();
       const { data: retryData } = await supabase.from('employees').select('*');
-      return (retryData || []).map(mapRowToUser);
+      if (retryData) {
+        return retryData.map(mapRowToUser);
+      }
     }
 
     const isExcluded = (u: User) =>
@@ -309,7 +419,7 @@ export const fetchEmployeesFromSupabase = async (): Promise<User[] | null> => {
       (u.email && u.email.toLowerCase().trim() === 'supervisor.sales@hdiadventures.com') ||
       u.employeeNumber === 'SUP-SLS-01';
 
-    return data.map(mapRowToUser).filter((u: User) => !isExcluded(u));
+    return (data || []).map(mapRowToUser).filter((u: User) => !isExcluded(u));
   } catch (err) {
     console.warn('Error fetching employees from Supabase:', err);
     return null;
@@ -613,8 +723,6 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       is_approved: user.isApproved ?? true,
       approval_status: user.approvalStatus || 'approved',
       hr_rejection_remarks: user.hrRejectionRemarks || null,
-      company_id: user.companyId || null,
-      company_name: user.companyName || null,
       is_department_head: user.isDepartmentHead || false,
       immediate_superior_name: user.immediateSuperiorName || '',
       department_head_name: user.departmentHeadName || '',
