@@ -49,8 +49,8 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
       setError('New password and confirmation do not match.');
       return;
     }
-    if (isForced && newPassword.toUpperCase() === 'ADMIN') {
-      setError('You must choose a different password than the default.');
+    if (isForced && (newPassword.toUpperCase() === 'ADMIN' || newPassword.toLowerCase() === 'password123' || newPassword.toLowerCase() === 'password')) {
+      setError('You must choose a different password than the default password.');
       return;
     }
 
@@ -85,7 +85,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               </h3>
               {isForced && (
                 <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                  For security, you must change the default admin password before continuing.
+                  For security, you must set a new personal password on your first login before continuing.
                 </p>
               )}
             </div>

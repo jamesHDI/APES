@@ -327,7 +327,7 @@ export const syncAllEmployeesToSupabase = async (customUsers?: User[]): Promise<
       const safeName = (emp.name || `${safeFirstName} ${safeLastName}`).trim();
       const cleanEmail = (emp.email || `${emp.username || emp.employeeNumber}@hdiadventures.com`).toLowerCase().trim();
 
-      let passwordToStore = existing?.password || emp.password || '';
+      let passwordToStore = existing?.password || emp.password || 'password123';
       if (passwordToStore && !isHashedPassword(passwordToStore)) {
         passwordToStore = await hashPassword(passwordToStore);
       }
@@ -356,7 +356,7 @@ export const syncAllEmployeesToSupabase = async (customUsers?: User[]): Promise<
         default_template_id: isValidUuid(emp.defaultTemplateId) ? emp.defaultTemplateId : null,
         username: emp.username || cleanEmail.split('@')[0],
         password: passwordToStore,
-        requires_password_change: emp.requiresPasswordChange ?? (emp.id === 'usr_default_admin' || !existing),
+        requires_password_change: emp.requiresPasswordChange ?? (existing?.requires_password_change ?? true),
         avatar_url: emp.avatarUrl || '',
         is_active: emp.isActive ?? true,
         is_approved: emp.isApproved ?? true,
