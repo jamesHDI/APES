@@ -39,6 +39,7 @@ const mergeMasterWithSupabaseUsers = (sbUsers: User[]): User[] => {
         resultsMap.set(matchKey, {
           ...existing,
           ...u,
+          requiresPasswordChange: (u.requiresPasswordChange === false || existing.requiresPasswordChange === false) ? false : (u.requiresPasswordChange ?? existing.requiresPasswordChange ?? false),
           id: existing.id,
           companyId: existing.companyId || u.companyId,
           companyName: existing.companyName || u.companyName,
@@ -376,8 +377,12 @@ export const App: React.FC = () => {
             try {
               const freshUser = (await findEmployeeInSupabase(storedUser.id)) || (await findEmployeeInSupabase(storedUser.email));
               if (freshUser) {
-                storedUser = freshUser;
-                setCurrentUserStore(freshUser);
+                const shouldRequireChange = (storedUser.requiresPasswordChange === false || freshUser.requiresPasswordChange === false) ? false : (freshUser.requiresPasswordChange ?? false);
+                storedUser = {
+                  ...freshUser,
+                  requiresPasswordChange: shouldRequireChange
+                };
+                setCurrentUserStore(storedUser);
               }
             } catch (e) {
               console.warn('[App Init] Could not fetch fresh profile from Supabase, using stored fallback:', e);
@@ -504,7 +509,7 @@ export const App: React.FC = () => {
                       ? lastAvatarUpdateRef.current!.url
                       : (prevUser.avatarUrl && prevUser.avatarUrl !== updatedSelf.avatarUrl ? prevUser.avatarUrl : (updatedSelf.avatarUrl || '')),
                     personalEmail: updatedSelf.personalEmail || prevUser.personalEmail || '',
-                    requiresPasswordChange: updatedSelf.requiresPasswordChange ?? prevUser.requiresPasswordChange
+                    requiresPasswordChange: (prevUser.requiresPasswordChange === false || updatedSelf.requiresPasswordChange === false) ? false : (updatedSelf.requiresPasswordChange ?? false)
                   };
                   if (
                     prevUser.avatarUrl === mergedSelf.avatarUrl &&
@@ -995,8 +1000,9 @@ export const App: React.FC = () => {
           triggerRealtimeBroadcast('data_changed', { type: 'template', templateId: updatedTemplate.id });
           const freshTemplates = await fetchEvaluationTemplatesFromSupabase();
           if (freshTemplates && freshTemplates.length > 0) {
-            setTemplates(freshTemplates);
-            saveTemplates(freshTemplates);
+            const mergedTemplates = mergeEvaluationTemplates(freshTemplates, newTemplates);
+            setTemplates(mergedTemplates);
+            saveTemplates(mergedTemplates);
           }
         } else {
           console.warn('[App] Template saved locally but cloud sync failed.');

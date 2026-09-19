@@ -310,6 +310,8 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       createdByName: activeTemplate.createdByName || currentUser?.name,
     };
 
+    currentLoadedTemplateIdRef.current = submitted.id;
+    setSelectedTemplateId(submitted.id);
     onSaveTemplate(submitted);
     setActiveTemplate(submitted);
 
