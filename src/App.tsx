@@ -257,6 +257,24 @@ export const App: React.FC = () => {
     ).length;
   }, [directMessages, currentUser?.id]);
 
+  const pendingTemplateCount = useMemo(() => {
+    if (!currentUser) return 0;
+    if (currentUser.role === 'pod' || currentUser.role === 'hr_admin' || currentUser.role === 'system_admin') {
+      return templates.filter(t => t.status === 'submitted_to_pod' || t.status === 'resubmitted_to_pod' || t.status === 'is_approved').length;
+    }
+    const myReports = (users || []).filter(u => 
+      u.immediateSuperiorId === currentUser.id || 
+      (u.immediateSuperiorId && currentUser.employeeNumber && u.immediateSuperiorId.toUpperCase() === currentUser.employeeNumber.toUpperCase()) ||
+      (u.immediateSuperiorName && currentUser.name && u.immediateSuperiorName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
+    );
+    return templates.filter(t => {
+      const isIS = (t.immediateSupervisorId && (t.immediateSupervisorId === currentUser.id || (currentUser.employeeNumber && t.immediateSupervisorId.toUpperCase() === currentUser.employeeNumber.toUpperCase()))) ||
+                   (t.immediateSupervisorName && currentUser.name && t.immediateSupervisorName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()) ||
+                   myReports.some(r => r.id === t.createdForEmployeeId || (r.employeeNumber && t.createdForEmployeeNumber && r.employeeNumber.toUpperCase() === t.createdForEmployeeNumber.toUpperCase()) || (r.name && t.createdForEmployeeName && r.name.trim().toLowerCase() === t.createdForEmployeeName.trim().toLowerCase()));
+      return isIS && (t.status === 'submitted_to_is' || t.status === 'is_review');
+    }).length;
+  }, [currentUser, templates, users]);
+
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedEvalId, setSelectedEvalId] = useState<string>('');
   const [darkMode, setDarkMode] = useState<boolean>(() => {
@@ -1529,6 +1547,7 @@ export const App: React.FC = () => {
             activeTab={activeTab}
             onSelectTab={handleSelectTab}
             pendingCount={notifications.filter(n => !n.read).length}
+            pendingTemplateCount={pendingTemplateCount}
             pendingAccountCount={pendingAccountCount}
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}

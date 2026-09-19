@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { EvaluationTemplate, KRACategory, KPITemplateItem, CoreValue, Department, User, Evaluation, TemplateStatus } from '../../types';
 import { createMasterBasedTemplate, MASTER_SALES_EVALUATION_TEMPLATE } from '../../constants/masterSalesTemplate';
 import { validateEvaluationTemplate } from '../../services/templateValidation';
@@ -53,7 +53,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   onDeleteTemplate,
   mode = 'all',
 }) => {
-  const isEmployeeMode = mode === 'employee' || currentUser?.role === 'employee';
+  const isEmployeeMode = mode === 'employee' || (currentUser?.role === 'employee' && mode !== 'supervisor' && mode !== 'pod');
   const isSupervisorRole = currentUser?.role === 'supervisor';
   const isDeptHead = currentUser?.role === 'dept_head';
   const isPOD = currentUser?.role === 'pod' || currentUser?.role === 'hr_admin' || currentUser?.role === 'system_admin';
@@ -61,25 +61,56 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const canCreate = isEmployeeMode || isPOD || isDeptHead || currentUser?.role === 'system_admin';
   const canDelete = currentUser?.role === 'system_admin' || isPOD || isDeptHead;
 
+  // Helper: check if currentUser is the Immediate Supervisor for a given template
+  const checkIsISForTemplate = (t: EvaluationTemplate): boolean => {
+    if (!currentUser) return false;
+    const curId = currentUser.id;
+    const curEmpNo = currentUser.employeeNumber?.toUpperCase();
+    const curName = currentUser.name?.trim().toLowerCase();
+
+    // 1. Direct match on template immediateSupervisor fields
+    if (t.immediateSupervisorId && (t.immediateSupervisorId === curId || (curEmpNo && t.immediateSupervisorId.toUpperCase() === curEmpNo))) return true;
+    if (t.immediateSupervisorName && curName && t.immediateSupervisorName.trim().toLowerCase() === curName) return true;
+
+    // 2. Direct report lookup in users list
+    const myReports = (users || []).filter(u => 
+      u.immediateSuperiorId === curId ||
+      (curEmpNo && u.immediateSuperiorId && u.immediateSuperiorId.toUpperCase() === curEmpNo) ||
+      (curName && u.immediateSuperiorName && u.immediateSuperiorName.trim().toLowerCase() === curName)
+    );
+
+    const isDirectReportTemplate = myReports.some(r => 
+      r.id === t.createdForEmployeeId ||
+      (r.employeeNumber && t.createdForEmployeeNumber && r.employeeNumber.toUpperCase() === t.createdForEmployeeNumber.toUpperCase()) ||
+      (r.name && t.createdForEmployeeName && r.name.trim().toLowerCase() === t.createdForEmployeeName.trim().toLowerCase())
+    );
+
+    if (isDirectReportTemplate) return true;
+
+    // 3. Match if created by/for current user
+    if (t.createdForEmployeeId === curId || t.createdByUserId === curId) return true;
+    if (curEmpNo && t.createdForEmployeeNumber && t.createdForEmployeeNumber.toUpperCase() === curEmpNo) return true;
+    if (curName && t.createdForEmployeeName && t.createdForEmployeeName.trim().toLowerCase() === curName) return true;
+
+    return false;
+  };
+
   // Filter templates visible to this user
   const allVisibleTemplates = isEmployeeMode
     ? templates.filter(t => 
         t.createdForEmployeeId === currentUser?.id || 
         t.createdByUserId === currentUser?.id ||
-        (t.createdForEmployeeNumber && t.createdForEmployeeNumber === currentUser?.employeeNumber)
+        (t.createdForEmployeeNumber && currentUser?.employeeNumber && t.createdForEmployeeNumber.toUpperCase() === currentUser.employeeNumber.toUpperCase()) ||
+        (t.createdForEmployeeName && currentUser?.name && t.createdForEmployeeName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
       )
     : isSupervisorRole
-    ? templates.filter(t => 
-        t.immediateSupervisorId === currentUser?.id ||
-        t.immediateSupervisorName === currentUser?.name ||
-        t.createdByUserId === currentUser?.id ||
-        t.createdForEmployeeId === currentUser?.id
-      )
+    ? templates.filter(t => checkIsISForTemplate(t))
     : isDeptHead
-    ? templates.filter(
-        t => !t.departmentId || t.departmentId === currentUser?.departmentId ||
-             t.departmentName?.toLowerCase() === currentUser?.departmentName?.toLowerCase() ||
-             t.immediateSupervisorId === currentUser?.id
+    ? templates.filter(t => 
+        checkIsISForTemplate(t) ||
+        !t.departmentId || 
+        t.departmentId === currentUser?.departmentId ||
+        (t.departmentName && currentUser?.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
       )
     : templates;
 
@@ -89,6 +120,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
   // POD Filter Tab & Company Filter
   const [podFilterTab, setPodFilterTab] = useState<'all' | 'pending_is' | 'pending_pod' | 'returned' | 'approved_deployed' | 'drafts'>('all');
+  const [supervisorFilterTab, setSupervisorFilterTab] = useState<'all' | 'pending_review' | 'approved' | 'returned'>('all');
   const [companyFilter, setCompanyFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
 
@@ -102,6 +134,13 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         if (podFilterTab === 'returned') return t.status === 'returned_by_is' || t.status === 'returned_by_pod' || t.status === 'returned_for_revision';
         if (podFilterTab === 'approved_deployed') return t.status === 'approved' || t.status === 'pod_approved' || t.status === 'deployed';
         if (podFilterTab === 'drafts') return t.status === 'draft' || !t.status;
+        return true;
+      })
+    : (isSupervisorRole || isDeptHead) && !isEmployeeMode
+    ? safeTemplatesList.filter(t => {
+        if (supervisorFilterTab === 'pending_review') return t.status === 'submitted_to_is' || t.status === 'is_review';
+        if (supervisorFilterTab === 'approved') return t.status === 'is_approved' || t.status === 'pod_approved' || t.status === 'deployed';
+        if (supervisorFilterTab === 'returned') return t.status === 'returned_by_is';
         return true;
       })
     : safeTemplatesList;
@@ -177,7 +216,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
   // Permission Checks
   const isTemplateOwner = activeTemplate.createdForEmployeeId === currentUser?.id || activeTemplate.createdByUserId === currentUser?.id;
-  const isAssignedIS = activeTemplate.immediateSupervisorId === currentUser?.id || activeTemplate.immediateSupervisorName === currentUser?.name;
+  const isAssignedIS = checkIsISForTemplate(activeTemplate) || currentUser?.role === 'system_admin';
   
   const canEdit = isPOD 
     || currentUser?.role === 'system_admin'
@@ -888,9 +927,46 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         <div className="lg:col-span-4 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-[calc(100vh-140px)] min-h-[600px] sticky top-4">
           <div className="flex items-center justify-between px-1 shrink-0 mb-2">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              {isEmployeeMode ? 'My Templates' : 'Evaluation Templates'} ({visibleTemplates.length})
+              {isEmployeeMode ? 'My Templates' : isSupervisorRole ? 'Team Direct Report Templates' : 'Evaluation Templates'} ({visibleTemplates.length})
             </h3>
           </div>
+
+          {/* Supervisor / Dept Head Filter Tabs */}
+          {(isSupervisorRole || isDeptHead) && !isEmployeeMode && !isPOD && (
+            <div className="space-y-2 mb-3 shrink-0">
+              <div className="flex flex-wrap p-1 bg-slate-100 dark:bg-slate-750 rounded-xl gap-1 text-[11px] font-semibold">
+                <button
+                  onClick={() => setSupervisorFilterTab('all')}
+                  className={`flex-1 py-1 px-2 rounded-lg transition-all text-center ${supervisorFilterTab === 'all' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setSupervisorFilterTab('pending_review')}
+                  className={`flex-1 py-1 px-2 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${supervisorFilterTab === 'pending_review' ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Pending IS
+                  {pendingISCount > 0 && (
+                    <span className="px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[9px] font-bold">
+                      {pendingISCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setSupervisorFilterTab('approved')}
+                  className={`flex-1 py-1 px-2 rounded-lg transition-all text-center ${supervisorFilterTab === 'approved' ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Approved
+                </button>
+                <button
+                  onClick={() => setSupervisorFilterTab('returned')}
+                  className={`flex-1 py-1 px-2 rounded-lg transition-all text-center ${supervisorFilterTab === 'returned' ? 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Returned
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* POD Filter Tabs */}
           {isPOD && (

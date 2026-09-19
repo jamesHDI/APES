@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Role } from '../../types';
 import {
   LayoutDashboard,
@@ -7,6 +7,7 @@ import {
   Users,
   Building2,
   SlidersHorizontal,
+  Layers,
   CheckSquare,
   FileCheck,
   Crown,
@@ -37,6 +38,7 @@ interface SidebarProps {
   activeTab: string;
   onSelectTab: (tab: string) => void;
   pendingCount?: number;
+  pendingTemplateCount?: number;
   pendingAccountCount?: number;
   isOpen: boolean;
   onClose: () => void;
@@ -49,6 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onSelectTab,
   pendingCount = 0,
+  pendingTemplateCount = 0,
   pendingAccountCount = 0,
   isOpen,
   onClose,
@@ -90,6 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items = [
         ...common,
         { id: 'my_template', label: 'My Evaluation Template', icon: SlidersHorizontal },
+        { id: 'template_builder', label: 'Team Template Reviews', icon: Layers, badge: pendingTemplateCount > 0 ? pendingTemplateCount : undefined },
         { id: 'team_reviews', label: 'Team Reviews', icon: CheckSquare, badge: pendingCount > 0 ? pendingCount : undefined },
         { id: 'reports', label: 'Reports', icon: BarChart3 },
         { id: 'my_history', label: 'Evaluation History', icon: History },
@@ -99,7 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items = [
         ...common,
         { id: 'dept_actions', label: 'Personnel Actions', icon: FileCheck },
-        { id: 'template_builder', label: 'Dept Template Builder', icon: SlidersHorizontal },
+        { id: 'template_builder', label: 'Dept Template Reviews', icon: SlidersHorizontal, badge: pendingTemplateCount > 0 ? pendingTemplateCount : undefined },
         { id: 'calibration_requests', label: 'Calibration Requests', icon: MessageSquare },
         { id: 'reports', label: 'Reports', icon: BarChart3 },
         { id: 'my_history', label: 'Evaluation History', icon: History },
