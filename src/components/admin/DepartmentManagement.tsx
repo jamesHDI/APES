@@ -38,13 +38,47 @@ export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
     defaultTemplateId: templates[0]?.id || ''
   });
 
+  const getDepartmentEmployees = (dept: Department): User[] => {
+    if (!dept) return [];
+    const deptEmployees = users.filter(u => {
+      if (!u || u.isActive === false || u.isApproved === false || u.approvalStatus === 'pending') return false;
+
+      // 1. Direct departmentId match
+      if (u.departmentId && dept.id && u.departmentId === dept.id) return true;
+
+      const empDeptName = (u.departmentName || '').trim().toLowerCase();
+      const targetDeptName = (dept.name || '').trim().toLowerCase();
+
+      if (!empDeptName || !targetDeptName) return false;
+
+      // 2. If department has companyName, check company match first
+      if (dept.companyName && u.companyName) {
+        const empComp = u.companyName.trim().toLowerCase();
+        const targetComp = dept.companyName.trim().toLowerCase();
+        if (empComp === targetComp) {
+          return empDeptName === targetDeptName || isSameDepartment(empDeptName, targetDeptName);
+        }
+        return false;
+      }
+
+      return empDeptName === targetDeptName || isSameDepartment(empDeptName, targetDeptName);
+    });
+
+    // Deduplicate strictly by employeeNumber, email, or id
+    const deduped: User[] = [];
+    const seen = new Set<string>();
+    for (const emp of deptEmployees) {
+      const key = (emp.employeeNumber || emp.id || emp.email || emp.name).toLowerCase().trim();
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduped.push(emp);
+      }
+    }
+    return deduped;
+  };
+
   const getEmployeeCount = (dept: Department): number => {
-    return users.filter(u => 
-      u.isActive !== false && 
-      u.isApproved !== false && 
-      u.approvalStatus !== 'pending' &&
-      isSameDepartment(u.departmentName || u.departmentId, dept.name || dept.id)
-    ).length;
+    return getDepartmentEmployees(dept).length;
   };
 
   const showToast = (msg: string) => {
@@ -102,7 +136,7 @@ export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
       });
       setDeptList(updated);
       onSaveDepartments(updated);
-      showToast(`Updated department settings for ${formData.name}`);
+      showToast('Department updated successfully');
     } else {
       const newDept: Department = {
         id: `dept_${Date.now()}`,
@@ -117,64 +151,82 @@ export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
       const updated = [...deptList, newDept];
       setDeptList(updated);
       onSaveDepartments(updated);
-      showToast(`New department ${formData.name} created!`);
+      showToast('Department created successfully');
     }
 
     setShowModal(false);
   };
 
-  const handleToggleActive = (deptId: string) => {
-    const updated = deptList.map((d) => {
-      if (d.id === deptId) {
-        const nextState = !d.isActive;
-        showToast(`Department ${d.name} is now ${nextState ? 'Active' : 'Archived'}`);
-        return { ...d, isActive: nextState };
-      }
-      return d;
-    });
+  const handleToggleActive = (id: string) => {
+    const updated = deptList.map(d => d.id === id ? { ...d, isActive: !d.isActive } : d);
     setDeptList(updated);
     onSaveDepartments(updated);
+    showToast('Department status updated');
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6">
       
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Department Management</h2>
+          <p className="text-xs text-slate-500">Configure departments, assign Department Heads, and link evaluation templates.</p>
+        </div>
+        <button
+          onClick={handleOpenAdd}
+          className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-[#E96B1A] text-white font-bold text-xs hover:bg-[#D35A0F] shadow-sm transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Add Department</span>
+        </button>
+      </div>
+
       {/* Toast */}
       {toastMsg && (
-        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-brand-500 flex items-center space-x-3 animate-in fade-in">
-          <Sparkles className="w-5 h-5 text-brand-400" />
-          <span className="text-sm font-semibold">{toastMsg}</span>
+        <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center space-x-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <span>{toastMsg}</span>
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="hero-card">
-        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#FFF4EA] dark:from-transparent to-transparent pointer-events-none rounded-r-2xl" />
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Department & Unit Management</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Configure company departments, assign Department Heads, and review staff rosters.
-            </p>
-          </div>
-
-          <button onClick={handleOpenAdd} className="btn btn-primary btn-sm shrink-0">
-            <Plus className="w-4 h-4" />
-            Add New Department
-          </button>
-        </div>
-      </div>
-
-      {/* Departments Grid */}
+      {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {deptList.map((d) => {
           const deptStaffCount = getEmployeeCount(d);
           return (
-            <div key={d.id} className="card p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-base text-slate-900 dark:text-white">{d.name}</span>
-                <span className="px-2.5 py-0.5 rounded-full font-bold text-xs bg-[#FFF4EA] text-[#E96B1A] dark:bg-brand-950 dark:text-brand-300 border border-[#F28C28]/20">
-                  {d.code}
+            <div
+              key={d.id}
+              className={`p-5 rounded-2xl border transition-all ${
+                d.isActive 
+                  ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm' 
+                  : 'bg-slate-50 dark:bg-slate-900 border-dashed border-slate-300 dark:border-slate-700 opacity-60'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200/50 flex items-center justify-center text-[#E96B1A]">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-white text-sm">{d.name}</h3>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold">
+                        {d.code}
+                      </span>
+                      {d.companyName && (
+                        <span className="text-[10px] font-semibold text-slate-500">
+                          {d.companyName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  d.isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {d.isActive ? 'Active' : 'Inactive'}
                 </span>
               </div>
 
@@ -219,26 +271,29 @@ export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
       {selectedDept && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
-            <h3 className="font-bold text-slate-900 dark:text-white text-base">
-              Assigned Personnel in {selectedDept.name} Department ({getEmployeeCount(selectedDept)})
-            </h3>
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                Assigned Personnel in {selectedDept.name} Department ({getEmployeeCount(selectedDept)})
+              </h3>
+              {selectedDept.companyName && (
+                <p className="text-xs text-slate-500 font-semibold">{selectedDept.companyName}</p>
+              )}
+            </div>
             <button onClick={() => setSelectedDept(null)} className="p-1 text-slate-400 hover:text-slate-600">
               <X className="w-5 h-5" />
             </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {users.filter(u => 
-              u.isActive !== false && 
-              u.isApproved !== false && 
-              u.approvalStatus !== 'pending' &&
-              isSameDepartment(u.departmentName || u.departmentId, selectedDept.name || selectedDept.id)
-            ).map((u) => (
+            {getDepartmentEmployees(selectedDept).map((u) => (
               <div key={u.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 flex items-center space-x-3">
                 <img src={u.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={u.name} className="w-9 h-9 rounded-full object-cover" />
                 <div>
                   <p className="font-bold text-xs text-slate-900 dark:text-white">{u.name}</p>
                   <p className="text-[10px] text-slate-500">{u.position}</p>
+                  {u.companyName && (
+                    <span className="text-[9px] font-semibold text-slate-400">{u.companyName}</span>
+                  )}
                 </div>
               </div>
             ))}

@@ -101,14 +101,12 @@ const isExcludedUser = (u: User) =>
   u.employeeNumber === 'SUP-SLS-01';
 
 export const getStoredUsers = (): User[] => {
-  const userMap = new Map<string, User>();
+  const resultsMap = new Map<string, User>();
 
-  // 1. Seed all 60 master employees first
+  // 1. Seed master employees by canonical ID
   for (const emp of MASTER_EMPLOYEES) {
     if (emp && emp.id && !isExcludedUser(emp)) {
-      userMap.set(emp.id, emp);
-      if (emp.employeeNumber) userMap.set(`num_${emp.employeeNumber.toLowerCase()}`, emp);
-      if (emp.email) userMap.set(`email_${emp.email.toLowerCase()}`, emp);
+      resultsMap.set(emp.id, { ...emp });
     }
   }
 
@@ -119,30 +117,67 @@ export const getStoredUsers = (): User[] => {
       const storedList: User[] = JSON.parse(data);
       if (Array.isArray(storedList)) {
         for (const u of storedList) {
-          if (u && u.id && !isExcludedUser(u)) {
-            const existing = userMap.get(u.id) ||
-                             (u.employeeNumber ? userMap.get(`num_${u.employeeNumber.toLowerCase()}`) : null) ||
-                             (u.email ? userMap.get(`email_${u.email.toLowerCase()}`) : null);
-            if (existing) {
-              userMap.set(existing.id, { ...existing, ...u });
-            } else {
-              userMap.set(u.id, u);
+          if (!u || isExcludedUser(u)) continue;
+
+          let matchKey: string | null = null;
+          for (const [key, existing] of resultsMap.entries()) {
+            const matchNum = u.employeeNumber && existing.employeeNumber && 
+              u.employeeNumber.toLowerCase().trim() === existing.employeeNumber.toLowerCase().trim();
+            const matchId = u.id && (u.id === existing.id || u.id.toLowerCase() === existing.id.toLowerCase());
+            const matchEmail = u.email && existing.email && 
+              u.email.toLowerCase().trim() === existing.email.toLowerCase().trim();
+            const matchUsername = u.username && existing.username && 
+              u.username.toLowerCase().trim() === existing.username.toLowerCase().trim();
+
+            if (matchNum || matchId || matchEmail || matchUsername) {
+              matchKey = key;
+              break;
             }
+          }
+
+          if (matchKey) {
+            const existing = resultsMap.get(matchKey)!;
+            resultsMap.set(matchKey, {
+              ...existing,
+              ...u,
+              id: existing.id,
+              companyId: existing.companyId || u.companyId,
+              companyName: existing.companyName || u.companyName,
+              departmentId: existing.departmentId || u.departmentId,
+              departmentName: existing.departmentName || u.departmentName
+            });
+          } else if (u.id) {
+            resultsMap.set(u.id, u);
           }
         }
       }
     } catch {}
   }
 
-  const result: User[] = [];
-  const seen = new Set<string>();
-  for (const u of userMap.values()) {
-    if (u && u.id && !seen.has(u.id)) {
-      seen.add(u.id);
-      result.push(u);
-    }
+  // 3. Deduplicate strictly by employeeNumber, email, and ID
+  const finalUsers: User[] = [];
+  const seenNumbers = new Set<string>();
+  const seenEmails = new Set<string>();
+  const seenIds = new Set<string>();
+
+  for (const u of resultsMap.values()) {
+    if (!u) continue;
+    const numKey = u.employeeNumber ? u.employeeNumber.toLowerCase().trim() : '';
+    const emailKey = u.email ? u.email.toLowerCase().trim() : '';
+    const idKey = (u.id || '').toLowerCase().trim();
+
+    if (numKey && seenNumbers.has(numKey)) continue;
+    if (emailKey && seenEmails.has(emailKey)) continue;
+    if (idKey && seenIds.has(idKey)) continue;
+
+    if (numKey) seenNumbers.add(numKey);
+    if (emailKey) seenEmails.add(emailKey);
+    if (idKey) seenIds.add(idKey);
+
+    finalUsers.push(u);
   }
-  return result;
+
+  return finalUsers;
 };
 
 export const saveUsers = (users: User[]) => {
