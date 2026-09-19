@@ -1284,7 +1284,7 @@ export const App: React.FC = () => {
       );
     }
 
-    // Change 2 ΓÇö Calibration Request (Employee view)
+    // Change 2 — Calibration Request (Employee view)
     if (activeTab === 'calibration_request') {
       return (
         <CalibrationRequestForm
@@ -1294,7 +1294,7 @@ export const App: React.FC = () => {
       );
     }
 
-    // Change 2 ΓÇö Calibration Requests (Dept Head review)
+    // Change 2 — Calibration Requests (Dept Head review)
     if (activeTab === 'calibration_requests') {
       return (
         <CalibrationRequestsManager
@@ -1307,7 +1307,7 @@ export const App: React.FC = () => {
       );
     }
 
-    // Change 2 ΓÇö Calibration POD Review (POD / HR Admin)
+    // Change 2 — Calibration POD Review (POD / HR Admin)
     if (activeTab === 'calibration_pod_review') {
       return (
         <CalibrationRequestsManager

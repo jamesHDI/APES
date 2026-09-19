@@ -66,7 +66,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const avgTeamScore =
     teamEvaluations.length > 0
       ? (teamEvaluations.reduce((acc, e) => acc + e.finalRating, 0) / teamEvaluations.length).toFixed(2)
-      : 'ΓÇö';
+      : '—';
 
   const filtered = teamEvaluations.filter((e) => {
     const matchSearch =
@@ -89,7 +89,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{getGreeting()}</p>
             <h2 className="text-xl font-bold mt-0.5 text-slate-900 dark:text-white">{currentUser.name}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              Immediate Supervisor &nbsp;┬╖&nbsp; {currentUser.companyName || 'Adventures'} &nbsp;┬╖&nbsp; {currentUser.departmentName}
+              Immediate Supervisor &nbsp;·&nbsp; {currentUser.companyName || 'Adventures'} &nbsp;·&nbsp; {currentUser.departmentName}
             </p>
           </div>
           <div className="bg-[#FFF4EA] dark:bg-brand-950/40 px-5 py-4 rounded-2xl border border-[#F28C28]/20 text-center shrink-0">
@@ -250,13 +250,13 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     </td>
                     <td className="py-3 text-slate-600 dark:text-slate-400">{ev.appraisalPeriod}</td>
                     <td className="py-3 text-center font-semibold text-slate-600 dark:text-slate-300">
-                      {ev.eligibilityScore ? ev.eligibilityScore.toFixed(2) : 'ΓÇö'}
+                      {ev.eligibilityScore ? ev.eligibilityScore.toFixed(2) : '—'}
                     </td>
                     <td className="py-3 text-center font-bold text-amber-600 dark:text-amber-400">
-                      {ev.coreValuesScore ? ev.coreValuesScore.toFixed(2) : 'ΓÇö'}
+                      {ev.coreValuesScore ? ev.coreValuesScore.toFixed(2) : '—'}
                     </td>
                     <td className="py-3 text-center font-black text-[#E96B1A]">
-                      {ev.finalRating ? ev.finalRating.toFixed(2) : 'ΓÇö'}
+                      {ev.finalRating ? ev.finalRating.toFixed(2) : '—'}
                     </td>
                     <td className="py-3 text-center">
                       <StatusBadge status={ev.status} />

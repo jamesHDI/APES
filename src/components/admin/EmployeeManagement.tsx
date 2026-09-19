@@ -783,7 +783,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                   }}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-500"
                 >
-                  <option value="">ΓÇö Select Department ΓÇö</option>
+                  <option value="">— Select Department —</option>
                   {departments.map((d) => (
                     <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
@@ -867,7 +867,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                       data-lpignore="true"
                       value={formData.passwordInput}
                       onChange={(e) => setFormData({ ...formData, passwordInput: e.target.value })}
-                      placeholder={editingUser?.password ? "ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó" : "Enter password..."}
+                      placeholder={editingUser?.password ? "••••••••" : "Enter password..."}
                       className="w-full px-3.5 py-2 pr-10 rounded-xl border border-amber-200 dark:border-amber-800/60 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs outline-none focus:ring-2 focus:ring-amber-500"
                     />
                     <button

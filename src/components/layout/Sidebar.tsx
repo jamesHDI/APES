@@ -447,7 +447,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {isOpen ? (
             <div className="flex flex-col items-center text-center gap-0.5">
               <p className="text-xs font-black text-[#E96B1A] dark:text-brand-400 tracking-wider uppercase whitespace-nowrap">
-                HDI HIVE ┬╖ APES 3.0
+                HDI HIVE · APES 3.0
               </p>
               <p className="text-[9.5px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
                 Strictly Confidential

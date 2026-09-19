@@ -166,7 +166,7 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
                         {company.name}
                       </h3>
                       <p className="text-xs text-slate-500">
-                        {companyEmployees.length} Active Employees ΓÇó {deptNames.length} Departments/Branches
+                        {companyEmployees.length} Active Employees • {deptNames.length} Departments/Branches
                       </p>
                     </div>
                   </div>
@@ -228,7 +228,7 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
                                         {s.name}
                                       </p>
                                       <p className="text-[10px] text-slate-500">
-                                        {s.position || 'Staff'} ΓÇó <span className="font-semibold">{s.employeeNumber}</span>
+                                        {s.position || 'Staff'} • <span className="font-semibold">{s.employeeNumber}</span>
                                       </p>
                                     </div>
                                   </div>

@@ -10,7 +10,7 @@ export const MASTER_COMPANIES: Company[] = [
 ];
 
 export const MASTER_EMPLOYEES: User[] = [
-  // ΓöÇΓöÇ EXECUTIVE (CEO) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── EXECUTIVE (CEO) ────────────────────────────────────────────────────────
   {
     id: 'usr_ceo_brandon',
     employeeNumber: 'CEO-001',
@@ -33,7 +33,7 @@ export const MASTER_EMPLOYEES: User[] = [
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
   },
 
-  // ΓöÇΓöÇ DEFAULT SYSTEM ADMIN ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── DEFAULT SYSTEM ADMIN ───────────────────────────────────────────────────
   {
     id: 'usr_default_admin',
     employeeNumber: 'ADMIN-001',
@@ -57,7 +57,7 @@ export const MASTER_EMPLOYEES: User[] = [
     avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
   },
 
-  // ΓöÇΓöÇ SHEET 1: HDI WORLD (12 Records) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── SHEET 1: HDI WORLD (12 Records) ───────────────────────────────────────
   {
     id: 'usr_e1572',
     employeeNumber: 'E1572',
@@ -335,7 +335,7 @@ export const MASTER_EMPLOYEES: User[] = [
     approvalStatus: 'approved',
   },
 
-  // ΓöÇΓöÇ SHEET 2: HILLCROFT PROPERTIES (3 Records) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── SHEET 2: HILLCROFT PROPERTIES (3 Records) ──────────────────────────────
   {
     id: 'usr_e1151',
     employeeNumber: 'E1151',
@@ -406,7 +406,7 @@ export const MASTER_EMPLOYEES: User[] = [
     approvalStatus: 'approved',
   },
 
-  // ΓöÇΓöÇ SHEET 3: CAPITAL GROWTH PROPERTIES (8 Records) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── SHEET 3: CAPITAL GROWTH PROPERTIES (8 Records) ─────────────────────────
   {
     id: 'usr_e984',
     employeeNumber: 'E984',
@@ -592,7 +592,7 @@ export const MASTER_EMPLOYEES: User[] = [
     approvalStatus: 'approved',
   },
 
-  // ΓöÇΓöÇ SHEET 4: ERMINLAND PROPERTIES (3 Records) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── SHEET 4: ERMINLAND PROPERTIES (3 Records) ──────────────────────────────
   {
     id: 'usr_e1161',
     employeeNumber: 'E1161',
@@ -663,7 +663,7 @@ export const MASTER_EMPLOYEES: User[] = [
     approvalStatus: 'approved',
   },
 
-  // ΓöÇΓöÇ SHEET 5: STANFORD (1 Record) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── SHEET 5: STANFORD (1 Record) ───────────────────────────────────────────
   {
     id: 'usr_e1401',
     employeeNumber: 'E1401',
@@ -688,7 +688,7 @@ export const MASTER_EMPLOYEES: User[] = [
     approvalStatus: 'approved',
   },
 
-  // ΓöÇΓöÇ SHEET 6: ADVENTURES (33 Records) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── SHEET 6: ADVENTURES (33 Records) ───────────────────────────────────────
   {
     id: 'usr_e1333',
     employeeNumber: 'E1333',

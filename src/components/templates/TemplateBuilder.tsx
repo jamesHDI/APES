@@ -118,7 +118,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const getInitialEmployeeTemplate = (): EvaluationTemplate => {
     const defaultStart = `${new Date().getFullYear()}-01-01`;
     const defaultEnd = `${new Date().getFullYear()}-12-31`;
-    const defaultPeriod = `Jan 1, ${new Date().getFullYear()} ΓÇô Dec 31, ${new Date().getFullYear()}`;
+    const defaultPeriod = `Jan 1, ${new Date().getFullYear()} – Dec 31, ${new Date().getFullYear()}`;
 
     const newTmpl = createMasterBasedTemplate(
       currentUser?.departmentId || 'dept_gen',
@@ -228,12 +228,12 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       const dt = new Date(d + 'T00:00:00');
       return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
-    if (startDate && endDate) return `${fmt(startDate)} ΓÇô ${fmt(endDate)}`;
+    if (startDate && endDate) return `${fmt(startDate)} – ${fmt(endDate)}`;
     if (startDate) return `From ${fmt(startDate)}`;
     return endDate ? `Until ${fmt(endDate)}` : '';
   };
 
-  // ΓöÇΓöÇ 1. EMPLOYEE SUBMISSION TO IMMEDIATE SUPERVISOR (IS) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── 1. EMPLOYEE SUBMISSION TO IMMEDIATE SUPERVISOR (IS) ─────────────────────
   const handleSubmitToIS = async () => {
     const isResubmission = activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_by_pod' || activeTemplate.status === 'returned_for_revision';
     const isName = activeTemplate.immediateSupervisorName || currentUser?.immediateSuperiorName || 'Immediate Supervisor';
@@ -294,7 +294,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     showToast(`Template successfully submitted to ${isName} for review!`);
   };
 
-  // ΓöÇΓöÇ 2. IMMEDIATE SUPERVISOR (IS) ACTION: APPROVE OR RETURN ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── 2. IMMEDIATE SUPERVISOR (IS) ACTION: APPROVE OR RETURN ──────────────────
   const handleISAction = async (action: 'approve' | 'return') => {
     if (action === 'return') {
       if (!isRemarkInput.trim()) {
@@ -366,7 +366,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     }
   };
 
-  // ΓöÇΓöÇ 3. PEOPLE OPERATIONS (POD) ACTION: APPROVE, DEPLOY, RETURN ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── 3. PEOPLE OPERATIONS (POD) ACTION: APPROVE, DEPLOY, RETURN ───────────────
   const handlePODAction = async (action: 'approve' | 'deploy' | 'return') => {
     if (action === 'return') {
       if (!podRemarkInput.trim()) {
@@ -519,7 +519,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     if (tmpl) setActiveTemplate(tmpl);
   };
 
-  // ΓöÇΓöÇ POD / ADMIN CREATE NEW TEMPLATE (WITH SEARCHABLE EMPLOYEE SELECTOR) ΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── POD / ADMIN CREATE NEW TEMPLATE (WITH SEARCHABLE EMPLOYEE SELECTOR) ─────
   const handleOpenCreateModal = () => {
     if (isEmployeeMode) {
       // Employee creating own template
@@ -556,7 +556,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       const newTemplate = createMasterBasedTemplate(
         emp.departmentId || 'dept_gen',
         emp.departmentName || 'General',
-        `${emp.name} ΓÇö Performance Evaluation Scorecard Template (${emp.companyName || 'HDI'})`,
+        `${emp.name} — Performance Evaluation Scorecard Template (${emp.companyName || 'HDI'})`,
         defaultPeriod
       );
 
@@ -1017,10 +1017,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   )}
 
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Period: {tmpl.evaluationPeriod || (tmpl.startDate && tmpl.endDate ? `${tmpl.startDate} ΓÇô ${tmpl.endDate}` : 'Annual')}
+                    Period: {tmpl.evaluationPeriod || (tmpl.startDate && tmpl.endDate ? `${tmpl.startDate} – ${tmpl.endDate}` : 'Annual')}
                   </p>
                   <p className="text-[10px] text-slate-400 mt-0.5">
-                    {tmpl.kraCategories.length} KRAs ΓÇó Formula: {tmpl.formulaConfig.eligibilityWeight}% KPI / {tmpl.formulaConfig.coreValuesWeight}% Core Values
+                    {tmpl.kraCategories.length} KRAs • Formula: {tmpl.formulaConfig.eligibilityWeight}% KPI / {tmpl.formulaConfig.coreValuesWeight}% Core Values
                   </p>
                 </div>
               );
@@ -1158,7 +1158,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 </div>
                 {activeTemplate.createdForEmployeeName && (
                   <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">
-                    Employee: {activeTemplate.createdForEmployeeName} ΓÇó Company: {activeTemplate.companyName}
+                    Employee: {activeTemplate.createdForEmployeeName} • Company: {activeTemplate.companyName}
                   </span>
                 )}
               </div>
@@ -1240,7 +1240,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   {activeTemplate.createdForEmployeeName || activeTemplate.createdByName || currentUser?.name || 'Staff Member'}
                 </p>
                 <p className="text-[10px] text-slate-500 mt-0.5">
-                  ID: {activeTemplate.createdForEmployeeNumber || currentUser?.employeeNumber || 'ΓÇö'}
+                  ID: {activeTemplate.createdForEmployeeNumber || currentUser?.employeeNumber || '—'}
                 </p>
               </div>
 
@@ -1300,7 +1300,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   disabled={!canEdit}
                   onChange={(e) => setActiveTemplate({ ...activeTemplate, evaluationPeriod: e.target.value })}
                   className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white disabled:opacity-60 font-semibold"
-                  placeholder="e.g. Jan 1, 2027 ΓÇô Jun 30, 2027"
+                  placeholder="e.g. Jan 1, 2027 – Jun 30, 2027"
                 />
               </div>
             </div>
@@ -1399,7 +1399,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
               <div>
                 <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                  Part 1A ΓÇö Key Result Areas (KRAs) & KPIs
+                  Part 1A — Key Result Areas (KRAs) & KPIs
                 </h3>
                 <p className="text-[11px] text-slate-500">
                   Total KRA weights must equal exactly {activeTemplate.formulaConfig.eligibilityWeight}%.
@@ -1412,7 +1412,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                     : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
                 }`}>
-                  KRAs: {getKraTotalWeight()}% / {activeTemplate.formulaConfig.eligibilityWeight}% ΓÇó KPIs: {getAllKpisTotalWeight()}%
+                  KRAs: {getKraTotalWeight()}% / {activeTemplate.formulaConfig.eligibilityWeight}% • KPIs: {getAllKpisTotalWeight()}%
                 </div>
 
                 {canEdit && (
@@ -1575,7 +1575,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
               <div>
                 <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                  Part 1B ΓÇö Core Values & Suitability Factors ({activeTemplate.formulaConfig.coreValuesWeight}%)
+                  Part 1B — Core Values & Suitability Factors ({activeTemplate.formulaConfig.coreValuesWeight}%)
                 </h3>
                 <p className="text-[11px] text-slate-500">
                   Subdivisions of the Part 1B total weight.
@@ -1612,7 +1612,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             }`}>
               <div className="flex items-center space-x-2">
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Part 1B Total: {activeTemplate.formulaConfig.coreValuesWeight}% ΓÇó Core Values: {activeTemplate.coreValues?.length || 0} ΓÇó Sum: {Number(totalCoreValueWeight.toFixed(2))}%</span>
+                <span>Part 1B Total: {activeTemplate.formulaConfig.coreValuesWeight}% • Core Values: {activeTemplate.coreValues?.length || 0} • Sum: {Number(totalCoreValueWeight.toFixed(2))}%</span>
               </div>
               {!isCoreValuesValid && (
                 <span className="text-[11px] font-normal">Core Values must total exactly {activeTemplate.formulaConfig.coreValuesWeight}%.</span>
@@ -1678,7 +1678,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         </div>
       </div>
 
-      {/* ΓöÇΓöÇ CREATE NEW TEMPLATE MODAL (POD & ADMIN) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
+      {/* ── CREATE NEW TEMPLATE MODAL (POD & ADMIN) ─────────────────────────── */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full flex flex-col overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800">
@@ -1756,7 +1756,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                         <div>
                           <p className="font-extrabold text-slate-900 dark:text-white">{emp.name}</p>
                           <p className="text-[11px] text-slate-500">
-                            {emp.companyName} ΓÇó {emp.departmentName} ΓÇó {emp.position || 'Staff'}
+                            {emp.companyName} • {emp.departmentName} • {emp.position || 'Staff'}
                           </p>
                         </div>
                         <div className="text-right">
@@ -1840,7 +1840,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               <div className="flex items-center space-x-2">
                 <Lock className="w-4 h-4 text-[#E96B1A]" />
                 <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">
-                  Live Master Scorecard Layout Preview ΓÇö {activeTemplate.title}
+                  Live Master Scorecard Layout Preview — {activeTemplate.title}
                 </h4>
               </div>
               <button
