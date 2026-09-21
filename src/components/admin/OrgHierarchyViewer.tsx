@@ -70,41 +70,56 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
     }
   }, [selectedCompanyId]);
 
-  // Scroll spy to highlight the company currently on the screen and track downward progression
+  // Scroll spy to highlight the company currently on the screen in real-time
   useEffect(() => {
     if (displayedCompanies.length === 0) return;
 
-    const handleScroll = () => {
-      const focalY = window.innerHeight * 0.42;
-      let currentActiveId = displayedCompanies[0]?.id;
+    const mainEl = document.querySelector('main');
+
+    const updateActive = () => {
+      const focalY = window.innerHeight * 0.45;
+      let bestId = displayedCompanies[0]?.id;
       let minDistance = Infinity;
 
       for (const comp of displayedCompanies) {
         const el = document.getElementById(`company-section-${comp.id}`);
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          // If the element covers the focal line, it is the primary active card
-          if (rect.top <= focalY && rect.bottom >= focalY) {
-            currentActiveId = comp.id;
-            break;
-          }
-          const dist = Math.abs(rect.top - focalY);
-          if (dist < minDistance) {
-            minDistance = dist;
-            currentActiveId = comp.id;
-          }
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+
+        // If the card spans across the focal line, it is actively in view
+        if (rect.top <= focalY && rect.bottom >= focalY) {
+          bestId = comp.id;
+          break;
+        }
+
+        const dist = Math.abs(rect.top - focalY);
+        if (dist < minDistance) {
+          minDistance = dist;
+          bestId = comp.id;
         }
       }
 
-      if (currentActiveId) {
-        setActiveCompanyId(currentActiveId);
+      if (bestId) {
+        setActiveCompanyId(bestId);
       }
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
+    updateActive();
 
-    return () => window.removeEventListener('scroll', handleScroll);
+    // Use capture: true so window intercepts scroll events from <main> or any scrollable container in real time
+    window.addEventListener('scroll', updateActive, { capture: true, passive: true });
+    window.addEventListener('resize', updateActive, { passive: true });
+    if (mainEl) {
+      mainEl.addEventListener('scroll', updateActive, { passive: true });
+    }
+
+    return () => {
+      window.removeEventListener('scroll', updateActive, true);
+      window.removeEventListener('resize', updateActive);
+      if (mainEl) {
+        mainEl.removeEventListener('scroll', updateActive);
+      }
+    };
   }, [displayedCompanies]);
 
   return (
@@ -172,7 +187,7 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
       </div>
 
       {/* Main Hierarchy Card */}
-      <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden space-y-8">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
         
         {/* Tier 1: CEO (Brandon Chia) */}
         <div className="flex flex-col items-center">
@@ -191,8 +206,8 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
           </div>
 
           {/* Continuous Connector Line from CEO Node */}
-          <div className="flex flex-col items-center my-1 relative">
-            <div className="w-0.5 h-7 bg-gradient-to-b from-amber-500 to-amber-400" />
+          <div className="flex flex-col items-center my-0 relative">
+            <div className="w-0.5 h-8 bg-gradient-to-b from-amber-500 to-amber-400" />
             {/* CEO Branching Node Diamond */}
             <div className="relative flex items-center justify-center -my-0.5 z-10">
               <span className="animate-ping absolute inline-flex h-4 w-4 rounded-sm bg-amber-400 opacity-60"></span>
@@ -201,19 +216,16 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
             <div className="w-0.5 h-8 bg-gradient-to-b from-amber-400 to-[#E96B1A]" />
 
             {/* Enterprise Distribution Junction Hub */}
-            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-orange-500/10 via-amber-500/20 to-orange-500/10 dark:from-orange-950/60 dark:via-amber-950/70 dark:to-orange-950/60 border border-[#F28C28]/40 text-[#E96B1A] dark:text-orange-300 text-xs font-black uppercase tracking-wider shadow-sm z-10 backdrop-blur-sm my-1">
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-orange-500/10 via-amber-500/20 to-orange-500/10 dark:from-orange-950/60 dark:via-amber-950/70 dark:to-orange-950/60 border border-[#F28C28]/40 text-[#E96B1A] dark:text-orange-300 text-xs font-black uppercase tracking-wider shadow-sm z-10 backdrop-blur-sm">
               <Building2 className="w-3.5 h-3.5 text-[#E96B1A]" />
               <span>Enterprise Subsidiaries & Operating Units</span>
               <ChevronDown className="w-3.5 h-3.5 text-[#E96B1A] animate-bounce" />
             </div>
-
-            {/* Continuous Vertical Tree Trunk connecting directly into Company Tree */}
-            <div className="w-0.5 h-8 bg-gradient-to-b from-[#E96B1A] to-amber-500" />
           </div>
         </div>
 
-        {/* Tier 2: Companies & Groups */}
-        <div className="space-y-12 relative">
+        {/* Tier 2: Companies & Groups - Completely Connected without gaps */}
+        <div className="flex flex-col items-center w-full">
           {displayedCompanies.map((company, index) => {
             const isActive = company.id === activeCompanyId;
 
@@ -228,38 +240,62 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
             const deptNames = Array.from(new Set(companyEmployees.map(u => u.departmentName || 'General'))).sort();
 
             return (
-              <React.Fragment key={company.id}>
-                {/* Connector Spine between consecutive companies */}
-                {index > 0 && (
-                  <div className="flex flex-col items-center -my-6 relative z-10">
-                    <div className={`w-0.5 h-6 transition-colors duration-500 ${
+              <div key={company.id} className="w-full flex flex-col items-center">
+                {/* Visual Hierarchical Connector into this Company Card */}
+                {index === 0 ? (
+                  // Direct unbroken line from Enterprise Subsidiaries junction into Unit 1
+                  <div className="flex flex-col items-center w-full my-0 py-0">
+                    <div className="w-0.5 h-10 bg-gradient-to-b from-[#E96B1A] to-amber-500" />
+                  </div>
+                ) : (
+                  // Continuous connector line from previous company card bottom into this company card top
+                  <div className="flex flex-col items-center w-full my-0 py-0">
+                    {/* Line coming from bottom of previous card */}
+                    <div className={`w-0.5 h-7 transition-colors duration-300 ${
                       isActive ? 'bg-[#E96B1A]' : 'bg-slate-300 dark:bg-slate-700'
                     }`} />
-                    <div className={`w-3.5 h-3.5 rotate-45 border-2 transition-all duration-500 flex items-center justify-center ${
+                    
+                    {/* Branch Node Diamond */}
+                    <div className={`w-4 h-4 rotate-45 border-2 transition-all duration-300 flex items-center justify-center ${
                       isActive
-                        ? 'border-[#E96B1A] bg-[#E96B1A] shadow-lg shadow-orange-500/40 ring-4 ring-orange-400/30 scale-125'
+                        ? 'border-[#E96B1A] bg-[#E96B1A] shadow-lg shadow-orange-500/50 ring-4 ring-orange-400/30 scale-125'
                         : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
                     }`} />
-                    <div className={`w-0.5 h-6 transition-colors duration-500 ${
+                    
+                    {/* Line going straight down and touching the UNIT badge */}
+                    <div className={`w-0.5 h-7 transition-colors duration-300 ${
                       isActive ? 'bg-[#E96B1A]' : 'bg-slate-300 dark:bg-slate-700'
                     }`} />
                   </div>
                 )}
 
+                {/* Company Card */}
                 <div 
                   id={`company-section-${company.id}`}
-                  className={`p-6 rounded-3xl border-2 transition-all duration-500 space-y-6 relative ${
+                  className={`w-full p-6 rounded-3xl border-2 transition-all duration-300 space-y-6 relative overflow-hidden ${
                     isActive
-                      ? 'bg-gradient-to-b from-orange-50/70 via-white to-orange-50/30 dark:from-orange-950/30 dark:via-slate-900 dark:to-orange-950/20 border-[#E96B1A] ring-4 ring-[#E96B1A]/20 shadow-2xl shadow-orange-500/10 scale-[1.008]'
-                      : 'bg-slate-50/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                      ? 'bg-gradient-to-b from-orange-50/70 via-white to-orange-50/30 dark:from-orange-950/30 dark:via-slate-900 dark:to-orange-950/20 border-[#E96B1A] ring-4 ring-[#E96B1A]/20 shadow-2xl shadow-orange-500/15 -translate-y-1 scale-[1.008]'
+                      : 'bg-slate-50/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 shadow-sm translate-y-0 scale-100'
                   }`}
                 >
-                  {/* Top Tree Node Junction on Company Card */}
+                  {/* Sliding highlight beam across top border on the active card */}
+                  {isActive && (
+                    <div className="absolute top-0 left-0 right-0 h-1 overflow-hidden pointer-events-none z-10">
+                      <div 
+                        className="w-1/2 h-full bg-gradient-to-r from-transparent via-[#E96B1A] to-transparent"
+                        style={{
+                          animation: 'railSweep 2s ease-in-out infinite'
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Top Tree Node Junction on Company Card (Touching the line directly!) */}
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20">
-                    <div className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 border transition-all duration-500 ${
+                    <div className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 border transition-all duration-300 ${
                       isActive
-                        ? 'bg-[#E96B1A] text-white border-[#E96B1A] shadow-md shadow-orange-500/40'
-                        : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600'
+                        ? 'bg-[#E96B1A] text-white border-[#E96B1A] shadow-md shadow-orange-500/40 scale-105'
+                        : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600 scale-100'
                     }`}>
                       <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white animate-ping' : 'bg-slate-400'}`} />
                       <span>Unit {index + 1}</span>
@@ -269,7 +305,7 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
                   {/* Company Header */}
                   <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-4 flex-wrap gap-2 pt-1">
                     <div className="flex items-center space-x-3">
-                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all duration-500 ${
+                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all duration-300 ${
                         isActive
                           ? 'bg-[#E96B1A] text-white border-[#E96B1A] shadow-md shadow-orange-500/30 scale-105 ring-2 ring-orange-300'
                           : 'bg-[#FFF4EA] dark:bg-brand-950/50 text-[#E96B1A] border-[#F28C28]/30'
@@ -277,17 +313,11 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
                         <Building2 className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-base font-black text-slate-900 dark:text-white">
-                            {company.name}
-                          </h3>
-                          {isActive && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#E96B1A] text-white font-extrabold text-[10px] shadow-sm animate-pulse">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                              Currently Viewing
-                            </span>
-                          )}
-                        </div>
+                        <h3 className={`text-base font-black transition-colors duration-300 ${
+                          isActive ? 'text-[#E96B1A] dark:text-orange-400' : 'text-slate-900 dark:text-white'
+                        }`}>
+                          {company.name}
+                        </h3>
                         <p className="text-xs text-slate-500">
                           {companyEmployees.length} Active Employees • {deptNames.length} Departments/Branches
                         </p>
@@ -370,11 +400,18 @@ export const OrgHierarchyViewer: React.FC<OrgHierarchyViewerProps> = ({ users, d
                   </div>
 
                 </div>
-              </React.Fragment>
+              </div>
             );
           })}
         </div>
 
+        <style>{`
+          @keyframes railSweep {
+            0% { transform: translateX(-100%); }
+            50% { transform: translateX(200%); }
+            100% { transform: translateX(-100%); }
+          }
+        `}</style>
       </div>
     </div>
   );
