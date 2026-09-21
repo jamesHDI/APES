@@ -40,9 +40,13 @@ import {
   RotateCcw,
   Lock,
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  MessageSquare,
+  Mail,
+  X
 } from 'lucide-react';
 import { checkEvaluationAccess } from '../../utils/deploymentRules';
+import { triggerCampaignAccessRequestNotification } from '../../services/notificationService';
 
 interface EvaluationFormProps {
   evaluation: Evaluation;
@@ -51,6 +55,8 @@ interface EvaluationFormProps {
   templates: EvaluationTemplate[];
   onSave: (updatedEvaluation: Evaluation) => void;
   onViewPrintable: () => void;
+  onBack?: () => void;
+  onOpenMessenger?: (partnerId?: string) => void;
 }
 
 export const EvaluationForm: React.FC<EvaluationFormProps> = ({
@@ -60,9 +66,15 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   templates,
   onSave,
   onViewPrintable,
+  onBack,
+  onOpenMessenger,
 }) => {
   const [evalData, setEvalData] = useState<Evaluation>(initialEvaluation);
   const [showSigModal, setShowSigModal] = useState(false);
+  const [showAccessModal, setShowAccessModal] = useState(false);
+  const [accessRequestNote, setAccessRequestNote] = useState('');
+  const [isSendingAccessRequest, setIsSendingAccessRequest] = useState(false);
+  const [accessRequestSent, setAccessRequestSent] = useState(false);
   const [sigRole, setSigRole] = useState<'employee' | 'supervisor' | 'dept_head' | 'president' | 'pod' | 'hr'>('employee');
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
@@ -815,22 +827,148 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
             )}
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
               onClick={() => {
-                if (window.history.length > 1) {
-                  window.history.back();
+                if (onBack) {
+                  onBack();
                 } else {
-                  window.location.reload();
+                  window.location.hash = '';
                 }
               }}
-              className="btn btn-primary px-6 py-2.5 rounded-xl font-bold shadow-md inline-flex items-center gap-2"
+              className="btn btn-secondary px-5 py-2.5 rounded-xl font-bold shadow-sm inline-flex items-center gap-2 w-full sm:w-auto justify-center"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Back to Dashboard</span>
             </button>
+
+            <button
+              onClick={() => setShowAccessModal(true)}
+              className="btn btn-primary px-5 py-2.5 rounded-xl font-bold shadow-md inline-flex items-center gap-2 w-full sm:w-auto justify-center"
+            >
+              <Send className="w-4 h-4" />
+              <span>Request Access / Contact POD</span>
+            </button>
           </div>
         </div>
+
+        {/* Request Access / Contact POD Modal */}
+        {showAccessModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in text-left">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5 relative">
+              <button
+                onClick={() => setShowAccessModal(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Send className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">Request Campaign Permission</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Submit an access request directly to the People Operations Department (POD)</p>
+                </div>
+              </div>
+
+              {accessRequestSent ? (
+                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center space-y-2">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400 mx-auto" />
+                  <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200">Access Request Dispatched to POD</p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-300 leading-relaxed">
+                    The People Operations Department has received your notification. You will be updated as soon as the campaign deadline is extended or reactivated.
+                  </p>
+                  <div className="pt-2">
+                    <button
+                      onClick={() => {
+                        setShowAccessModal(false);
+                        if (onBack) onBack();
+                      }}
+                      className="btn btn-primary btn-sm px-4 py-2 font-bold"
+                    >
+                      Return to Dashboard
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 text-xs space-y-1">
+                    <p className="text-slate-500 dark:text-slate-400">Target Campaign: <strong className="text-slate-800 dark:text-slate-200">{accessResult.title || evalData.appraisalPeriod || 'Evaluation Campaign'}</strong></p>
+                    <p className="text-slate-500 dark:text-slate-400">Current Lock: <strong className="text-amber-600 dark:text-amber-400">{accessResult.reason === 'overdue' ? 'Deadline Expired' : 'Campaign Closed by POD'}</strong> {accessResult.deadline ? `(Deadline: ${accessResult.deadline})` : ''}</p>
+                    <p className="text-slate-500 dark:text-slate-400">Requester: <strong className="text-slate-800 dark:text-slate-200">{currentUser.name} ({currentUser.position || 'Employee'}, {currentUser.departmentName})</strong></p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                      Reason / Note for POD (Optional)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={accessRequestNote}
+                      onChange={(e) => setAccessRequestNote(e.target.value)}
+                      placeholder="E.g., Requesting temporary reactivation to complete self-assessment / review..."
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2">
+                    {onOpenMessenger ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAccessModal(false);
+                          onOpenMessenger();
+                        }}
+                        className="text-xs font-bold text-brand-600 hover:text-brand-700 dark:text-brand-400 inline-flex items-center gap-1.5"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Chat directly in Messenger</span>
+                      </button>
+                    ) : <div />}
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowAccessModal(false)}
+                        className="btn btn-secondary btn-sm"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSendingAccessRequest}
+                        onClick={async () => {
+                          setIsSendingAccessRequest(true);
+                          try {
+                            await triggerCampaignAccessRequestNotification(
+                              currentUser,
+                              accessResult.title || evalData.title || evalData.appraisalPeriod || 'Evaluation Campaign',
+                              accessResult.reason || 'closed',
+                              accessRequestNote,
+                              accessResult.deadline,
+                              evalData.id
+                            );
+                            setAccessRequestSent(true);
+                          } catch (err) {
+                            console.error('Failed to submit access request:', err);
+                          } finally {
+                            setIsSendingAccessRequest(false);
+                          }
+                        }}
+                        className="btn btn-primary btn-sm font-bold flex items-center gap-1.5"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>{isSendingAccessRequest ? 'Sending...' : 'Send Request to POD'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

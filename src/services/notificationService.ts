@@ -306,3 +306,37 @@ export const triggerTemplateWorkflowNotification = async ({
   triggerRealtimeBroadcast('data_changed', { type: 'template_workflow', templateId, status });
   return saved;
 };
+
+export const triggerCampaignAccessRequestNotification = async (
+  requester: User,
+  campaignTitle: string,
+  reason: 'closed' | 'overdue' | string,
+  userNote?: string,
+  deadline?: string,
+  evaluationId?: string
+): Promise<boolean> => {
+  const notifId = generateUuid();
+  const reasonText = reason === 'overdue' ? 'Campaign Deadline Expired' : 'Campaign Closed by POD';
+  const newNotif: Notification = {
+    id: notifId,
+    recipientRole: 'pod',
+    recipientDepartment: 'People Operations',
+    title: `Campaign Access Request: ${requester.name}`,
+    message: `${requester.name} (${requester.position || 'Employee'}, ${requester.departmentName || 'Department'}) is requesting access/reactivation for campaign "${campaignTitle}". Status: ${reasonText}.${deadline ? ` Deadline: ${deadline}.` : ''}${userNote ? ` User Note: "${userNote}"` : ''}`,
+    category: 'system',
+    date: 'Just now',
+    read: false,
+    type: 'action_required',
+    employeeName: requester.name,
+    departmentName: requester.departmentName,
+    appraisalPeriod: campaignTitle,
+    status: 'access_requested',
+    senderName: requester.name,
+    dateTime: new Date().toLocaleString(),
+    evaluationId
+  };
+
+  const saved = await saveNotificationToSupabase(newNotif);
+  triggerRealtimeBroadcast('data_changed', { type: 'campaign_access_request', userId: requester.id, evaluationId });
+  return saved;
+};

@@ -160,9 +160,10 @@ import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
 import { CalibrationRequestForm } from './components/calibration/CalibrationRequestForm';
 import { CalibrationRequestsManager } from './components/calibration/CalibrationRequestsManager';
 import { MessengerModal } from './components/messenger/MessengerModal';
-import { ShieldAlert, Lock, AlertCircle, Calendar } from 'lucide-react';
+import { ShieldAlert, Lock, AlertCircle, Calendar, Send, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { checkEvaluationAccess } from './utils/deploymentRules';
 import { EvaluationDeployment } from './types';
+import { triggerCampaignAccessRequestNotification } from './services/notificationService';
 
 import { determineWorkflowType, isUserDepartmentHead, getUserActiveEvaluation, getUserLatestEvaluation, isEvaluationCompleted } from './utils/workflowUtils';
 
@@ -303,12 +304,18 @@ export const App: React.FC = () => {
     reason: string;
     deadline?: string;
     message: string;
+    evaluationId?: string;
+    requestSent?: boolean;
+    isSending?: boolean;
   }>({
     isOpen: false,
     title: '',
     reason: '',
     deadline: '',
     message: '',
+    evaluationId: '',
+    requestSent: false,
+    isSending: false,
   });
 
   const handleOpenEvaluation = (id: string) => {
@@ -321,7 +328,10 @@ export const App: React.FC = () => {
           title: access.title || 'Evaluation Campaign Closed',
           reason: access.reason || 'closed',
           deadline: access.deadline,
-          message: access.message || 'Access to open, fill out, or edit this evaluation is closed by POD.'
+          message: access.message || 'Access to open, fill out, or edit this evaluation is closed by POD.',
+          evaluationId: id,
+          requestSent: false,
+          isSending: false,
         });
         return;
       }
@@ -329,6 +339,25 @@ export const App: React.FC = () => {
     setSelectedEvalId(id);
     setActiveTab('evaluations');
     setViewMode('normal');
+  };
+
+  const handleRequestCampaignAccessFromModal = async () => {
+    setCampaignBlockedModal(prev => ({ ...prev, isSending: true }));
+    try {
+      await triggerCampaignAccessRequestNotification(
+        currentUser,
+        campaignBlockedModal.title || 'Evaluation Campaign',
+        campaignBlockedModal.reason || 'closed',
+        'Requesting access / reactivation from campaign notification alert.',
+        campaignBlockedModal.deadline,
+        campaignBlockedModal.evaluationId
+      );
+      setCampaignBlockedModal(prev => ({ ...prev, requestSent: true, isSending: false }));
+      setNotifications(getRoleBasedNotifications(currentUser));
+    } catch (err) {
+      console.error('Failed to submit campaign access request:', err);
+      setCampaignBlockedModal(prev => ({ ...prev, isSending: false }));
+    }
   };
 
   const lastAvatarUpdateRef = useRef<{ url: string; timestamp: number } | null>(null);
@@ -1310,6 +1339,13 @@ export const App: React.FC = () => {
           templates={templates}
           onSave={handleSaveEvaluation}
           onViewPrintable={() => setViewMode('printable')}
+          onBack={() => {
+            setSelectedEvalId('');
+            setActiveTab('dashboard');
+          }}
+          onOpenMessenger={() => {
+            setShowMessengerModal(true);
+          }}
         />
       );
     }
@@ -1687,16 +1723,49 @@ export const App: React.FC = () => {
                   <span>Campaign Deadline: <strong>{campaignBlockedModal.deadline}</strong></span>
                 </div>
               )}
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-xs text-slate-500 dark:text-slate-400">
-                To access or edit this evaluation template, please coordinate with the People Operations Department (POD) to reactivate the campaign.
-              </div>
-              <div className="flex justify-end pt-2">
+              {campaignBlockedModal.requestSent ? (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl flex items-center gap-2 text-xs text-emerald-800 dark:text-emerald-300 font-semibold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Access request sent! POD has been notified to review this campaign.</span>
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-xs text-slate-500 dark:text-slate-400">
+                  To access or edit this evaluation template, please coordinate with the People Operations Department (POD) to reactivate the campaign.
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2">
                 <button
-                  onClick={() => setCampaignBlockedModal(prev => ({ ...prev, isOpen: false }))}
-                  className="px-5 py-2.5 rounded-xl bg-[#E96B1A] hover:bg-[#D45A0E] text-white font-bold text-sm shadow-md transition-colors"
+                  type="button"
+                  onClick={() => {
+                    setCampaignBlockedModal(prev => ({ ...prev, isOpen: false }));
+                    setShowMessengerModal(true);
+                  }}
+                  className="text-xs font-bold text-[#E96B1A] hover:underline inline-flex items-center gap-1.5"
                 >
-                  Understood
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Message POD</span>
                 </button>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  {!campaignBlockedModal.requestSent && (
+                    <button
+                      type="button"
+                      disabled={campaignBlockedModal.isSending}
+                      onClick={handleRequestCampaignAccessFromModal}
+                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-sm inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    >
+                      <Send className="w-3 h-3" />
+                      <span>{campaignBlockedModal.isSending ? 'Sending...' : 'Request Access'}</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setCampaignBlockedModal(prev => ({ ...prev, isOpen: false }))}
+                    className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold text-xs transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>
