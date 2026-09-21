@@ -95,16 +95,23 @@ export const SEED_EVALUATIONS: Evaluation[] = [];
 export const isExcludedUser = (u: User) =>
   !u ||
   u.name === 'Juan Dela Cruz' ||
+  u.name === 'Maritess Bacle' ||
+  u.name === 'Grazie Esguerra' ||
   u.id === 'usr_emp_sales_01' ||
   u.id === 'usr_dh_sls' ||
   u.id === 'usr_sup_sales_01' ||
   u.id === 'usr_dh_pohr' ||
   u.id === 'usr_pod_malene' ||
-  (u.name === 'Malene Pellazo' && u.id !== 'usr_e1527') ||
+  u.id === '00000000-0000-4000-8000-000000000018' ||
+  u.employeeNumber === 'SUP-SLS-01' ||
+  u.employeeNumber === 'DH-POHR-01' ||
+  u.employeeNumber === 'POD-01' ||
+  u.employeeNumber === 'DISABLED_MALENE' ||
+  (u.name && u.name.toLowerCase().includes('malene') && u.id !== 'usr_e1527') ||
+  (u.email && u.email.toLowerCase().includes('malenepellazo')) ||
   (u.email && u.email.toLowerCase().trim() === 'supervisor.sales@hdiadventures.com') ||
   (u.email && u.email.toLowerCase().trim() === 'pohr.head@hdiadventures.com') ||
-  u.employeeNumber === 'SUP-SLS-01' ||
-  u.employeeNumber === 'DH-POHR-01';
+  (u.email && u.email.toLowerCase().trim() === 'malenepellazo@hdiholdings.com');
 
 export const getStoredUsers = (): User[] => {
   const resultsMap = new Map<string, User>();

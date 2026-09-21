@@ -445,6 +445,7 @@ export const App: React.FC = () => {
         deleteEmployeeFromSupabase('usr_sup_sales_01', 'supervisor.sales@hdiadventures.com', 'SUP-SLS-01').catch(() => {});
         deleteEmployeeFromSupabase('usr_dh_pohr', 'pohr.head@hdiadventures.com', 'DH-POHR-01').catch(() => {});
         deleteEmployeeFromSupabase('usr_pod_malene', 'malene.pellazo@hdiadventures.com', 'POD-01').catch(() => {});
+        deleteEmployeeFromSupabase('00000000-0000-4000-8000-000000000018', 'malenepellazo@hdiholdings.com', 'POD-01').catch(() => {});
 
         try {
           const sbHistory = await fetchEvaluationHistoryFromSupabase();
