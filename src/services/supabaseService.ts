@@ -292,8 +292,8 @@ export const syncAllEmployeesToSupabase = async (customUsers?: User[]): Promise<
   try {
     const targetList = customUsers && customUsers.length > 0 ? customUsers : MASTER_EMPLOYEES;
     
-    // Fetch existing records from Supabase
-    const { data: existingRows, error: fetchErr } = await supabase.from('employees').select('id, employee_number, email, username, password');
+    // Fetch existing records from Supabase — include avatar_url so we can preserve it
+    const { data: existingRows, error: fetchErr } = await supabase.from('employees').select('id, employee_number, email, username, password, avatar_url');
     if (fetchErr) {
       console.warn('[Supabase Sync] Could not fetch existing employees for sync:', fetchErr);
     }
@@ -341,7 +341,9 @@ export const syncAllEmployeesToSupabase = async (customUsers?: User[]): Promise<
         last_name: safeLastName,
         suffix: emp.suffix || '',
         name: safeName,
-        email: cleanEmail,
+        // CRITICAL: for existing records, preserve the DB email — the user may have changed it via profile update.
+        // Only use the master email when inserting a brand-new record.
+        email: existing ? (existing.email || cleanEmail) : cleanEmail,
         personal_email: emp.personalEmail || '',
         contact_number: emp.contactNumber || '',
         department_id: isValidUuid(emp.departmentId) ? emp.departmentId : null,
@@ -355,10 +357,11 @@ export const syncAllEmployeesToSupabase = async (customUsers?: User[]): Promise<
         department_head_id: isValidUuid(emp.departmentHeadId) ? emp.departmentHeadId : null,
         department_head_name: emp.departmentHeadName || '',
         default_template_id: isValidUuid(emp.defaultTemplateId) ? emp.defaultTemplateId : null,
-        username: emp.username || cleanEmail.split('@')[0],
+        // Preserve existing username — user may have changed it
+        username: existing ? (existing.username || emp.username || cleanEmail.split('@')[0]) : (emp.username || cleanEmail.split('@')[0]),
         password: passwordToStore,
         requires_password_change: emp.requiresPasswordChange ?? (existing?.requires_password_change ?? true),
-        // Preserve existing avatar_url in DB — never overwrite a user's uploaded profile picture with a blank from master data
+        // Preserve existing avatar_url — never overwrite a user's uploaded profile picture with blank master data
         avatar_url: emp.avatarUrl || (existing?.avatar_url || ''),
         is_active: emp.isActive ?? true,
         is_approved: emp.isApproved ?? true,
@@ -931,16 +934,63 @@ export const syncAllMasterEmployeesToSupabase = async (): Promise<{ total: numbe
   if (!isSupabaseConfigured || !supabase) {
     return { total: MASTER_EMPLOYEES.length, successCount: 0, errors: ['Supabase not configured'] };
   }
-  
-  console.log(`[Supabase Sync] Starting master employee synchronization for ${MASTER_EMPLOYEES.length} employees...`);
+
+  console.log(`[Supabase Sync] Starting master employee seed check for ${MASTER_EMPLOYEES.length} employees...`);
   const errors: string[] = [];
   let successCount = 0;
 
+  // Fetch all existing employees from DB to determine which ones are missing
+  // CRITICAL: We use this to SKIP existing employees entirely — we must never overwrite
+  // user-modified data (email, avatar_url, username, password) with stale master defaults.
+  const { data: existingRows, error: fetchErr } = await supabase
+    .from('employees')
+    .select('id, employee_number, email, username');
+
+  if (fetchErr) {
+    console.warn('[Supabase Sync] Could not fetch existing employees for seed check:', fetchErr);
+    return { total: MASTER_EMPLOYEES.length, successCount: 0, errors: ['Failed to fetch existing employees'] };
+  }
+
+  // Build lookup sets for fast existence checks
+  const existingByEmpNum = new Set<string>();
+  const existingByEmail = new Set<string>();
+  const existingById = new Set<string>();
+
+  (existingRows || []).forEach((row: any) => {
+    if (row.employee_number) existingByEmpNum.add(row.employee_number.toLowerCase().trim());
+    if (row.email) existingByEmail.add(row.email.toLowerCase().trim());
+    if (row.id) existingById.add(row.id.toLowerCase());
+  });
+
+  let skippedCount = 0;
+
   for (const emp of MASTER_EMPLOYEES) {
     try {
+      const targetUuid = ensureUuid(emp.id);
+      const empNumKey = emp.employeeNumber?.toLowerCase().trim();
+      const emailKey = emp.email?.toLowerCase().trim();
+      const idKey = targetUuid.toLowerCase();
+
+      // SKIP if this employee already exists in DB by any identifier
+      // This is the core guard — existing records must NEVER be overwritten by master seed data
+      const alreadyExists =
+        (empNumKey && existingByEmpNum.has(empNumKey)) ||
+        existingById.has(idKey) ||
+        (emailKey && existingByEmail.has(emailKey));
+
+      if (alreadyExists) {
+        skippedCount++;
+        continue; // Do NOT touch this record — the user may have changed email/avatar/etc.
+      }
+
+      // Only reach here for genuinely NEW employees not yet in DB
       const res = await saveEmployeeToSupabaseDetailed(emp);
       if (res.success) {
         successCount++;
+        // Add to sets so subsequent iterations don't try to insert duplicates
+        if (empNumKey) existingByEmpNum.add(empNumKey);
+        existingById.add(idKey);
+        if (emailKey) existingByEmail.add(emailKey);
       } else {
         errors.push(`${emp.name} (${emp.employeeNumber}): ${res.error?.message || 'Save failed'}`);
       }
@@ -949,7 +999,7 @@ export const syncAllMasterEmployeesToSupabase = async (): Promise<{ total: numbe
     }
   }
 
-  console.log(`[Supabase Sync] Master employee synchronization completed: ${successCount}/${MASTER_EMPLOYEES.length} successful.`);
+  console.log(`[Supabase Sync] Master seed check done: ${successCount} inserted, ${skippedCount} skipped (already exist), ${errors.length} errors.`);
   return { total: MASTER_EMPLOYEES.length, successCount, errors };
 };
 
