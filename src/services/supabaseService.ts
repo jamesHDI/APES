@@ -2547,6 +2547,18 @@ export const uploadSignaturesToSupabase = async (
 // using standard table columns so all devices see the same templates.
 // ==============================================================================
 
+export const mapTemplateStatusForDb = (status?: string): string => {
+  if (!status) return 'draft';
+  if (['draft', 'submitted_to_pod', 'pod_review', 'approved', 'deployed', 'returned_for_revision'].includes(status)) {
+    return status;
+  }
+  if (status === 'is_approved' || status === 'resubmitted_to_pod') return 'submitted_to_pod';
+  if (status === 'returned_by_is' || status === 'returned_by_pod') return 'returned_for_revision';
+  if (status === 'pod_approved') return 'approved';
+  // submitted_to_is or is_review:
+  return 'draft';
+};
+
 export const saveEvaluationTemplateToSupabase = async (template: EvaluationTemplate): Promise<boolean> => {
   if (!isSupabaseConfigured || !supabase || !template) return false;
 
@@ -2625,6 +2637,8 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       kraWeights,
     };
 
+    const dbStatus = mapTemplateStatusForDb(template.status);
+
     const basePayload: Record<string, any> = {
       id: templateUuid,
       title: (template.title || 'Evaluation Template').substring(0, 150),
@@ -2633,6 +2647,7 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       eligibility_weight: Number(template.formulaConfig?.eligibilityWeight ?? 85.00),
       core_values_weight: Number(template.formulaConfig?.coreValuesWeight ?? 15.00),
       is_active: template.isActive ?? true,
+      status: dbStatus,
       full_payload: fullPayload,
       updated_at: new Date().toISOString(),
     };
@@ -2640,7 +2655,7 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
     const extendedPayload: Record<string, any> = {
       ...basePayload,
       created_at: new Date().toISOString(),
-      status: template.status || 'draft',
+      status: dbStatus,
       created_by_role: template.createdByRole || null,
       created_by_user_id: isValidUuid(template.createdByUserId || '') ? template.createdByUserId : null,
       created_by_name: template.createdByName || null,
@@ -2843,7 +2858,7 @@ export const fetchEvaluationTemplatesFromSupabase = async (): Promise<Evaluation
         kraWeights: full.kraWeights,
         isActive: row.is_active ?? full.isActive ?? true,
         createdAt: row.created_at ? new Date(row.created_at).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10),
-        status: (row.status || full.status || 'draft') as any,
+        status: (full.status || row.status || 'draft') as any,
         templateSource: full.templateSource || row.template_source || undefined,
         companyId: full.companyId || row.company_id || undefined,
         companyName: full.companyName || row.company_name || undefined,

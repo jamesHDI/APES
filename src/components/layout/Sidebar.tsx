@@ -139,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           children: [
             { id: 'workflow_monitoring', label: 'Workflow Monitoring', icon: GitBranch },
             { id: 'evaluation_deployment', label: 'Evaluation Deployment', icon: Rocket },
-            { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal },
+            { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal, badge: pendingTemplateCount > 0 ? pendingTemplateCount : undefined },
             { id: 'calibration_pod_review', label: 'Calibration Review', icon: MessageSquare },
             { id: 'admin_panel', label: 'Users, Roles & Config', icon: Settings },
           ],
@@ -169,7 +169,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           children: [
             { id: 'workflow_monitoring', label: 'Workflow Monitoring', icon: GitBranch },
             { id: 'evaluation_deployment', label: 'Evaluation Deployment', icon: Rocket },
-            { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal },
+            { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal, badge: pendingTemplateCount > 0 ? pendingTemplateCount : undefined },
             { id: 'admin_panel', label: 'Evaluation Cycles', icon: Settings },
           ],
         },
@@ -198,7 +198,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           children: [
             { id: 'workflow_monitoring', label: 'Workflow Monitoring', icon: GitBranch },
             { id: 'evaluation_deployment', label: 'Evaluation Deployment', icon: Rocket },
-            { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal },
+            { id: 'template_builder', label: 'Evaluation Templates', icon: SlidersHorizontal, badge: pendingTemplateCount > 0 ? pendingTemplateCount : undefined },
             { id: 'admin_panel', label: 'Users, Roles & Config', icon: Settings },
           ],
         },

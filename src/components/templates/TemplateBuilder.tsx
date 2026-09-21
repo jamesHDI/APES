@@ -68,6 +68,15 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     const curEmpNo = currentUser.employeeNumber?.toUpperCase();
     const curName = currentUser.name?.trim().toLowerCase();
 
+    // CRITICAL: An employee can NEVER be the Immediate Supervisor of their own template!
+    const isTargetEmployee = 
+      (t.createdForEmployeeId && t.createdForEmployeeId === curId) ||
+      (t.createdByUserId && t.createdByUserId === curId && t.templateSource === 'EMPLOYEE') ||
+      (curEmpNo && t.createdForEmployeeNumber && t.createdForEmployeeNumber.toUpperCase() === curEmpNo) ||
+      (curName && t.createdForEmployeeName && t.createdForEmployeeName.trim().toLowerCase() === curName);
+
+    if (isTargetEmployee) return false;
+
     // 1. Direct match on template immediateSupervisor fields
     if (t.immediateSupervisorId && (t.immediateSupervisorId === curId || (curEmpNo && t.immediateSupervisorId.toUpperCase() === curEmpNo))) return true;
     if (t.immediateSupervisorName && curName && t.immediateSupervisorName.trim().toLowerCase() === curName) return true;
@@ -87,10 +96,13 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
     if (isDirectReportTemplate) return true;
 
-    // 3. Match if created by/for current user
-    if (t.createdForEmployeeId === curId || t.createdByUserId === curId) return true;
-    if (curEmpNo && t.createdForEmployeeNumber && t.createdForEmployeeNumber.toUpperCase() === curEmpNo) return true;
-    if (curName && t.createdForEmployeeName && t.createdForEmployeeName.trim().toLowerCase() === curName) return true;
+    // 3. Dept head matches department templates
+    if (currentUser.role === 'dept_head' && (
+      (t.departmentId && t.departmentId === currentUser.departmentId) ||
+      (t.departmentName && currentUser.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
+    )) {
+      return true;
+    }
 
     return false;
   };
@@ -166,6 +178,11 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       defaultPeriod
     );
 
+    const matchedSupervisor = (users || []).find(u => 
+      (currentUser?.immediateSuperiorId && (u.id === currentUser.immediateSuperiorId || (u.employeeNumber && u.employeeNumber.toUpperCase() === currentUser.immediateSuperiorId.toUpperCase()))) ||
+      (currentUser?.immediateSuperiorName && u.name && u.name.trim().toLowerCase() === currentUser.immediateSuperiorName.trim().toLowerCase())
+    );
+
     newTmpl.id = generateUuid();
     newTmpl.status = 'draft';
     newTmpl.templateSource = 'EMPLOYEE';
@@ -177,8 +194,8 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     newTmpl.companyName = currentUser?.companyName || 'Adventures';
     newTmpl.departmentId = currentUser?.departmentId || 'dept_gen';
     newTmpl.departmentName = currentUser?.departmentName || 'General';
-    newTmpl.immediateSupervisorId = currentUser?.immediateSuperiorId;
-    newTmpl.immediateSupervisorName = currentUser?.immediateSuperiorName;
+    newTmpl.immediateSupervisorId = currentUser?.immediateSuperiorId || matchedSupervisor?.id;
+    newTmpl.immediateSupervisorName = currentUser?.immediateSuperiorName || matchedSupervisor?.name;
     newTmpl.createdByRole = currentUser?.role;
     newTmpl.createdByUserId = currentUser?.id;
     newTmpl.createdByName = currentUser?.name;
@@ -214,15 +231,37 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
   const currentLoadedTemplateIdRef = useRef<string>(selectedTemplateId);
 
-  // Permission Checks
-  const isTemplateOwner = activeTemplate.createdForEmployeeId === currentUser?.id || activeTemplate.createdByUserId === currentUser?.id;
-  const isAssignedIS = checkIsISForTemplate(activeTemplate) || currentUser?.role === 'system_admin';
-  
-  const canEdit = isPOD 
-    || currentUser?.role === 'system_admin'
-    || (isEmployeeMode && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_for_revision' || activeTemplate.status === 'returned_by_pod'))
+  // Permission Checks: Strict role and target employee separation
+  const isTemplateOwner = 
+    Boolean(
+      (activeTemplate.createdForEmployeeId && activeTemplate.createdForEmployeeId === currentUser?.id) ||
+      (activeTemplate.createdForEmployeeNumber && currentUser?.employeeNumber && activeTemplate.createdForEmployeeNumber.toUpperCase() === currentUser.employeeNumber.toUpperCase()) ||
+      (activeTemplate.createdForEmployeeName && currentUser?.name && activeTemplate.createdForEmployeeName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()) ||
+      (activeTemplate.createdByUserId && activeTemplate.createdByUserId === currentUser?.id && activeTemplate.templateSource === 'EMPLOYEE')
+    );
+
+  const isAssignedIS = 
+    currentUser?.role !== 'employee' &&
+    !isTemplateOwner &&
+    !isEmployeeMode &&
+    (checkIsISForTemplate(activeTemplate) || (currentUser?.role === 'system_admin' && mode === 'supervisor'));
+
+  const isPODApprover = 
+    !isEmployeeMode && 
+    !isTemplateOwner &&
+    (currentUser?.role === 'pod' || currentUser?.role === 'hr_admin' || currentUser?.role === 'system_admin');
+
+  const canEdit = 
+    // POD approver can edit unless deployed/locked
+    (isPODApprover && activeTemplate.status !== 'deployed' && !activeTemplate.isLocked)
+    // System admin can edit unless deployed/locked
+    || (currentUser?.role === 'system_admin' && !isEmployeeMode && activeTemplate.status !== 'deployed' && !activeTemplate.isLocked)
+    // Employee can edit only when in draft or returned
+    || (isEmployeeMode && isTemplateOwner && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_for_revision' || activeTemplate.status === 'returned_by_pod'))
+    // Assigned IS can edit when reviewing (submitted_to_is or is_review)
     || (isAssignedIS && (activeTemplate.status === 'submitted_to_is' || activeTemplate.status === 'is_review'))
-    || (isDeptHead && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_for_revision'));
+    // Dept Head can edit their drafts or returned templates
+    || (isDeptHead && !isEmployeeMode && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_for_revision'));
 
   useEffect(() => {
     if (selectedTemplateId !== currentLoadedTemplateIdRef.current) {
@@ -261,6 +300,32 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     return numVal;
   };
 
+  const getTemplateWithCommittedWeights = (tmpl: EvaluationTemplate): EvaluationTemplate => {
+    let updatedTmpl = { ...tmpl };
+    const updatedKras = (updatedTmpl.kraCategories || []).map(kra => {
+      const kraKey = `kra_${kra.id}`;
+      const committedKraWeight = weightInputs[kraKey] !== undefined ? Number(weightInputs[kraKey]) : kra.categoryWeightPercent;
+
+      const updatedKpis = (kra.kpis || []).map(kpi => {
+        const kpiKey = `kpi_${kpi.id}`;
+        const committedKpiWeight = weightInputs[kpiKey] !== undefined ? Number(weightInputs[kpiKey]) : kpi.weightPercent;
+        return { ...kpi, weightPercent: committedKpiWeight };
+      });
+
+      return { ...kra, categoryWeightPercent: committedKraWeight, kpis: updatedKpis };
+    });
+
+    const updatedCvs = (updatedTmpl.coreValues || []).map(cv => {
+      const cvKey = `cv_${cv.id}`;
+      const committedCvWeight = weightInputs[cvKey] !== undefined ? Number(weightInputs[cvKey]) : cv.weightPercent;
+      return { ...cv, weightPercent: committedCvWeight };
+    });
+
+    updatedTmpl.kraCategories = updatedKras;
+    updatedTmpl.coreValues = updatedCvs;
+    return updatedTmpl;
+  };
+
   const formatPeriodFromDates = (startDate?: string, endDate?: string): string => {
     if (!startDate && !endDate) return activeTemplate.evaluationPeriod || '';
     const fmt = (d: string) => {
@@ -275,7 +340,16 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   // ── 1. EMPLOYEE SUBMISSION TO IMMEDIATE SUPERVISOR (IS) ─────────────────────
   const handleSubmitToIS = async () => {
     const isResubmission = activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_by_pod' || activeTemplate.status === 'returned_for_revision';
-    const isName = activeTemplate.immediateSupervisorName || currentUser?.immediateSuperiorName || 'Immediate Supervisor';
+
+    const matchedSupervisor = (users || []).find(u => 
+      (activeTemplate.immediateSupervisorId && (u.id === activeTemplate.immediateSupervisorId || (u.employeeNumber && u.employeeNumber.toUpperCase() === activeTemplate.immediateSupervisorId.toUpperCase()))) ||
+      (activeTemplate.immediateSupervisorName && u.name && u.name.trim().toLowerCase() === activeTemplate.immediateSupervisorName.trim().toLowerCase()) ||
+      (currentUser?.immediateSuperiorName && u.name && u.name.trim().toLowerCase() === currentUser.immediateSuperiorName.trim().toLowerCase()) ||
+      (currentUser?.immediateSuperiorId && (u.id === currentUser.immediateSuperiorId || (u.employeeNumber && u.employeeNumber.toUpperCase() === currentUser.immediateSuperiorId.toUpperCase())))
+    );
+
+    const isId = activeTemplate.immediateSupervisorId || currentUser?.immediateSuperiorId || matchedSupervisor?.id;
+    const isName = activeTemplate.immediateSupervisorName || currentUser?.immediateSuperiorName || matchedSupervisor?.name || 'Immediate Supervisor';
 
     const confirmMsg = isResubmission
       ? `Resubmit your revised evaluation template to your Immediate Supervisor (${isName}) for review?`
@@ -283,8 +357,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
     if (!window.confirm(confirmMsg)) return;
 
+    const baseTmpl = getTemplateWithCommittedWeights(activeTemplate);
+
     // Validate before submission
-    const validation = validateEvaluationTemplate(activeTemplate);
+    const validation = validateEvaluationTemplate(baseTmpl);
     if (!validation.isValid) {
       setValidationErrors(validation.errors);
       showToast('Please resolve all validation errors before submitting.');
@@ -293,23 +369,24 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
     const newStatus: TemplateStatus = 'submitted_to_is';
     const submitted: EvaluationTemplate = {
-      ...activeTemplate,
+      ...baseTmpl,
       status: newStatus,
       submittedAt: new Date().toISOString(),
-      templateSource: activeTemplate.templateSource || 'EMPLOYEE',
-      createdForEmployeeId: activeTemplate.createdForEmployeeId || currentUser?.id,
-      createdForEmployeeName: activeTemplate.createdForEmployeeName || currentUser?.name,
-      createdForEmployeeNumber: activeTemplate.createdForEmployeeNumber || currentUser?.employeeNumber,
-      createdForPosition: activeTemplate.createdForPosition || currentUser?.position,
-      companyId: activeTemplate.companyId || currentUser?.companyId || 'comp_adventures',
-      companyName: activeTemplate.companyName || currentUser?.companyName || 'Adventures',
-      immediateSupervisorId: activeTemplate.immediateSupervisorId || currentUser?.immediateSuperiorId,
-      immediateSupervisorName: activeTemplate.immediateSupervisorName || currentUser?.immediateSuperiorName,
-      createdByRole: activeTemplate.createdByRole || currentUser?.role,
-      createdByUserId: activeTemplate.createdByUserId || currentUser?.id,
-      createdByName: activeTemplate.createdByName || currentUser?.name,
+      templateSource: baseTmpl.templateSource || 'EMPLOYEE',
+      createdForEmployeeId: baseTmpl.createdForEmployeeId || currentUser?.id,
+      createdForEmployeeName: baseTmpl.createdForEmployeeName || currentUser?.name,
+      createdForEmployeeNumber: baseTmpl.createdForEmployeeNumber || currentUser?.employeeNumber,
+      createdForPosition: baseTmpl.createdForPosition || currentUser?.position,
+      companyId: baseTmpl.companyId || currentUser?.companyId || 'comp_adventures',
+      companyName: baseTmpl.companyName || currentUser?.companyName || 'Adventures',
+      immediateSupervisorId: isId,
+      immediateSupervisorName: isName,
+      createdByRole: baseTmpl.createdByRole || currentUser?.role,
+      createdByUserId: baseTmpl.createdByUserId || currentUser?.id,
+      createdByName: baseTmpl.createdByName || currentUser?.name,
     };
 
+    setWeightInputs({});
     currentLoadedTemplateIdRef.current = submitted.id;
     setSelectedTemplateId(submitted.id);
     onSaveTemplate(submitted);
@@ -318,7 +395,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     try {
       await triggerTemplateWorkflowNotification({
         recipientRole: 'supervisor',
-        targetUserId: submitted.immediateSupervisorId,
+        targetUserId: isId,
         templateId: submitted.id,
         templateTitle: submitted.title,
         departmentName: submitted.departmentName,
@@ -337,6 +414,8 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
   // ── 2. IMMEDIATE SUPERVISOR (IS) ACTION: APPROVE OR RETURN ──────────────────
   const handleISAction = async (action: 'approve' | 'return') => {
+    const baseTmpl = getTemplateWithCommittedWeights(activeTemplate);
+
     if (action === 'return') {
       if (!isRemarkInput.trim()) {
         setShowISReturnInput(true);
@@ -345,22 +424,23 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       }
 
       const returned: EvaluationTemplate = {
-        ...activeTemplate,
+        ...baseTmpl,
         status: 'returned_by_is',
         isReviewRemarks: isRemarkInput.trim(),
         reviewedAt: new Date().toISOString(),
       };
 
+      setWeightInputs({});
       onSaveTemplate(returned);
       setActiveTemplate(returned);
 
       try {
         await triggerTemplateWorkflowNotification({
-          targetUserId: activeTemplate.createdForEmployeeId || activeTemplate.createdByUserId,
+          targetUserId: baseTmpl.createdForEmployeeId || baseTmpl.createdByUserId,
           recipientRole: 'employee',
           templateId: returned.id,
           templateTitle: returned.title,
-          departmentName: activeTemplate.departmentName,
+          departmentName: baseTmpl.departmentName,
           senderName: currentUser?.name || 'Immediate Supervisor',
           title: 'Evaluation Template Returned for Revision',
           message: `Your Immediate Supervisor (${currentUser?.name}) has returned your evaluation template for revision. Remarks: "${isRemarkInput.trim()}".`,
@@ -376,13 +456,14 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       showToast('Template returned to employee for revision.');
     } else if (action === 'approve') {
       const approved: EvaluationTemplate = {
-        ...activeTemplate,
+        ...baseTmpl,
         status: 'is_approved',
         isApprovedAt: new Date().toISOString(),
-        isReviewRemarks: isRemarkInput.trim() || activeTemplate.isReviewRemarks,
+        isReviewRemarks: isRemarkInput.trim() || baseTmpl.isReviewRemarks,
         reviewedAt: new Date().toISOString(),
       };
 
+      setWeightInputs({});
       onSaveTemplate(approved);
       setActiveTemplate(approved);
 
@@ -409,6 +490,8 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
   // ── 3. PEOPLE OPERATIONS (POD) ACTION: APPROVE, DEPLOY, RETURN ───────────────
   const handlePODAction = async (action: 'approve' | 'deploy' | 'return') => {
+    const baseTmpl = getTemplateWithCommittedWeights(activeTemplate);
+
     if (action === 'return') {
       if (!podRemarkInput.trim()) {
         setShowPODReturnInput(true);
@@ -417,26 +500,27 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       }
 
       const returned: EvaluationTemplate = {
-        ...activeTemplate,
+        ...baseTmpl,
         status: 'returned_by_pod',
         podRemarks: podRemarkInput.trim(),
         reviewedAt: new Date().toISOString(),
       };
 
+      setWeightInputs({});
       onSaveTemplate(returned);
       setActiveTemplate(returned);
 
       try {
         await triggerTemplateWorkflowNotification({
-          targetUserId: activeTemplate.createdForEmployeeId || activeTemplate.createdByUserId,
+          targetUserId: baseTmpl.createdForEmployeeId || baseTmpl.createdByUserId,
           recipientRole: 'employee',
-          recipientDepartment: activeTemplate.departmentName,
+          recipientDepartment: baseTmpl.departmentName,
           templateId: returned.id,
           templateTitle: returned.title,
-          departmentName: activeTemplate.departmentName,
+          departmentName: baseTmpl.departmentName,
           senderName: currentUser?.name || 'People Operations (POD)',
           title: 'Evaluation Template Returned by POD',
-          message: `People Operations (${currentUser?.name || 'POD'}) has returned the evaluation template "${activeTemplate.title}" for revision. Remarks: "${podRemarkInput.trim()}".`,
+          message: `People Operations (${currentUser?.name || 'POD'}) has returned the evaluation template "${baseTmpl.title}" for revision. Remarks: "${podRemarkInput.trim()}".`,
           type: 'alert',
           status: 'returned_by_pod',
         });
@@ -449,26 +533,27 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       showToast('Template returned for revision.');
     } else if (action === 'approve') {
       const approved: EvaluationTemplate = {
-        ...activeTemplate,
+        ...baseTmpl,
         status: 'pod_approved',
         podApprovedAt: new Date().toISOString(),
-        podRemarks: podRemarkInput.trim() || activeTemplate.podRemarks,
+        podRemarks: podRemarkInput.trim() || baseTmpl.podRemarks,
         reviewedAt: new Date().toISOString(),
       };
 
+      setWeightInputs({});
       onSaveTemplate(approved);
       setActiveTemplate(approved);
 
       try {
         await triggerTemplateWorkflowNotification({
-          targetUserId: activeTemplate.createdForEmployeeId || activeTemplate.createdByUserId,
+          targetUserId: baseTmpl.createdForEmployeeId || baseTmpl.createdByUserId,
           recipientRole: 'employee',
           templateId: approved.id,
           templateTitle: approved.title,
-          departmentName: activeTemplate.departmentName,
+          departmentName: baseTmpl.departmentName,
           senderName: currentUser?.name || 'People Operations (POD)',
           title: 'Evaluation Template Validated & Approved by POD',
-          message: `People Operations (${currentUser?.name || 'POD'}) has validated and approved the evaluation template "${activeTemplate.title}".`,
+          message: `People Operations (${currentUser?.name || 'POD'}) has validated and approved the evaluation template "${baseTmpl.title}".`,
           type: 'success',
           status: 'pod_approved',
         });
@@ -480,13 +565,14 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       showToast('Template validated and approved by POD. Ready to deploy.');
     } else if (action === 'deploy') {
       const deployed: EvaluationTemplate = {
-        ...activeTemplate,
+        ...baseTmpl,
         status: 'deployed',
         isLocked: true,
         deployedAt: new Date().toISOString(),
         reviewedAt: new Date().toISOString(),
       };
 
+      setWeightInputs({});
       onSaveTemplate(deployed);
       setActiveTemplate(deployed);
       showToast('Evaluation template deployed successfully! Template is now locked and active for self-evaluations.');
@@ -764,7 +850,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const isCoreValuesValid = Math.abs(totalCoreValueWeight - (activeTemplate.formulaConfig.coreValuesWeight || 0)) < 0.01;
 
   const handleSave = () => {
-    let templateToSave = { ...activeTemplate };
+    let templateToSave = getTemplateWithCommittedWeights(activeTemplate);
 
     // Commit any in-flight formula weight inputs
     if (weightInputs['formula_eligibility'] !== undefined) {
@@ -836,6 +922,22 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     pod_approved: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300',
     approved: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300',
     deployed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300',
+  };
+
+  const statusBadgeLabels: Record<string, string> = {
+    draft: 'Draft',
+    submitted_to_is: 'Submitted to IS',
+    is_review: 'Under IS Review',
+    returned_by_is: 'Returned by IS',
+    is_approved: 'Pending POD',
+    submitted_to_pod: 'Pending POD',
+    resubmitted_to_pod: 'Resubmitted to POD',
+    returned_for_revision: 'Returned',
+    returned_by_pod: 'Returned by POD',
+    pod_review: 'POD Review',
+    pod_approved: 'POD Approved',
+    approved: 'Approved',
+    deployed: 'Deployed',
   };
 
   const statusLabels: Record<string, string> = {
@@ -1070,7 +1172,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
                     <div className="flex items-center space-x-1.5">
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${statusColors[sts] || statusColors.draft}`}>
-                        {statusLabels[sts] || sts}
+                        {statusBadgeLabels[sts] || statusLabels[sts] || sts}
                       </span>
                       {canDelete && (
                         <button
@@ -1225,7 +1327,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
           )}
 
           {/* People Operations (POD) Action Card */}
-          {isPOD && (activeTemplate.status === 'submitted_to_pod' || activeTemplate.status === 'resubmitted_to_pod' || activeTemplate.status === 'is_approved' || activeTemplate.status === 'pod_review') && (
+          {isPODApprover && (activeTemplate.status === 'submitted_to_pod' || activeTemplate.status === 'resubmitted_to_pod' || activeTemplate.status === 'is_approved' || activeTemplate.status === 'pod_review') && (
             <div className="p-5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border-2 border-indigo-300 dark:border-indigo-700 space-y-3 shadow-md">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
@@ -1417,7 +1519,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Save Draft</span>
+                  <span>{isAssignedIS || isPODApprover ? 'Save Changes / Calibration' : 'Save Draft'}</span>
                 </button>
               )}
 
