@@ -9,10 +9,12 @@ import {
   Paperclip,
   TrendingUp,
   CalendarDays,
+  Lock,
 } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
 import { EvaluationProgressCard } from '../workflow/EvaluationProgressCard';
 import { getUserActiveEvaluation, getUserLatestEvaluation, isEvaluationCompleted } from '../../utils/workflowUtils';
+import { checkEvaluationAccess } from '../../utils/deploymentRules';
 
 interface EmployeeDashboardProps {
   currentUser: User;
@@ -52,8 +54,22 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
     reopened: 'Your evaluation has been returned for revision. Please update and resubmit.',
   };
 
-  const nextActionMessage = activeEvaluation ? (statusMessages[activeEvaluation.status] ?? 'No pending actions at this time.') : 'Your evaluation cycle is completed. Please wait for POD/Admin to assign your next evaluation.';
-  const needsAction = activeEvaluation?.status === 'draft' || activeEvaluation?.status === 'reopened';
+  const activeAccess = checkEvaluationAccess(activeEvaluation, currentUser);
+  const isCampaignBlocked = activeAccess.isBlocked;
+
+  let nextActionMessage = activeEvaluation 
+    ? (statusMessages[activeEvaluation.status] ?? 'No pending actions at this time.') 
+    : 'Your evaluation cycle is completed. Please wait for POD/Admin to assign your next evaluation.';
+
+  if (activeEvaluation && isCampaignBlocked) {
+    if (activeAccess.reason === 'overdue') {
+      nextActionMessage = `Campaign deadline expired (${activeAccess.deadline || 'Overdue'}). Access is locked until POD reactivates it.`;
+    } else {
+      nextActionMessage = 'Campaign is closed by POD. Access and editing are locked until reactivated.';
+    }
+  }
+
+  const needsAction = !isCampaignBlocked && (activeEvaluation?.status === 'draft' || activeEvaluation?.status === 'reopened');
 
   return (
     <div className="space-y-6 pb-12">
@@ -202,6 +218,17 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           >
             <span>Open</span>
             <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1.5" />
+          </button>
+        )}
+
+        {isCampaignBlocked && activeEvaluation && (
+          <button
+            onClick={() => onOpenEvaluation(activeEvaluation.id)}
+            className="px-3.5 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/80 dark:hover:bg-amber-900 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-bold shrink-0 z-10 flex items-center gap-1.5 shadow-sm transition-all"
+            title="Campaign closed or overdue. Click for details."
+          >
+            <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span>{activeAccess.reason === 'overdue' ? 'Overdue (Locked)' : 'Campaign Closed'}</span>
           </button>
         )}
 

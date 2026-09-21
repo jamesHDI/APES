@@ -100,7 +100,9 @@ import {
   getStoredAuditLogs,
   getStoredDirectMessages,
   resetToDefaultSeedData,
-  SEED_USERS
+  SEED_USERS,
+  getStoredDeployments,
+  saveDeployments
 } from './services/storage';
 import { 
   fetchEmployeesFromSupabase, 
@@ -158,7 +160,9 @@ import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
 import { CalibrationRequestForm } from './components/calibration/CalibrationRequestForm';
 import { CalibrationRequestsManager } from './components/calibration/CalibrationRequestsManager';
 import { MessengerModal } from './components/messenger/MessengerModal';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, Lock, AlertCircle, Calendar } from 'lucide-react';
+import { checkEvaluationAccess } from './utils/deploymentRules';
+import { EvaluationDeployment } from './types';
 
 import { determineWorkflowType, isUserDepartmentHead, getUserActiveEvaluation, getUserLatestEvaluation, isEvaluationCompleted } from './utils/workflowUtils';
 
@@ -291,7 +295,41 @@ export const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [evaluationHistory, setEvaluationHistory] = useState<any[]>([]);
   const [scorecardArchives, setScorecardArchives] = useState<EvaluationScorecardArchive[]>([]);
+  const [deployments, setDeployments] = useState<EvaluationDeployment[]>(() => getStoredDeployments());
   const [inactiveAccountModal, setInactiveAccountModal] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
+  const [campaignBlockedModal, setCampaignBlockedModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    reason: string;
+    deadline?: string;
+    message: string;
+  }>({
+    isOpen: false,
+    title: '',
+    reason: '',
+    deadline: '',
+    message: '',
+  });
+
+  const handleOpenEvaluation = (id: string) => {
+    const targetEval = evaluations.find(e => e.id === id);
+    if (targetEval) {
+      const access = checkEvaluationAccess(targetEval, currentUser, deployments);
+      if (access.isBlocked) {
+        setCampaignBlockedModal({
+          isOpen: true,
+          title: access.title || 'Evaluation Campaign Closed',
+          reason: access.reason || 'closed',
+          deadline: access.deadline,
+          message: access.message || 'Access to open, fill out, or edit this evaluation is closed by POD.'
+        });
+        return;
+      }
+    }
+    setSelectedEvalId(id);
+    setActiveTab('evaluations');
+    setViewMode('normal');
+  };
 
   const lastAvatarUpdateRef = useRef<{ url: string; timestamp: number } | null>(null);
   const currentUserRef = useRef<User>(currentUser);
@@ -599,6 +637,7 @@ export const App: React.FC = () => {
           .channel('apes_broadcast_events')
           .on('broadcast', { event: 'data_changed' }, () => {
             syncDatabaseAndNotifications(true);
+            setDeployments(getStoredDeployments());
             fetchEvaluationTemplatesFromSupabase().then(sbTemplates => {
               if (sbTemplates !== null && isMounted) {
                 setTemplates(prev => {
@@ -1149,10 +1188,7 @@ export const App: React.FC = () => {
             currentUser={currentUser}
             evaluations={evaluations}
             templates={templates}
-            onOpenEvaluation={(id) => {
-              setSelectedEvalId(id);
-              setActiveTab('evaluations');
-            }}
+            onOpenEvaluation={handleOpenEvaluation}
           />
         );
       case 'supervisor':
@@ -1162,10 +1198,7 @@ export const App: React.FC = () => {
             evaluations={evaluations}
             allUsers={users}
             templates={templates}
-            onOpenEvaluation={(id) => {
-              setSelectedEvalId(id);
-              setActiveTab('evaluations');
-            }}
+            onOpenEvaluation={handleOpenEvaluation}
             onOpenTemplateBuilder={() => setActiveTab('template_builder')}
           />
         );
@@ -1175,10 +1208,7 @@ export const App: React.FC = () => {
             currentUser={currentUser}
             evaluations={evaluations}
             allUsers={users}
-            onOpenEvaluation={(id) => {
-              setSelectedEvalId(id);
-              setActiveTab('evaluations');
-            }}
+            onOpenEvaluation={handleOpenEvaluation}
           />
         );
       case 'president':
@@ -1186,10 +1216,7 @@ export const App: React.FC = () => {
           <PresidentDashboard
             currentUser={currentUser}
             evaluations={evaluations}
-            onOpenEvaluation={(id) => {
-              setSelectedEvalId(id);
-              setActiveTab('evaluations');
-            }}
+            onOpenEvaluation={handleOpenEvaluation}
           />
         );
       case 'pod':
@@ -1198,10 +1225,7 @@ export const App: React.FC = () => {
             currentUser={currentUser}
             evaluations={evaluations}
             departments={departments}
-            onOpenEvaluation={(id) => {
-              setSelectedEvalId(id);
-              setActiveTab('evaluations');
-            }}
+            onOpenEvaluation={handleOpenEvaluation}
             onOpenReports={() => handleSelectTab('reports')}
             onOpenWorkflowMonitoring={() => handleSelectTab('workflow_monitoring')}
             onOpenDeployment={() => handleSelectTab('evaluation_deployment')}
@@ -1216,10 +1240,7 @@ export const App: React.FC = () => {
             cycles={cycles}
             departments={departments}
             users={users}
-            onOpenEvaluation={(id) => {
-              setSelectedEvalId(id);
-              setActiveTab('evaluations');
-            }}
+            onOpenEvaluation={handleOpenEvaluation}
             onOpenTemplateBuilder={() => handleSelectTab('template_builder')}
             onOpenReports={() => handleSelectTab('reports')}
             onSelectTab={handleSelectTab}
@@ -1243,10 +1264,7 @@ export const App: React.FC = () => {
             currentUser={currentUser}
             evaluations={evaluations}
             templates={templates}
-            onOpenEvaluation={(id) => {
-              setSelectedEvalId(id);
-              setActiveTab('evaluations');
-            }}
+            onOpenEvaluation={handleOpenEvaluation}
           />
         );
     }
@@ -1278,10 +1296,7 @@ export const App: React.FC = () => {
           currentUser={currentUser}
           evaluations={evaluations}
           allUsers={users}
-          onOpenEvaluation={(id) => {
-            setSelectedEvalId(id);
-            setActiveTab('evaluations');
-          }}
+          onOpenEvaluation={handleOpenEvaluation}
         />
       );
     }
@@ -1305,10 +1320,7 @@ export const App: React.FC = () => {
           currentUser={currentUser}
           evaluations={evaluations}
           departments={departments}
-          onOpenEvaluation={(id) => {
-            setSelectedEvalId(id);
-            setActiveTab('evaluations');
-          }}
+          onOpenEvaluation={handleOpenEvaluation}
           onOpenReports={() => setActiveTab('reports')}
           onOpenWorkflowMonitoring={() => setActiveTab('workflow_monitoring')}
           onOpenDeployment={() => setActiveTab('evaluation_deployment')}
@@ -1450,10 +1462,7 @@ export const App: React.FC = () => {
           evaluations={evaluations}
           departments={departments}
           templates={templates}
-          onOpenEvaluation={(id) => {
-            setSelectedEvalId(id);
-            setActiveTab('evaluations');
-          }}
+          onOpenEvaluation={handleOpenEvaluation}
           onRefreshEvaluations={() => {
             setEvaluations(getStoredEvaluations());
           }}
@@ -1470,6 +1479,7 @@ export const App: React.FC = () => {
           templates={templates}
           onRefreshData={() => {
             setEvaluations(getStoredEvaluations());
+            setDeployments(getStoredDeployments());
           }}
         />
       );
@@ -1645,6 +1655,47 @@ export const App: React.FC = () => {
                   className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-md transition-colors"
                 >
                   OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Campaign Closed / Overdue Modal */}
+        {campaignBlockedModal.isOpen && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-amber-200 dark:border-amber-800 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                    {campaignBlockedModal.reason === 'overdue' ? 'Campaign Deadline Expired' : 'Campaign Closed by POD'}
+                  </h3>
+                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
+                    Access Restricted
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                {campaignBlockedModal.message}
+              </p>
+              {campaignBlockedModal.deadline && (
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-xs text-amber-900 dark:text-amber-300 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Campaign Deadline: <strong>{campaignBlockedModal.deadline}</strong></span>
+                </div>
+              )}
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-xs text-slate-500 dark:text-slate-400">
+                To access or edit this evaluation template, please coordinate with the People Operations Department (POD) to reactivate the campaign.
+              </div>
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => setCampaignBlockedModal(prev => ({ ...prev, isOpen: false }))}
+                  className="px-5 py-2.5 rounded-xl bg-[#E96B1A] hover:bg-[#D45A0E] text-white font-bold text-sm shadow-md transition-colors"
+                >
+                  Understood
                 </button>
               </div>
             </div>

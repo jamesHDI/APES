@@ -37,8 +37,12 @@ import {
   Sparkles,
   History,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  Lock,
+  AlertCircle,
+  ArrowLeft
 } from 'lucide-react';
+import { checkEvaluationAccess } from '../../utils/deploymentRules';
 
 interface EvaluationFormProps {
   evaluation: Evaluation;
@@ -171,13 +175,16 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   const evaluationTitle = evalData.title || matchingDeployment?.title || evalData.appraisalPeriod || currentTemplate.title;
   const evaluationTemplateName = evalData.templateTitle || matchingDeployment?.templateTitle || currentTemplate.title;
 
+  const accessResult = checkEvaluationAccess(evalData, currentUser);
+  const isCampaignBlocked = accessResult.isBlocked;
+
   const eligibilityWeight = Number(currentTemplate.formulaConfig?.eligibilityWeight || 85);
   const coreValuesWeight = Number(currentTemplate.formulaConfig?.coreValuesWeight || 15);
 
   // Strict Role-Based Section Locking Permissions
-  const canEditEmployeeSection = !isReadOnly && isSelfEval && (evalData.status === 'draft' || evalData.status === 'reopened');
+  const canEditEmployeeSection = !isReadOnly && !isCampaignBlocked && isSelfEval && (evalData.status === 'draft' || evalData.status === 'reopened');
 
-  const canEditDeptHeadSection = !isReadOnly && !isSelfEval && (
+  const canEditDeptHeadSection = !isReadOnly && !isCampaignBlocked && !isSelfEval && (
     evalData.status === 'pending_dept_head' ||
     evalData.status === 'employee_submitted' ||
     evalData.status === 'pending_supervisor'
@@ -190,7 +197,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     currentRole === 'system_admin'
   );
 
-  const canEditPresidentSection = !isReadOnly && !isSelfEval && (
+  const canEditPresidentSection = !isReadOnly && !isCampaignBlocked && !isSelfEval && (
     evalData.status === 'pending_president' ||
     evalData.status === 'department_head_submitted'
   ) && (
@@ -198,7 +205,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     currentRole === 'system_admin'
   );
 
-  const canEditPODSection = !isReadOnly && (
+  const canEditPODSection = !isReadOnly && !isCampaignBlocked && (
     evalData.status === 'pending_pod' ||
     evalData.status === 'supervisor_completed' ||
     evalData.status === 'president_completed' ||
@@ -772,6 +779,61 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     }
     krasMap.get(kraName)!.push(kpi);
   });
+
+  if (isCampaignBlocked) {
+    return (
+      <div className="max-w-3xl mx-auto py-12 px-4 animate-in fade-in">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-amber-200 dark:border-amber-800/60 p-8 text-center space-y-6">
+          <div className="w-20 h-20 mx-auto rounded-3xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-inner">
+            <Lock className="w-10 h-10" />
+          </div>
+          
+          <div className="space-y-2">
+            <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+              {accessResult.reason === 'overdue' ? 'Deadline Expired / Overdue' : 'Campaign Closed by POD'}
+            </span>
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+              Evaluation Access Restricted
+            </h2>
+            <p className="text-sm text-slate-600 dark:text-slate-300 max-w-lg mx-auto leading-relaxed">
+              {accessResult.message}
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-left text-xs text-amber-800 dark:text-amber-300 space-y-1.5 max-w-lg mx-auto">
+            <div className="flex items-center gap-2 font-bold">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>Intended Recipient Access Policy:</span>
+            </div>
+            <p className="pl-6">
+              When an Evaluation Deployment Campaign is closed or the deadline has passed, intended recipients cannot open, access, or edit the evaluation template unless POD activates it again.
+            </p>
+            {accessResult.deadline && (
+              <p className="pl-6 font-semibold">
+                Recorded Deadline: <span className="underline">{accessResult.deadline}</span>
+              </p>
+            )}
+          </div>
+
+          <div className="pt-2">
+            <button
+              onClick={() => {
+                if (window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  window.location.reload();
+                }
+              }}
+              className="btn btn-primary px-6 py-2.5 rounded-xl font-bold shadow-md inline-flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Dashboard</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-12">

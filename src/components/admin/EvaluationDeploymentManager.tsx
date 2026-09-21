@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Department, EvaluationTemplate, EvaluationDeployment, DeploymentStatus, AssignmentType } from '../../types';
-import { getStoredDeployments, saveDeployments, assignNewEvaluationToEmployee, saveSingleEvaluation } from '../../services/storage';
+import { getStoredDeployments, saveDeployments, getStoredEvaluations, saveEvaluations, assignNewEvaluationToEmployee, saveSingleEvaluation } from '../../services/storage';
 import { triggerWorkflowNotification } from '../../services/notificationService';
 import { triggerRealtimeBroadcast, isSupabaseConfigured } from '../../services/supabaseClient';
 import { sendEvaluationDeploymentEmail } from '../../services/emailService';
@@ -231,12 +231,77 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
     onRefreshData();
    };
 
-  const handleUpdateStatus = (id: string, newStatus: DeploymentStatus) => {
-    const updated = deployments.map(d => d.id === id ? { ...d, status: newStatus, updatedAt: new Date().toISOString().substring(0, 10) } : d);
+  const [extendModal, setExtendModal] = useState<{
+    isOpen: boolean;
+    deployment: EvaluationDeployment | null;
+    newDeadline: string;
+    isReactivating: boolean;
+  }>({
+    isOpen: false,
+    deployment: null,
+    newDeadline: '',
+    isReactivating: false,
+  });
+
+  const handleUpdateStatus = (id: string, newStatus: DeploymentStatus, newEndDate?: string) => {
+    const updated = deployments.map(d => {
+      if (d.id === id) {
+        return {
+          ...d,
+          status: newStatus,
+          endDate: newEndDate || d.endDate,
+          updatedAt: new Date().toISOString().substring(0, 10)
+        };
+      }
+      return d;
+    });
     setDeployments(updated);
     saveDeployments(updated);
-    showToast(`Deployment campaign status updated to ${newStatus.toUpperCase()}`);
+
+    // If a new deadline is specified, also sync deadline across evaluations assigned under this deployment
+    if (newEndDate) {
+      try {
+        const allEvals = getStoredEvaluations();
+        const updatedEvals = allEvals.map(e => {
+          if (e.deploymentId === id || (!e.deploymentId && e.appraisalPeriod === updated.find(d => d.id === id)?.period)) {
+            return { ...e, deadline: newEndDate };
+          }
+          return e;
+        });
+        saveEvaluations(updatedEvals);
+      } catch (err) {
+        console.warn('[Deployment] Could not sync deadline to stored evaluations:', err);
+      }
+    }
+
+    triggerRealtimeBroadcast('data_changed', { type: 'evaluation_deployment', deploymentId: id, status: newStatus });
+
+    if (newStatus === 'closed') {
+      showToast(`Deployment campaign CLOSED. Intended recipients can no longer open, access, or edit evaluations under this campaign.`);
+    } else if (newStatus === 'active') {
+      showToast(`Deployment campaign ACTIVATED.${newEndDate ? ` Deadline set to ${newEndDate}.` : ''} Intended recipients can now access and complete their evaluations.`);
+    } else {
+      showToast(`Deployment campaign status updated to ${newStatus.toUpperCase()}`);
+    }
     onRefreshData();
+  };
+
+  const handleActivateClick = (dep: EvaluationDeployment) => {
+    const todayStr = new Date().toISOString().substring(0, 10);
+    const isPastDeadline = Boolean(dep.endDate && dep.endDate < todayStr);
+    if (isPastDeadline) {
+      // If overdue, prompt with reactivate modal to set a new active deadline
+      const nextDate = new Date();
+      nextDate.setDate(nextDate.getDate() + 14);
+      setExtendModal({
+        isOpen: true,
+        deployment: dep,
+        newDeadline: nextDate.toISOString().substring(0, 10),
+        isReactivating: true,
+      });
+    } else {
+      handleUpdateStatus(dep.id, 'active');
+    }
   };
 
   const activeDeployments = deployments.filter(d => d.status === 'active');
@@ -356,8 +421,13 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
                         </span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 font-mono font-medium text-slate-600 dark:text-slate-400">
-                      {dep.startDate} → {dep.endDate}
+                    <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
+                      <div>{dep.startDate} → {dep.endDate}</div>
+                      {dep.endDate && dep.endDate < new Date().toISOString().substring(0, 10) && (
+                        <span className="inline-block mt-0.5 px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider rounded bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-300">
+                          Overdue
+                        </span>
+                      )}
                     </td>
                     <td className="py-3.5 px-4">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
@@ -365,6 +435,8 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
                           ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300'
                           : dep.status === 'scheduled'
                           ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
+                          : dep.status === 'closed'
+                          ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300'
                           : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                       }`}>
                         {dep.status}
@@ -376,8 +448,9 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
                     <td className="py-3.5 px-4 text-right space-x-1">
                       {dep.status !== 'active' && (
                         <button
-                          onClick={() => handleUpdateStatus(dep.id, 'active')}
+                          onClick={() => handleActivateClick(dep)}
                           className="btn btn-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                          title="Activate campaign so intended recipients can access and edit"
                         >
                           Activate
                         </button>
@@ -386,10 +459,25 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
                         <button
                           onClick={() => handleUpdateStatus(dep.id, 'closed')}
                           className="btn btn-xs bg-amber-600 hover:bg-amber-500 text-white font-bold"
+                          title="Close campaign and restrict recipient access"
                         >
                           Close
                         </button>
                       )}
+                      <button
+                        onClick={() => {
+                          setExtendModal({
+                            isOpen: true,
+                            deployment: dep,
+                            newDeadline: dep.endDate,
+                            isReactivating: false,
+                          });
+                        }}
+                        className="btn btn-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold"
+                        title="Extend or change campaign deadline"
+                      >
+                        Extend
+                      </button>
                       <button
                         onClick={() => handleUpdateStatus(dep.id, 'archived')}
                         className="btn btn-xs btn-secondary"
@@ -738,6 +826,81 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Extend Deadline / Reactivate Campaign Modal */}
+      {extendModal.isOpen && extendModal.deployment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-5 relative">
+            <button
+              onClick={() => setExtendModal({ isOpen: false, deployment: null, newDeadline: '', isReactivating: false })}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-3">
+              <div className="p-2.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl">
+                <Calendar className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  {extendModal.isReactivating ? 'Reactivate Campaign & Set Deadline' : 'Extend Campaign Deadline'}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[280px]">
+                  {extendModal.deployment.title}
+                </p>
+              </div>
+            </div>
+
+            {extendModal.isReactivating && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-300">
+                The deadline for this campaign had expired ({extendModal.deployment.endDate}). Setting a future deadline will reactivate the campaign and allow intended recipients to access and complete their evaluations.
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                New Deadline Date
+              </label>
+              <input
+                type="date"
+                value={extendModal.newDeadline}
+                onChange={(e) => setExtendModal(prev => ({ ...prev, newDeadline: e.target.value }))}
+                min={new Date().toISOString().substring(0, 10)}
+                className="input text-sm w-full font-mono"
+              />
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setExtendModal({ isOpen: false, deployment: null, newDeadline: '', isReactivating: false })}
+                className="btn btn-secondary btn-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!extendModal.newDeadline) {
+                    alert('Please select a valid deadline date.');
+                    return;
+                  }
+                  handleUpdateStatus(
+                    extendModal.deployment!.id,
+                    extendModal.isReactivating ? 'active' : extendModal.deployment!.status,
+                    extendModal.newDeadline
+                  );
+                  setExtendModal({ isOpen: false, deployment: null, newDeadline: '', isReactivating: false });
+                }}
+                className="btn btn-primary btn-sm font-bold shadow-md"
+              >
+                {extendModal.isReactivating ? 'Reactivate Campaign' : 'Save New Deadline'}
+              </button>
+            </div>
           </div>
         </div>
       )}
