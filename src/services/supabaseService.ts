@@ -358,7 +358,8 @@ export const syncAllEmployeesToSupabase = async (customUsers?: User[]): Promise<
         username: emp.username || cleanEmail.split('@')[0],
         password: passwordToStore,
         requires_password_change: emp.requiresPasswordChange ?? (existing?.requires_password_change ?? true),
-        avatar_url: emp.avatarUrl || '',
+        // Preserve existing avatar_url in DB — never overwrite a user's uploaded profile picture with a blank from master data
+        avatar_url: emp.avatarUrl || (existing?.avatar_url || ''),
         is_active: emp.isActive ?? true,
         is_approved: emp.isApproved ?? true,
         approval_status: emp.approvalStatus || 'approved',
@@ -524,7 +525,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       try {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, email, employee_number, username, password')
+          .select('id, email, employee_number, username, password, avatar_url')
           .eq('id', user.id)
           .maybeSingle();
         if (data && data.id && !error) {
@@ -542,7 +543,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       try {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, email, employee_number, username, password')
+          .select('id, email, employee_number, username, password, avatar_url')
           .eq('id', SEED_UUID_MAP[user.id])
           .maybeSingle();
         if (data && data.id && !error) {
@@ -560,7 +561,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       try {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, email, employee_number, username, password')
+          .select('id, email, employee_number, username, password, avatar_url')
           .ilike('employee_number', user.employeeNumber.trim())
           .maybeSingle();
         if (data && data.id && !error) {
@@ -578,7 +579,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       try {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, email, employee_number, username, password')
+          .select('id, email, employee_number, username, password, avatar_url')
           .ilike('email', cleanPrevEmail)
           .maybeSingle();
         if (data && data.id && !error) {
@@ -596,7 +597,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       try {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, email, employee_number, username, password')
+          .select('id, email, employee_number, username, password, avatar_url')
           .eq('id', mappedUuid)
           .maybeSingle();
         if (data && data.id && !error) {
@@ -614,7 +615,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       try {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, email, employee_number, username, password')
+          .select('id, email, employee_number, username, password, avatar_url')
           .ilike('username', user.username.trim())
           .maybeSingle();
         if (data && data.id && !error) {
@@ -632,7 +633,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       try {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, email, employee_number, username, password')
+          .select('id, email, employee_number, username, password, avatar_url')
           .ilike('email', cleanEmail)
           .maybeSingle();
         if (data && data.id && !error) {
@@ -667,6 +668,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
         console.warn('[Supabase DB Update] Email conflict check note:', e);
       }
     }
+
 
     const targetId = existingId || mappedUuid;
 
@@ -729,7 +731,8 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       username: user.username || `${cleanEmail.split('@')[0]}_${Date.now().toString().slice(-4)}_${Math.floor(1000 + Math.random() * 9000)}`,
       password: passwordToStore,
       requires_password_change: user.requiresPasswordChange ?? false,
-      avatar_url: user.avatarUrl || '',
+      // Preserve existing avatar_url if the new value is blank — prevents wiping user-uploaded profile pictures
+      avatar_url: user.avatarUrl || (existingRecord?.avatar_url || ''),
       is_active: user.isActive ?? true,
       is_approved: user.isApproved ?? true,
       approval_status: user.approvalStatus || 'approved',

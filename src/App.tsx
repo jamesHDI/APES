@@ -446,9 +446,13 @@ export const App: React.FC = () => {
               const freshUser = (await findEmployeeInSupabase(storedUser.id)) || (await findEmployeeInSupabase(storedUser.email));
               if (freshUser) {
                 const shouldRequireChange = (storedUser.requiresPasswordChange === false || freshUser.requiresPasswordChange === false) ? false : (freshUser.requiresPasswordChange ?? false);
+                // Preserve local avatar and password — the DB may have had these wiped by a bulk master sync
+                // Local storedUser always has the most up-to-date avatar the user uploaded in this session
                 storedUser = {
                   ...freshUser,
-                  requiresPasswordChange: shouldRequireChange
+                  requiresPasswordChange: shouldRequireChange,
+                  avatarUrl: storedUser.avatarUrl || freshUser.avatarUrl || '',
+                  password: storedUser.password || freshUser.password || '',
                 };
                 setCurrentUserStore(storedUser);
               }
@@ -575,13 +579,15 @@ export const App: React.FC = () => {
                     u.id === prevUser.id
                 );
                 if (updatedSelf) {
-                  const tenSecondsAgo = Date.now() - 10000;
-                  const hasRecentAvatarUpdate = lastAvatarUpdateRef.current && lastAvatarUpdateRef.current.timestamp > tenSecondsAgo;
+                  // Always prefer non-empty avatar: local state > Supabase DB
+                  // The DB may have had avatar_url wiped by a bulk master sync even though user uploaded a picture
+                  const resolvedAvatarUrl =
+                    prevUser.avatarUrl ||           // prefer current in-memory avatar (uploaded this session)
+                    updatedSelf.avatarUrl ||         // fallback to DB value if local is empty
+                    '';
                   const mergedSelf: User = {
                     ...updatedSelf,
-                    avatarUrl: hasRecentAvatarUpdate
-                      ? lastAvatarUpdateRef.current!.url
-                      : (prevUser.avatarUrl && prevUser.avatarUrl !== updatedSelf.avatarUrl ? prevUser.avatarUrl : (updatedSelf.avatarUrl || '')),
+                    avatarUrl: resolvedAvatarUrl,
                     personalEmail: updatedSelf.personalEmail || prevUser.personalEmail || '',
                     requiresPasswordChange: (prevUser.requiresPasswordChange === false || updatedSelf.requiresPasswordChange === false) ? false : (updatedSelf.requiresPasswordChange ?? false)
                   };
