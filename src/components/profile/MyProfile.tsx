@@ -325,10 +325,10 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
               </>
             )}
 
-            {/* Larger Orange Role Badge */}
+            {/* Larger Orange Position / Role Badge */}
             <div className="mt-3">
               <span className="px-5 py-2 rounded-full text-sm font-black bg-[#FFF4EA] dark:bg-brand-950/80 text-[#E96B1A] dark:text-brand-300 border border-[#F28C28]/40 dark:border-brand-700/80 shadow-md inline-flex items-center gap-1.5">
-                {ROLE_LABELS[currentUser.role] || currentUser.role}
+                {position || ROLE_LABELS[currentUser.role] || currentUser.role}
               </span>
             </div>
 

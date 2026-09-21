@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, Role, Evaluation, EvaluationTemplate, Department, EvaluationCycle, Notification, isPendingUser, EvaluationScorecardArchive, DevelopmentPlan, PersonnelAction, DirectMessage } from './types';
 import { MASTER_SALES_EVALUATION_TEMPLATE } from './constants/masterSalesTemplate';
 import { MASTER_EMPLOYEES } from './constants/masterOrganization';
+import { isExcludedUser } from './services/storage';
 
 const mergeMasterWithSupabaseUsers = (sbUsers: User[]): User[] => {
   const resultsMap = new Map<string, User>();
 
   // 1. Seed all master employees by canonical ID
   for (const emp of MASTER_EMPLOYEES) {
-    if (emp && emp.id) {
+    if (emp && emp.id && !isExcludedUser(emp)) {
       resultsMap.set(emp.id, { ...emp });
     }
   }
@@ -16,7 +17,7 @@ const mergeMasterWithSupabaseUsers = (sbUsers: User[]): User[] => {
   // 2. Overlay Supabase users
   if (Array.isArray(sbUsers)) {
     for (const u of sbUsers) {
-      if (!u) continue;
+      if (!u || isExcludedUser(u)) continue;
 
       let matchKey: string | null = null;
       for (const [key, existing] of resultsMap.entries()) {
@@ -442,6 +443,8 @@ export const App: React.FC = () => {
 
         // Proactively purge deprecated hardcoded accounts from Supabase cloud
         deleteEmployeeFromSupabase('usr_sup_sales_01', 'supervisor.sales@hdiadventures.com', 'SUP-SLS-01').catch(() => {});
+        deleteEmployeeFromSupabase('usr_dh_pohr', 'pohr.head@hdiadventures.com', 'DH-POHR-01').catch(() => {});
+        deleteEmployeeFromSupabase('usr_pod_malene', 'malene.pellazo@hdiadventures.com', 'POD-01').catch(() => {});
 
         try {
           const sbHistory = await fetchEvaluationHistoryFromSupabase();

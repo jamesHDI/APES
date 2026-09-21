@@ -196,10 +196,10 @@ export const getCurrentReviewerInfo = (evaluation: Evaluation, allUsers: User[] 
         };
       case 'president_completed':
       case 'pending_pod':
-        const podUserDH = allUsers.find(u => u.role === 'pod' || u.id === 'usr_dh_pohr') || { name: 'Malene Pellazo' };
+        const podUserDH = allUsers.find(u => u.role === 'pod' || u.id === 'usr_e1527') || { name: 'Maria Elena Pellazo' };
         return {
-          reviewerName: podUserDH.name || 'Malene Pellazo',
-          reviewerRole: 'Department Head - People Operations (POD)',
+          reviewerName: podUserDH.name || 'Maria Elena Pellazo',
+          reviewerRole: 'People Operations (POD)',
           currentStatusLabel: 'Under POD Review',
           nextStepLabel: 'Final Completion & Archive',
           dateSubmitted: formattedSubmitted,
@@ -257,10 +257,10 @@ export const getCurrentReviewerInfo = (evaluation: Evaluation, allUsers: User[] 
       case 'supervisor_completed':
       case 'department_head_submitted':
       case 'pending_pod':
-        const podUserReg = allUsers.find(u => u.role === 'pod' || u.id === 'usr_dh_pohr') || { name: 'Malene Pellazo' };
+        const podUserReg = allUsers.find(u => u.role === 'pod' || u.id === 'usr_e1527') || { name: 'Maria Elena Pellazo' };
         return {
-          reviewerName: podUserReg.name || 'Malene Pellazo',
-          reviewerRole: 'Department Head - People Operations (POD)',
+          reviewerName: podUserReg.name || 'Maria Elena Pellazo',
+          reviewerRole: 'People Operations (POD)',
           currentStatusLabel: 'Under POD Review',
           nextStepLabel: 'Final Completion & Archive',
           dateSubmitted: formattedSubmitted,
@@ -381,19 +381,19 @@ export const getEvaluationTimelineEvents = (evaluation: Evaluation, allUsers: Us
   const isPodDone = evaluation.status === 'pod_validated' || evaluation.status === 'archived';
   const isPodCurrent = evaluation.status === 'pending_pod';
 
-  const podUser = allUsers.find(u => u.role === 'pod' || u.id === 'usr_dh_pohr') || { name: 'Malene Pellazo' };
+  const podUser = allUsers.find(u => u.role === 'pod' || u.id === 'usr_e1527') || { name: 'Maria Elena Pellazo' };
 
   events.push({
     id: 'step_3_pod',
     date: isPodDone ? formatDate(podAudit?.timestamp) : isPodCurrent ? 'Currently Active' : 'Pending',
     title: isPodDone ? 'POD Review & Validation Completed' : 'Awaiting POD Review',
     description: isPodDone
-      ? `Validated by ${podUser?.name || 'Malene Pellazo'}`
+      ? `Validated by ${podUser?.name || 'Maria Elena Pellazo'}`
       : isPodCurrent
-      ? 'Currently awaiting POD review by Malene Pellazo (Department Head - People Operations)'
+      ? 'Currently awaiting POD review by Maria Elena Pellazo (People Operations)'
       : 'Pending POD team final audit',
-    actorName: podUser?.name || 'Malene Pellazo',
-    actorRole: 'Department Head - People Operations (POD)',
+    actorName: podUser?.name || 'Maria Elena Pellazo',
+    actorRole: 'People Operations (POD)',
     isCompleted: isPodDone,
     isCurrent: isPodCurrent,
   });

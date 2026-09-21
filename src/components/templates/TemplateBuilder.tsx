@@ -718,13 +718,14 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       const newTemplate = createMasterBasedTemplate(
         dept.id,
         dept.name,
-        `${dept.name} Performance Evaluation Scorecard Template`,
+        `${dept.name} Performance Evaluation Scorecard Template${dept.companyName ? ` (${dept.companyName})` : ''}`,
         defaultPeriod
       );
 
       newTemplate.id = generateUuid();
       newTemplate.status = 'draft';
       newTemplate.templateSource = 'POD';
+      newTemplate.companyName = dept.companyName || 'Adventures';
       newTemplate.departmentId = dept.id;
       newTemplate.departmentName = dept.name;
       newTemplate.createdByRole = currentUser?.role;
@@ -739,7 +740,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       setSelectedTemplateId(newTemplate.id);
       setShowCreateModal(false);
       setValidationErrors([]);
-      showToast(`New department template created for ${dept.name}!`);
+      showToast(`New department template created for ${dept.name} (${dept.companyName || 'Adventures'})!`);
     }
   };
 
@@ -1974,17 +1975,31 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                       Select Department
                     </label>
                     <select
-                      value={selectedDeptForNewTemplate?.id || ''}
+                      value={selectedDeptForNewTemplate?.id || (departments[0]?.id ?? '')}
                       onChange={(e) => {
                         const d = departments.find(item => item.id === e.target.value);
                         if (d) setSelectedDeptForNewTemplate(d);
                       }}
                       className="w-full text-xs p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-semibold"
                     >
-                      {departments.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name} ({d.companyName || 'Adventures'})
-                        </option>
+                      {Object.entries(
+                        departments.reduce<Record<string, Department[]>>((acc, d) => {
+                          const comp = d.companyName || 'Adventures';
+                          if (!acc[comp]) acc[comp] = [];
+                          acc[comp].push(d);
+                          return acc;
+                        }, {})
+                      ).map(([compName, depts]) => (
+                        <optgroup key={compName} label={compName}>
+                          {depts
+                            .slice()
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {d.name} ({compName})
+                              </option>
+                            ))}
+                        </optgroup>
                       ))}
                     </select>
                   </div>

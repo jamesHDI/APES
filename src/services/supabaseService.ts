@@ -131,6 +131,7 @@ const SEED_UUID_MAP: Record<string, string> = {
   'usr_dh_mkt': '00000000-0000-4000-8000-000000000016',
   'usr_dh_ops': '00000000-0000-4000-8000-000000000017',
   'usr_dh_pohr': '00000000-0000-4000-8000-000000000018',
+  'usr_e1527': '00000000-0000-4000-8000-000000000018',
   'usr_dh_sls': '00000000-0000-4000-8000-000000000019',
   'usr_emp_01': '00000000-0000-4000-8000-000000000020',
   'usr_sup_01': '00000000-0000-4000-8000-000000000021',
@@ -968,16 +969,42 @@ export const fetchDepartmentsFromSupabase = async (): Promise<Department[] | nul
     const { data, error } = await supabase.from('departments').select('*');
     if (error || !data) return null;
 
-    return data.map((d: any) => ({
-      id: d.id,
-      name: d.name,
-      code: d.code,
-      headId: d.head_user_id,
-      headName: d.head_name,
-      defaultTemplateId: d.default_template_id,
-      employeeCount: d.employee_count || 0,
-      isActive: d.is_active
-    }));
+    const { isObsoleteDepartment, SEED_DEPARTMENTS } = await import('./storage');
+
+    // Filter out obsolete legacy mock departments from old schema/seeds
+    const validCloudDepts: Department[] = data
+      .map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        code: d.code,
+        companyName: d.company_name || d.companyName || '',
+        headId: d.head_user_id,
+        headName: d.head_name,
+        defaultTemplateId: d.default_template_id,
+        employeeCount: d.employee_count || 0,
+        isActive: d.is_active
+      }))
+      .filter((d: Department) => !isObsoleteDepartment(d));
+
+    // Merge with SEED_DEPARTMENTS ensuring all 24 true departments are present with companyName
+    const results = [...SEED_DEPARTMENTS];
+    for (const cd of validCloudDepts) {
+      const matchIdx = results.findIndex(s => 
+        s.id === cd.id || 
+        (s.code === cd.code && (s.companyName || '').toLowerCase() === (cd.companyName || '').toLowerCase()) ||
+        (s.name.toLowerCase() === cd.name.toLowerCase() && (s.companyName || '').toLowerCase() === (cd.companyName || '').toLowerCase())
+      );
+      if (matchIdx !== -1) {
+        results[matchIdx] = {
+          ...results[matchIdx],
+          defaultTemplateId: cd.defaultTemplateId || results[matchIdx].defaultTemplateId,
+        };
+      } else {
+        results.push(cd);
+      }
+    }
+
+    return results;
   } catch (err) {
     console.warn('Error fetching departments from Supabase:', err);
     return null;

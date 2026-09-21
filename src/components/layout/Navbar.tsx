@@ -316,11 +316,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className="w-7 h-7 rounded-full object-cover ring-2 ring-[#F28C28]/25 shrink-0"
                 />
                 <div className="text-left hidden sm:block">
-                  <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight max-w-[120px] truncate">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight max-w-[140px] truncate">
                     {currentUser?.name || 'User'}
                   </p>
-                  <p className="text-[10px] text-[#F28C28] dark:text-brand-400 font-semibold leading-tight">
-                    {currentUser?.role ? (roleLabel[currentUser.role] ?? currentUser.role) : 'Member'}
+                  <p 
+                    className="text-[10px] text-[#F28C28] dark:text-brand-400 font-semibold leading-tight max-w-[140px] truncate"
+                    title={currentUser?.position || (currentUser?.role ? (roleLabel[currentUser.role] ?? currentUser.role) : 'Member')}
+                  >
+                    {currentUser?.position || (currentUser?.role ? (roleLabel[currentUser.role] ?? currentUser.role) : 'Member')}
                   </p>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
@@ -340,8 +343,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <p className="font-bold text-sm text-slate-900 dark:text-white truncate leading-snug">
                         {currentUser?.name || 'User'}
                       </p>
-                      <p className="text-[11px] text-[#F28C28] dark:text-brand-400 font-semibold mt-0.5">
-                        {currentUser?.role ? (roleLabel[currentUser.role] ?? currentUser.role) : 'Member'}
+                      <p 
+                        className="text-[11px] text-[#F28C28] dark:text-brand-400 font-semibold mt-0.5 truncate"
+                        title={currentUser?.position || (currentUser?.role ? (roleLabel[currentUser.role] ?? currentUser.role) : 'Member')}
+                      >
+                        {currentUser?.position || (currentUser?.role ? (roleLabel[currentUser.role] ?? currentUser.role) : 'Member')}
                       </p>
                       <p className="text-[10px] font-mono text-slate-400 dark:text-slate-400 mt-0.5">
                         {currentUser?.employeeNumber || 'EMP-001'}

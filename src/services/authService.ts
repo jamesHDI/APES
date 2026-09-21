@@ -27,13 +27,26 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
   const { identifier, password } = credentials;
   const cleanId = (identifier || '').trim().toLowerCase();
 
+  // Consolidate Malene Pellazo alias to canonical Maria Elena Pellazo account
+  let searchId = cleanId;
+  if (
+    searchId === 'malene.pellazo' ||
+    searchId === 'malene.pellazo@hdiadventures.com' ||
+    searchId === 'pohr.head@hdiadventures.com' ||
+    searchId === 'dh-pohr-01' ||
+    searchId === 'usr_dh_pohr' ||
+    searchId === 'usr_pod_malene'
+  ) {
+    searchId = 'mariaelena.pellazo@hdiadventures.com';
+  }
+
   let matchedUser: User | null = null;
 
   // 1. Single Source of Truth: Query Supabase PostgreSQL employees table directly
   if (isSupabaseConfigured && supabase) {
     try {
-      console.log(`[Supabase Auth] Querying Supabase database directly for identifier: "${cleanId}"`);
-      matchedUser = await findEmployeeInSupabase(cleanId);
+      console.log(`[Supabase Auth] Querying Supabase database directly for identifier: "${searchId}"`);
+      matchedUser = await findEmployeeInSupabase(searchId);
     } catch (e) {
       console.error('[Supabase Auth] Error during Supabase employee lookup:', e);
     }
@@ -43,7 +56,11 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
   if (!matchedUser) {
     const users = getStoredUsers();
     matchedUser = users.find(
-      (u) => u.email.toLowerCase() === cleanId || 
+      (u) => u.email.toLowerCase() === searchId || 
+             (u.employeeNumber && u.employeeNumber.toLowerCase() === searchId) ||
+             (u.username && u.username.toLowerCase() === searchId) ||
+             (u.id && u.id.toLowerCase() === searchId) ||
+             u.email.toLowerCase() === cleanId || 
              (u.employeeNumber && u.employeeNumber.toLowerCase() === cleanId) ||
              (u.username && u.username.toLowerCase() === cleanId) ||
              (u.id && u.id.toLowerCase() === cleanId)

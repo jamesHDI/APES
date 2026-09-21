@@ -63,6 +63,7 @@ export const SEED_DEPARTMENTS: Department[] = [
   { id: 'dept_ops_stan', name: 'Operations', code: 'OPS-STAN', companyName: 'Stanford', headId: 'usr_ceo_brandon', headName: 'Brandon Chia', employeeCount: 1, isActive: true },
 
   // ADVENTURES
+  { id: 'dept_exec_adv', name: 'Executive Office', code: 'EXEC-ADV', companyName: 'Adventures', headId: 'usr_ceo_brandon', headName: 'Brandon Chia', employeeCount: 1, isActive: true },
   { id: 'dept_ops_adv', name: 'Operations', code: 'OPS-ADV', companyName: 'Adventures', headId: 'usr_e1115', headName: 'Manuel, Jr. Embuido', employeeCount: 8, isActive: true },
   { id: 'dept_sales_adv', name: 'Sales', code: 'SLS-ADV', companyName: 'Adventures', headId: 'usr_e1147', headName: 'Gracia Esguerra', employeeCount: 4, isActive: true },
   { id: 'dept_fa_adv', name: 'Finance and Accounting', code: 'FA-ADV', companyName: 'Adventures', headId: 'usr_e1752', headName: 'Emmanuel Buenaventura', employeeCount: 6, isActive: true },
@@ -91,14 +92,19 @@ export const SEED_TEMPLATES: EvaluationTemplate[] = [
 
 export const SEED_EVALUATIONS: Evaluation[] = [];
 
-const isExcludedUser = (u: User) =>
+export const isExcludedUser = (u: User) =>
   !u ||
   u.name === 'Juan Dela Cruz' ||
   u.id === 'usr_emp_sales_01' ||
   u.id === 'usr_dh_sls' ||
   u.id === 'usr_sup_sales_01' ||
+  u.id === 'usr_dh_pohr' ||
+  u.id === 'usr_pod_malene' ||
+  (u.name === 'Malene Pellazo' && u.id !== 'usr_e1527') ||
   (u.email && u.email.toLowerCase().trim() === 'supervisor.sales@hdiadventures.com') ||
-  u.employeeNumber === 'SUP-SLS-01';
+  (u.email && u.email.toLowerCase().trim() === 'pohr.head@hdiadventures.com') ||
+  u.employeeNumber === 'SUP-SLS-01' ||
+  u.employeeNumber === 'DH-POHR-01';
 
 export const getStoredUsers = (): User[] => {
   const resultsMap = new Map<string, User>();
@@ -223,30 +229,49 @@ export const clearCurrentUserStore = () => {
   } catch (e) {}
 };
 
+const OBSOLETE_DEPT_IDS = new Set([
+  'dept_sls', 'dept_acctg', 'dept_adm', 'dept_bmc', 'dept_fin_pres', 'dept_ga_world',
+  'dept_leg', 'dept_mktg', 'dept_ops', 'dept_hr', 'dept_creatives', 'dept_hdi',
+  'a0000000-0000-0000-0000-000000000010', 'a0000000-0000-0000-0000-000000000001',
+  'a0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000003',
+  'a0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000005',
+  'a0000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000007',
+  'a0000000-0000-0000-0000-000000000008', 'a0000000-0000-0000-0000-000000000009',
+  'a0000000-0000-0000-0000-000000000011'
+]);
+const OBSOLETE_DEPT_NAMES = new Set([
+  'creatives', 'marketing', 'ga & world', 'people operations (hr)',
+  'finance / office of the president', 'hdi adventures'
+]);
+const OBSOLETE_DEPT_CODES = new Set(['CRT', 'MKT', 'GAW', 'POHR', 'FOP']);
+
+export const isObsoleteDepartment = (d: Partial<Department>): boolean => {
+  if (!d) return true;
+  if (d.id && OBSOLETE_DEPT_IDS.has(d.id)) return true;
+  if (d.name && OBSOLETE_DEPT_NAMES.has(d.name.trim().toLowerCase())) return true;
+  if (d.code && OBSOLETE_DEPT_CODES.has(d.code.trim().toUpperCase())) return true;
+  // If an old department has no companyName or is just 'Adventures' and matches old generic codes without company suffix
+  if (!d.companyName && ['SLS', 'ACC', 'ADM', 'BMC', 'OPS', 'LGL'].includes((d.code || '').trim().toUpperCase())) return true;
+  return false;
+};
+
 export const getStoredDepartments = (): Department[] => {
   const data = localStorage.getItem(DEPARTMENTS_KEY);
   if (data) {
     try {
       const depts: Department[] = JSON.parse(data);
-      const filtered = depts.filter(d => d.name !== 'HDI Adventures' && d.id !== 'dept_hdi');
-      // Ensure all seed departments exist in the list per company
-      const merged = [...filtered];
-      for (const seedDept of SEED_DEPARTMENTS) {
-        const existingIdx = merged.findIndex(d => 
-          d.id === seedDept.id || 
-          (d.code === seedDept.code && (d.companyName || '').toLowerCase() === (seedDept.companyName || '').toLowerCase()) ||
-          (d.name.toLowerCase() === seedDept.name.toLowerCase() && (d.companyName || '').toLowerCase() === (seedDept.companyName || '').toLowerCase())
+      // Filter out all obsolete legacy mock departments
+      const filtered = depts.filter(d => !isObsoleteDepartment(d));
+      // Start with our official 24 company departments
+      const merged = [...SEED_DEPARTMENTS];
+      for (const customDept of filtered) {
+        const exists = merged.some(s => 
+          s.id === customDept.id || 
+          (s.code === customDept.code && (s.companyName || '').toLowerCase() === (customDept.companyName || '').toLowerCase()) ||
+          (s.name.toLowerCase() === customDept.name.toLowerCase() && (s.companyName || '').toLowerCase() === (customDept.companyName || '').toLowerCase())
         );
-        if (existingIdx === -1) {
-          merged.push(seedDept);
-        } else {
-          merged[existingIdx] = {
-            ...seedDept,
-            ...merged[existingIdx],
-            name: seedDept.name,
-            companyName: seedDept.companyName,
-            code: seedDept.code,
-          };
+        if (!exists && customDept.name && customDept.id) {
+          merged.push(customDept);
         }
       }
       localStorage.setItem(DEPARTMENTS_KEY, JSON.stringify(merged));
@@ -1001,11 +1026,11 @@ export const deleteStoredCalibrationRequest = (id: string) => {
 export const SEED_DIRECT_MESSAGES: DirectMessage[] = [
   {
     id: 'msg_welcome_pod',
-    senderId: 'usr_dh_pohr',
-    senderName: 'Malene Pellazo',
+    senderId: 'usr_e1527',
+    senderName: 'Maria Elena Pellazo',
     senderRole: 'pod',
     senderAvatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-    senderDepartment: 'People Operations (HR)',
+    senderDepartment: 'Peoples Ops',
     recipientId: 'all',
     recipientName: 'All HDI Hive Users',
     subject: 'Welcome to HDI Messenger & Concerns Desk',
@@ -1024,23 +1049,21 @@ export const getStoredDirectMessages = (): DirectMessage[] => {
       const parsed: DirectMessage[] = JSON.parse(data);
       if (Array.isArray(parsed) && parsed.length > 0) {
         let hasFixes = false;
-        // Normalize any old duplicate 'usr_pod_malene' records to official 'usr_dh_pohr'
+        // Normalize any old duplicate 'usr_pod_malene' or 'usr_dh_pohr' records to canonical 'usr_e1527'
         const normalized = parsed.map(msg => {
           let updated = { ...msg };
-          if (updated.senderId === 'usr_pod_malene') {
-            updated.senderId = 'usr_dh_pohr';
-            updated.senderName = 'Malene Pellazo';
+          if (updated.senderId === 'usr_pod_malene' || updated.senderId === 'usr_dh_pohr' || updated.senderName === 'Malene Pellazo') {
+            updated.senderId = 'usr_e1527';
+            updated.senderName = 'Maria Elena Pellazo';
             updated.senderRole = 'pod';
-            updated.senderDepartment = 'People Operations (HR)';
-            updated.senderAvatarUrl = 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80';
+            updated.senderDepartment = 'Peoples Ops';
             hasFixes = true;
           }
-          if (updated.recipientId === 'usr_pod_malene') {
-            updated.recipientId = 'usr_dh_pohr';
-            updated.recipientName = 'Malene Pellazo';
+          if (updated.recipientId === 'usr_pod_malene' || updated.recipientId === 'usr_dh_pohr' || updated.recipientName === 'Malene Pellazo') {
+            updated.recipientId = 'usr_e1527';
+            updated.recipientName = 'Maria Elena Pellazo';
             updated.recipientRole = 'pod';
-            updated.recipientDepartment = 'People Operations (HR)';
-            updated.recipientAvatarUrl = 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80';
+            updated.recipientDepartment = 'Peoples Ops';
             hasFixes = true;
           }
           return updated;

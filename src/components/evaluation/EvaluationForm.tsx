@@ -553,8 +553,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
   };
 
   const doFinalizeSupervisor = () => {
-    const podUser = allUsers.find(u => u.role === 'pod' || u.id === 'usr_dh_pohr') || { id: 'usr_dh_pohr', name: 'Malene Pellazo' };
-    const assignedTo = `${podUser.name} (Department Head - People Operations / POD)`;
+    const podUser = allUsers.find(u => u.role === 'pod' || u.id === 'usr_e1527') || { id: 'usr_e1527', name: 'Maria Elena Pellazo' };
+    const assignedTo = `${podUser.name} (People Operations / POD)`;
 
     const updatedAudit = addAuditEntry('Department Head Review Completed', evalData.status, 'pending_pod', assignedTo, 'Review completed and submitted to POD.');
 
@@ -604,7 +604,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
   const doFinalizePresident = () => {
     const isPodEmployee = evalData.employeeEmail?.includes('pod') || 
-                          evalData.employeeName?.includes('Malene') || 
+                          evalData.employeeName?.includes('Pellazo') || 
+                          evalData.departmentName?.includes('Peoples Ops') || 
                           evalData.departmentName?.includes('People Operations') || 
                           (allUsers.find(u => u.id === evalData.employeeId)?.role === 'pod');
 
@@ -651,8 +652,8 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
       return;
     }
 
-    const podUser = allUsers.find(u => u.role === 'pod' || u.id === 'usr_dh_pohr') || { id: 'usr_dh_pohr', name: 'Malene Pellazo' };
-    const assignedTo = `${podUser.name} (Department Head - People Operations / POD)`;
+    const podUser = allUsers.find(u => u.role === 'pod' || u.id === 'usr_e1527') || { id: 'usr_e1527', name: 'Maria Elena Pellazo' };
+    const assignedTo = `${podUser.name} (People Operations / POD)`;
 
     const updatedAudit = addAuditEntry('President Executive Review Completed', evalData.status, 'pending_pod', assignedTo);
 
