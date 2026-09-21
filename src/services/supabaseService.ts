@@ -293,7 +293,7 @@ export const syncAllEmployeesToSupabase = async (customUsers?: User[]): Promise<
     const targetList = customUsers && customUsers.length > 0 ? customUsers : MASTER_EMPLOYEES;
     
     // Fetch existing records from Supabase — include avatar_url so we can preserve it
-    const { data: existingRows, error: fetchErr } = await supabase.from('employees').select('id, employee_number, email, username, password, avatar_url');
+    const { data: existingRows, error: fetchErr } = await supabase.from('employees').select('id, employee_number, email, username, password, avatar_url, requires_password_change');
     if (fetchErr) {
       console.warn('[Supabase Sync] Could not fetch existing employees for sync:', fetchErr);
     }
@@ -360,7 +360,13 @@ export const syncAllEmployeesToSupabase = async (customUsers?: User[]): Promise<
         // Preserve existing username — user may have changed it
         username: existing ? (existing.username || emp.username || cleanEmail.split('@')[0]) : (emp.username || cleanEmail.split('@')[0]),
         password: passwordToStore,
-        requires_password_change: emp.requiresPasswordChange ?? (existing?.requires_password_change ?? true),
+        // CRITICAL: For existing records, preserve the DB value of requires_password_change.
+        // MASTER_EMPLOYEES always has requiresPasswordChange: true, but if the DB already
+        // has false (user changed their password on first login), we must keep false.
+        // Rule: existing DB false always wins; only fall back to master value if DB has no record yet.
+        requires_password_change: existing
+          ? (existing.requires_password_change === false ? false : (emp.requiresPasswordChange ?? true))
+          : (emp.requiresPasswordChange ?? true),
         // Preserve existing avatar_url — never overwrite a user's uploaded profile picture with blank master data
         avatar_url: emp.avatarUrl || (existing?.avatar_url || ''),
         is_active: emp.isActive ?? true,
