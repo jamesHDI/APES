@@ -84,6 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (currentRole === 'employee') {
       items = [
         ...common,
+        { id: 'org_hierarchy', label: 'Org Chart', icon: GitBranch },
         { id: 'my_template', label: 'My Evaluation Template', icon: SlidersHorizontal },
         { id: 'calibration_request', label: 'Calibration Request', icon: MessageSquare },
         { id: 'my_history', label: 'Evaluation History', icon: History },
@@ -92,6 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     } else if (currentRole === 'supervisor') {
       items = [
         ...common,
+        { id: 'org_hierarchy', label: 'Org Chart', icon: GitBranch },
         { id: 'my_template', label: 'My Evaluation Template', icon: SlidersHorizontal },
         { id: 'template_builder', label: 'Team Template Reviews', icon: Layers, badge: pendingTemplateCount > 0 ? pendingTemplateCount : undefined },
         { id: 'team_reviews', label: 'Team Reviews', icon: CheckSquare, badge: pendingCount > 0 ? pendingCount : undefined },
@@ -102,6 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     } else if (currentRole === 'dept_head') {
       items = [
         ...common,
+        { id: 'org_hierarchy', label: 'Org Chart', icon: GitBranch },
         { id: 'dept_actions', label: 'Personnel Actions', icon: FileCheck },
         { id: 'template_builder', label: 'Dept Template Reviews', icon: SlidersHorizontal, badge: pendingTemplateCount > 0 ? pendingTemplateCount : undefined },
         { id: 'calibration_requests', label: 'Calibration Requests', icon: MessageSquare },
@@ -112,6 +115,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     } else if (currentRole === 'president') {
       items = [
         ...common,
+        { id: 'org_hierarchy', label: 'Org Chart', icon: GitBranch },
         { id: 'dept_head_reviews', label: 'Dept Head Reviews', icon: Crown },
         { id: 'reports', label: 'Executive Reports', icon: BarChart3 },
         { id: 'my_history', label: 'Evaluation History', icon: History },

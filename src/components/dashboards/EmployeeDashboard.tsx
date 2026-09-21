@@ -141,37 +141,83 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
       )}
 
       {/* Next Action Banner */}
-      <div className={`flex items-start sm:items-center gap-4 p-4 rounded-2xl border ${
+      <div className={`relative overflow-hidden flex items-start sm:items-center gap-4 p-4 rounded-2xl border transition-all duration-300 ${
         needsAction
-          ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800'
+          ? 'bg-gradient-to-r from-amber-50 via-orange-50/70 to-amber-50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-amber-950/40 border-amber-300 dark:border-amber-700 shadow-md shadow-amber-500/10 ring-2 ring-amber-400/30'
           : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700'
       }`}>
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-          needsAction ? 'bg-amber-100 dark:bg-amber-900/50' : 'bg-slate-200 dark:bg-slate-700'
-        }`}>
-          {needsAction
-            ? <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-            : <CheckCircle2 className="w-5 h-5 text-slate-500 dark:text-slate-400" />
-          }
+        {/* Subtle continuous shimmer beam for immediate visibility */}
+        {needsAction && (
+          <div 
+            className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-amber-200/40 dark:via-amber-400/15 to-transparent pointer-events-none"
+            style={{
+              animation: 'shimmerSweep 3s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+            }}
+          />
+        )}
+
+        {/* Action Icon with pulsing ping indicator */}
+        <div className="relative shrink-0">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+            needsAction ? 'bg-amber-100 dark:bg-amber-900/60 shadow-sm' : 'bg-slate-200 dark:bg-slate-700'
+          }`}>
+            {needsAction
+              ? <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400 animate-pulse" />
+              : <CheckCircle2 className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+            }
+          </div>
+          {needsAction && (
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-[#E96B1A]"></span>
+            </span>
+          )}
         </div>
-        <div className="flex-1 min-w-0">
-          <p className={`text-sm font-semibold ${needsAction ? 'text-amber-900 dark:text-amber-200' : 'text-slate-700 dark:text-slate-300'}`}>
-            {nextActionMessage}
-          </p>
+
+        <div className="flex-1 min-w-0 z-10">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className={`text-sm font-semibold ${needsAction ? 'text-amber-900 dark:text-amber-200' : 'text-slate-700 dark:text-slate-300'}`}>
+              {nextActionMessage}
+            </p>
+            {needsAction && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-100 text-[#E96B1A] dark:bg-orange-950/60 dark:text-orange-300 border border-[#F28C28]/30 animate-pulse">
+                Action Required
+              </span>
+            )}
+          </div>
           {displayEvaluation && (
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Period: <strong>{displayEvaluation.appraisalPeriod}</strong>
             </p>
           )}
         </div>
+
         {needsAction && activeEvaluation && (
           <button
             onClick={() => onOpenEvaluation(activeEvaluation.id)}
-            className="btn-primary btn btn-sm shrink-0"
+            className="btn-primary btn btn-sm shrink-0 z-10 shadow-md hover:shadow-lg transition-all group relative overflow-hidden"
+            style={{
+              animation: 'openButtonNudge 2s ease-in-out infinite'
+            }}
           >
-            Open <ArrowRight className="w-3.5 h-3.5" />
+            <span>Open</span>
+            <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1.5" />
           </button>
         )}
+
+        <style>{`
+          @keyframes shimmerSweep {
+            0% { transform: translateX(-100%); }
+            45%, 100% { transform: translateX(200%); }
+          }
+          @keyframes openButtonNudge {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(5px); }
+            40% { transform: translateX(0); }
+            60% { transform: translateX(3px); }
+            80% { transform: translateX(0); }
+          }
+        `}</style>
       </div>
 
       {/* Stat Cards */}

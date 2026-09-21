@@ -167,13 +167,13 @@ export const isTabAllowedForRole = (tab: string, role?: Role): boolean => {
 
   switch (role) {
     case 'employee':
-      return ['dashboard', 'evaluations', 'my_template', 'calibration_request', 'my_history', 'my_profile'].includes(tab);
+      return ['dashboard', 'evaluations', 'org_hierarchy', 'my_template', 'calibration_request', 'my_history', 'my_profile'].includes(tab);
     case 'supervisor':
-      return ['dashboard', 'evaluations', 'my_template', 'team_reviews', 'template_builder', 'reports', 'my_history', 'my_profile'].includes(tab);
+      return ['dashboard', 'evaluations', 'org_hierarchy', 'my_template', 'team_reviews', 'template_builder', 'reports', 'my_history', 'my_profile'].includes(tab);
     case 'dept_head':
-      return ['dashboard', 'evaluations', 'my_template', 'dept_actions', 'template_builder', 'calibration_requests', 'reports', 'my_history', 'my_profile'].includes(tab);
+      return ['dashboard', 'evaluations', 'org_hierarchy', 'my_template', 'dept_actions', 'template_builder', 'calibration_requests', 'reports', 'my_history', 'my_profile'].includes(tab);
     case 'president':
-      return ['dashboard', 'evaluations', 'my_template', 'dept_head_reviews', 'reports', 'my_history', 'my_profile'].includes(tab);
+      return ['dashboard', 'evaluations', 'org_hierarchy', 'my_template', 'dept_head_reviews', 'reports', 'my_history', 'my_profile'].includes(tab);
     case 'pod':
       return [
         'dashboard', 'evaluations', 'my_template', 'pod_validation', 'employee_mgmt', 'pending_approvals',
@@ -193,7 +193,7 @@ export const isTabAllowedForRole = (tab: string, role?: Role): boolean => {
         'template_builder', 'admin_panel', 'my_history', 'reports', 'my_profile'
       ].includes(tab);
     default:
-      return ['dashboard', 'evaluations', 'my_profile'].includes(tab);
+      return ['dashboard', 'evaluations', 'org_hierarchy', 'my_profile'].includes(tab);
   }
 };
 
