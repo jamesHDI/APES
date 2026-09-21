@@ -502,7 +502,10 @@ export const App: React.FC = () => {
               setCurrentUser((prevUser: User) => {
                 if (!prevUser) return prevUser;
                 const updatedSelf = sbUsers.find(
-                  (u) => u.email.toLowerCase() === prevUser.email.toLowerCase() || u.id === prevUser.id
+                  (u) =>
+                    (u.employeeNumber && prevUser.employeeNumber && u.employeeNumber.toLowerCase().trim() === prevUser.employeeNumber.toLowerCase().trim()) ||
+                    u.email.toLowerCase().trim() === prevUser.email.toLowerCase().trim() ||
+                    u.id === prevUser.id
                 );
                 if (updatedSelf) {
                   const tenSecondsAgo = Date.now() - 10000;
@@ -913,18 +916,30 @@ export const App: React.FC = () => {
     triggerRealtimeBroadcast('data_changed', { type: 'employee' });
   };
 
-  const handleUpdateCurrentUser = async (updatedUser: User) => {
+  const handleUpdateCurrentUser = async (updatedUser: User): Promise<{ success: boolean; error?: any }> => {
     const prevEmail = currentUser?.email;
     setCurrentUser(updatedUser);
     setCurrentUserStore(updatedUser);
-    const updatedUsers = users.map(u => (u.id === updatedUser.id || u.email.toLowerCase() === updatedUser.email.toLowerCase()) ? updatedUser : u);
+
+    const isTargetUser = (u: User) =>
+      u.id === updatedUser.id ||
+      (prevEmail && u.email.toLowerCase().trim() === prevEmail.toLowerCase().trim()) ||
+      (updatedUser.employeeNumber && u.employeeNumber && u.employeeNumber.toLowerCase().trim() === updatedUser.employeeNumber.toLowerCase().trim()) ||
+      u.email.toLowerCase().trim() === updatedUser.email.toLowerCase().trim();
+
+    const updatedUsers = users.map(u => isTargetUser(u) ? updatedUser : u);
     setUsers(updatedUsers);
     saveUsers(updatedUsers);
 
     if (isSupabaseConfigured) {
       const saveRes = await saveEmployeeToSupabaseDetailed(updatedUser, prevEmail);
       if (saveRes.success) {
-        const freshUser = (saveRes.id ? await findEmployeeInSupabase(saveRes.id) : null) || (await findEmployeeInSupabase(updatedUser.id)) || (await findEmployeeInSupabase(updatedUser.email));
+        const freshUser =
+          saveRes.verifiedUser ||
+          (await findEmployeeInSupabase(updatedUser.id)) ||
+          (updatedUser.employeeNumber ? await findEmployeeInSupabase(updatedUser.employeeNumber) : null) ||
+          (await findEmployeeInSupabase(updatedUser.email));
+
         if (freshUser) {
           const mergedFreshUser: User = {
             ...freshUser,
@@ -935,7 +950,7 @@ export const App: React.FC = () => {
           setCurrentUser(mergedFreshUser);
           setCurrentUserStore(mergedFreshUser);
           setUsers(prev => {
-            const list = prev.map(u => (u.id === mergedFreshUser.id || u.email.toLowerCase() === mergedFreshUser.email.toLowerCase()) ? mergedFreshUser : u);
+            const list = prev.map(u => isTargetUser(u) ? mergedFreshUser : u);
             saveUsers(list);
             return list;
           });
@@ -943,22 +958,28 @@ export const App: React.FC = () => {
         if (updatedUser.avatarUrl) {
           lastAvatarUpdateRef.current = { url: updatedUser.avatarUrl, timestamp: Date.now() };
         }
-      } else if (updatedUser.avatarUrl) {
-        console.warn('[Avatar Source] Full save failed, attempting direct avatar fallback update...', saveRes.error);
-        const cleanEmail = (updatedUser.email || '').trim().toLowerCase();
-        try {
-          const targetId = isValidUuid(updatedUser.id) ? updatedUser.id : ensureUuid(updatedUser.id);
-          await supabase
-            .from('employees')
-            .update({ avatar_url: updatedUser.avatarUrl, updated_at: new Date().toISOString() })
-            .or(`id.eq.${targetId},email.ilike.${cleanEmail}`);
-          lastAvatarUpdateRef.current = { url: updatedUser.avatarUrl, timestamp: Date.now() };
-        } catch (e) {
-          console.warn('[Avatar Source] Direct avatar fallback update note:', e);
+        triggerRealtimeBroadcast('data_changed', { type: 'employee', email: updatedUser.email });
+        return { success: true };
+      } else {
+        if (updatedUser.avatarUrl) {
+          console.warn('[Avatar Source] Full save failed, attempting direct avatar fallback update...', saveRes.error);
+          const cleanEmail = (updatedUser.email || '').trim().toLowerCase();
+          try {
+            const targetId = isValidUuid(updatedUser.id) ? updatedUser.id : ensureUuid(updatedUser.id);
+            await supabase
+              .from('employees')
+              .update({ avatar_url: updatedUser.avatarUrl, updated_at: new Date().toISOString() })
+              .or(`id.eq.${targetId},email.ilike.${cleanEmail}`);
+            lastAvatarUpdateRef.current = { url: updatedUser.avatarUrl, timestamp: Date.now() };
+          } catch (e) {
+            console.warn('[Avatar Source] Direct avatar fallback update note:', e);
+          }
         }
+        triggerRealtimeBroadcast('data_changed', { type: 'employee', email: updatedUser.email });
+        return { success: false, error: saveRes.error };
       }
-      triggerRealtimeBroadcast('data_changed', { type: 'employee', email: updatedUser.email });
     }
+    return { success: true };
   };
 
   const handleSaveDepartments = async (updatedDepts: Department[]) => {

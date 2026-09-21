@@ -2,7 +2,7 @@ import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { User, Role } from '../types';
 import { getStoredUsers, saveUsers, getStoredCurrentUser, setCurrentUserStore, clearCurrentUserStore } from './storage';
 import { triggerRegistrationNotification } from './notificationService';
-import { ensureUuid, generateUuid, saveEmployeeToSupabase, saveEmployeeToSupabaseDetailed, fetchEmployeesFromSupabase, findEmployeeInSupabase } from './supabaseService';
+import { ensureUuid, generateUuid, isValidUuid, saveEmployeeToSupabase, saveEmployeeToSupabaseDetailed, fetchEmployeesFromSupabase, findEmployeeInSupabase } from './supabaseService';
 import { hashPassword, verifyPassword, isHashedPassword } from '../utils/crypto';
 
 export interface LoginCredentials {
@@ -218,22 +218,70 @@ export const changeUserPassword = async (userIdOrEmail: string, newPassword: str
   if (isSupabaseConfigured && supabase) {
     try {
       const emailToMatch = targetUser.email.toLowerCase();
-      
-      // Direct update on employees table in Supabase PostgreSQL cloud database
-      const { error: directErr } = await supabase
-        .from('employees')
-        .update({
-          password: hashedPassword,
-          requires_password_change: false,
-          updated_at: new Date().toISOString()
-        })
-        .ilike('email', emailToMatch);
+      const updatePayload = {
+        password: hashedPassword,
+        requires_password_change: false,
+        updated_at: new Date().toISOString()
+      };
 
-      if (directErr) {
-        console.warn('[Password Change] Direct email update note:', directErr.message);
-        await saveEmployeeToSupabaseDetailed(targetUser);
-      } else {
-        console.log(`[Password Change] Successfully updated password & cleared default password flag in Supabase for ${emailToMatch}`);
+      let updated = false;
+
+      // 1. Update by UUID if valid
+      if (isValidUuid(targetUser.id)) {
+        const { data, error } = await supabase
+          .from('employees')
+          .update(updatePayload)
+          .eq('id', targetUser.id)
+          .select('id');
+        if (!error && data && data.length > 0) {
+          updated = true;
+          console.log(`[Password Change] Updated password in Supabase for user ID: ${targetUser.id}`);
+        }
+      }
+
+      // 2. Update by employee_number
+      if (!updated && targetUser.employeeNumber && targetUser.employeeNumber.trim().length > 0) {
+        const { data, error } = await supabase
+          .from('employees')
+          .update(updatePayload)
+          .ilike('employee_number', targetUser.employeeNumber.trim())
+          .select('id');
+        if (!error && data && data.length > 0) {
+          updated = true;
+          console.log(`[Password Change] Updated password in Supabase for employee number: ${targetUser.employeeNumber}`);
+        }
+      }
+
+      // 3. Update by email
+      if (!updated && emailToMatch) {
+        const { data, error } = await supabase
+          .from('employees')
+          .update(updatePayload)
+          .ilike('email', emailToMatch)
+          .select('id');
+        if (!error && data && data.length > 0) {
+          updated = true;
+          console.log(`[Password Change] Updated password in Supabase for email: ${emailToMatch}`);
+        }
+      }
+
+      // 4. Fallback: comprehensive saveEmployeeToSupabaseDetailed
+      if (!updated) {
+        console.warn('[Password Change] Direct updates matched 0 rows, executing saveEmployeeToSupabaseDetailed fallback...');
+        await saveEmployeeToSupabaseDetailed({ ...targetUser, password: hashedPassword, requiresPasswordChange: false });
+      }
+
+      // 5. Update Supabase Auth user password if user is currently signed in
+      if (supabase?.auth) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            await supabase.auth.updateUser({ password: newPassword });
+            console.log('[Password Change] Successfully synchronized new password with active Supabase Auth session');
+          }
+        } catch (authErr) {
+          console.warn('[Password Change] Supabase Auth session update note:', authErr);
+        }
       }
     } catch (err) {
       console.warn('[Password Change] Supabase update warning:', err);

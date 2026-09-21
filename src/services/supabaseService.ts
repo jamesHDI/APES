@@ -131,7 +131,7 @@ const SEED_UUID_MAP: Record<string, string> = {
   'usr_dh_mkt': '00000000-0000-4000-8000-000000000016',
   'usr_dh_ops': '00000000-0000-4000-8000-000000000017',
   'usr_dh_pohr': '00000000-0000-4000-8000-000000000018',
-  'usr_e1527': '00000000-0000-4000-8000-000000000018',
+  'usr_e1527': 'e1527000-0000-4000-8000-000000000000',
   'usr_dh_sls': '00000000-0000-4000-8000-000000000019',
   'usr_emp_01': '00000000-0000-4000-8000-000000000020',
   'usr_sup_01': '00000000-0000-4000-8000-000000000021',
@@ -555,21 +555,21 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       }
     }
 
-    // Strategy 3: Check by mappedUuid (ensureUuid)
-    if (!existingId && mappedUuid && isValidUuid(mappedUuid)) {
+    // Strategy 3: Check by employee_number (unique permanent business identifier across email changes)
+    if (!existingId && user.employeeNumber && user.employeeNumber.trim().length > 0) {
       try {
         const { data, error } = await supabase
           .from('employees')
           .select('id, email, employee_number, username, password')
-          .eq('id', mappedUuid)
+          .ilike('employee_number', user.employeeNumber.trim())
           .maybeSingle();
         if (data && data.id && !error) {
           existingId = data.id;
           existingRecord = data;
-          console.log(`[Supabase DB Update] Matched existing DB record by ensureUuid: ${existingId}`);
+          console.log(`[Supabase DB Update] Matched existing DB record by employee number (${user.employeeNumber}): ${existingId}`);
         }
       } catch (e) {
-        console.warn('[Supabase DB Update] mappedUuid search note:', e);
+        console.warn('[Supabase DB Update] Employee number search note:', e);
       }
     }
 
@@ -591,21 +591,21 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       }
     }
 
-    // Strategy 5: Check by employee_number (unique business identifier)
-    if (!existingId && user.employeeNumber && user.employeeNumber.trim().length > 0) {
+    // Strategy 5: Check by mappedUuid (ensureUuid)
+    if (!existingId && mappedUuid && isValidUuid(mappedUuid)) {
       try {
         const { data, error } = await supabase
           .from('employees')
           .select('id, email, employee_number, username, password')
-          .ilike('employee_number', user.employeeNumber.trim())
+          .eq('id', mappedUuid)
           .maybeSingle();
         if (data && data.id && !error) {
           existingId = data.id;
           existingRecord = data;
-          console.log(`[Supabase DB Update] Matched existing DB record by employee number (${user.employeeNumber}): ${existingId}`);
+          console.log(`[Supabase DB Update] Matched existing DB record by ensureUuid: ${existingId}`);
         }
       } catch (e) {
-        console.warn('[Supabase DB Update] Employee number search note:', e);
+        console.warn('[Supabase DB Update] mappedUuid search note:', e);
       }
     }
 
@@ -882,6 +882,28 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
           hint: verifyErr?.hint || ''
         }
       };
+    }
+
+    // Synchronize Supabase Auth user session if active and email/password changed
+    if (supabase?.auth) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const authUpdate: { email?: string; password?: string } = {};
+          if (cleanEmail && session.user.email?.toLowerCase() !== cleanEmail) {
+            authUpdate.email = cleanEmail;
+          }
+          if (user.password && user.password.length >= 6 && !isHashedPassword(user.password)) {
+            authUpdate.password = user.password;
+          }
+          if (Object.keys(authUpdate).length > 0) {
+            await supabase.auth.updateUser(authUpdate);
+            console.log('[Supabase Auth Sync] Updated auth user session:', Object.keys(authUpdate));
+          }
+        }
+      } catch (authErr) {
+        console.warn('[Supabase Auth Sync] Session update note:', authErr);
+      }
     }
 
     return {

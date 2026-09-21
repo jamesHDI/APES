@@ -28,7 +28,7 @@ import {
 
 interface MyProfileProps {
   currentUser: User;
-  onUpdateUser: (updatedUser: User) => void;
+  onUpdateUser: (updatedUser: User) => Promise<{ success: boolean; error?: any } | void> | void;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -181,7 +181,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
     showProfileFeedback('success', 'Profile picture updated and saved successfully!');
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!firstName.trim() || !lastName.trim()) {
       showProfileFeedback('error', 'First name and last name are required.');
       return;
@@ -208,9 +208,18 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       avatarUrl: avatarPreview || currentUser.avatarUrl,
     };
 
-    onUpdateUser(updatedUser);
-    setIsSaving(false);
-    showProfileFeedback('success', 'Profile and account email updated successfully!');
+    try {
+      const result = await onUpdateUser(updatedUser);
+      if (result && result.success === false) {
+        showProfileFeedback('error', result.error?.message || 'Failed to update profile in database.');
+      } else {
+        showProfileFeedback('success', 'Profile and account email updated successfully in database!');
+      }
+    } catch (err: any) {
+      showProfileFeedback('error', err?.message || 'Failed to update profile in database.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -236,10 +245,10 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       setNewPassword('');
       setConfirmPassword('');
       const updatedUser: User = { ...currentUser, password: newPassword, requiresPasswordChange: false };
-      onUpdateUser(updatedUser);
-      showPasswordFeedback('success', 'Password updated successfully!');
+      await onUpdateUser(updatedUser);
+      showPasswordFeedback('success', 'Password updated successfully in database!');
     } else {
-      showPasswordFeedback('error', 'Failed to update password. Please try again.');
+      showPasswordFeedback('error', 'Failed to update password in database. Please try again.');
     }
   };
 
