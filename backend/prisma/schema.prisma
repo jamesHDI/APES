@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Week 1 baseline only. This schema intentionally contains no APES production
+// data and must be reviewed against the approved data-mapping sheet before its
+// first migration is generated.
+model User {
+  id                Int       @id @default(autoincrement())
+  externalEmployeeId String?  @unique @db.VarChar(100)
+  employeeNumber    String?   @unique @db.VarChar(50)
+  email             String    @unique @db.VarChar(191)
+  passwordHash      String    @db.VarChar(255)
+  firstName         String    @db.VarChar(100)
+  lastName          String    @db.VarChar(100)
+  departmentId      Int?
+  department        Department? @relation(fields: [departmentId], references: [id])
+  role              String    @default("employee") @db.VarChar(50)
+  status            String    @default("Active") @db.VarChar(30)
+  mustChangePassword Boolean  @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  evaluations       Evaluation[]
+
+  @@index([departmentId])
+}
+
+model Department {
+  id        Int      @id @default(autoincrement())
+  externalId String? @unique @db.VarChar(100)
+  code      String   @unique @db.VarChar(50)
+  name      String   @db.VarChar(100)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+}
+
+model Evaluation {
+  id          Int      @id @default(autoincrement())
+  externalId  String?  @unique @db.VarChar(100)
+  employeeId  Int
+  employee    User     @relation(fields: [employeeId], references: [id])
+  status      String   @default("draft") @db.VarChar(50)
+  workflowType String  @db.VarChar(50)
+  appraisalPeriod String @db.VarChar(100)
+  payload     Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([employeeId, status])
+}
