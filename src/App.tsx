@@ -1421,6 +1421,8 @@ export const App: React.FC = () => {
           users={users}
           templates={templates}
           onSaveDepartments={handleSaveDepartments}
+          onSaveUsers={handleSaveUsers}
+          currentUser={currentUser}
         />
       );
     }
