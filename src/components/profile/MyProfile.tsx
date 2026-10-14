@@ -28,6 +28,7 @@ import {
 
 interface MyProfileProps {
   currentUser: User;
+  users?: User[];
   onUpdateUser: (updatedUser: User) => Promise<{ success: boolean; error?: any } | void> | void;
 }
 
@@ -41,7 +42,7 @@ const ROLE_LABELS: Record<string, string> = {
   system_admin: 'System Administrator',
 };
 
-export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser }) => {
+export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, users = [], onUpdateUser }) => {
   // Editable fields
   const [firstName, setFirstName] = useState(currentUser.firstName || '');
   const [lastName, setLastName] = useState(currentUser.lastName || '');
@@ -50,7 +51,9 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
   const [departmentName, setDepartmentName] = useState(currentUser.departmentName || '');
   const [employeeNumber, setEmployeeNumber] = useState(currentUser.employeeNumber || '');
   const [employmentStatus, setEmploymentStatus] = useState<EmploymentStatus>(currentUser.employmentStatus || 'Regular');
-  const [immediateSuperiorName, setImmediateSuperiorName] = useState(currentUser.immediateSuperiorName || '');
+  const [immediateSuperiorId, setImmediateSuperiorId] = useState(currentUser.immediateSuperiorId || currentUser.immediateSupervisorId || '');
+  const [immediateSuperiorName, setImmediateSuperiorName] = useState(currentUser.immediateSuperiorName || currentUser.immediateSupervisorName || '');
+  const [departmentHeadId, setDepartmentHeadId] = useState(currentUser.departmentHeadId || '');
   const [departmentHeadName, setDepartmentHeadName] = useState(currentUser.departmentHeadName || '');
   const [contactNumber, setContactNumber] = useState(currentUser.contactNumber || '');
   const [avatarPreview, setAvatarPreview] = useState(currentUser.avatarUrl || '');
@@ -99,12 +102,87 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       setDepartmentName(currentUser.departmentName || '');
       setEmployeeNumber(currentUser.employeeNumber || '');
       setEmploymentStatus(currentUser.employmentStatus || 'Regular');
-      setImmediateSuperiorName(currentUser.immediateSuperiorName || '');
+      setImmediateSuperiorId(currentUser.immediateSuperiorId || currentUser.immediateSupervisorId || '');
+      setImmediateSuperiorName(currentUser.immediateSuperiorName || currentUser.immediateSupervisorName || '');
+      setDepartmentHeadId(currentUser.departmentHeadId || '');
       setDepartmentHeadName(currentUser.departmentHeadName || '');
       setContactNumber(currentUser.contactNumber || '');
       setAvatarPreview(currentUser.avatarUrl || '');
     }
   }, [currentUser.id]);
+
+  // List of active staff members sorted alphabetically by name
+  const staffList = React.useMemo(() => {
+    const base = users && users.length > 0 ? users : (currentUser ? [currentUser] : []);
+    const unique = new Map<string, User>();
+    base.forEach(u => {
+      if (u && u.id && u.name && u.isActive !== false) {
+        unique.set(u.id, u);
+      }
+    });
+    if (currentUser && currentUser.id && currentUser.name && !unique.has(currentUser.id)) {
+      unique.set(currentUser.id, currentUser);
+    }
+    return Array.from(unique.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [users, currentUser]);
+
+  // Resolves the select value matching immediate superior
+  const selectedSuperiorValue = React.useMemo(() => {
+    if (immediateSuperiorId) {
+      const match = staffList.find(u => u.id === immediateSuperiorId || (u.employeeNumber && u.employeeNumber === immediateSuperiorId));
+      if (match) return match.id;
+    }
+    if (immediateSuperiorName) {
+      const match = staffList.find(u => u.name && u.name.trim().toLowerCase() === immediateSuperiorName.trim().toLowerCase());
+      if (match) return match.id;
+    }
+    return immediateSuperiorId || '';
+  }, [immediateSuperiorId, immediateSuperiorName, staffList]);
+
+  // Resolves the select value matching department head
+  const selectedDeptHeadValue = React.useMemo(() => {
+    if (departmentHeadId) {
+      const match = staffList.find(u => u.id === departmentHeadId || (u.employeeNumber && u.employeeNumber === departmentHeadId));
+      if (match) return match.id;
+    }
+    if (departmentHeadName) {
+      const match = staffList.find(u => u.name && u.name.trim().toLowerCase() === departmentHeadName.trim().toLowerCase());
+      if (match) return match.id;
+    }
+    return departmentHeadId || '';
+  }, [departmentHeadId, departmentHeadName, staffList]);
+
+  const handleImmediateSuperiorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (!val) {
+      setImmediateSuperiorId('');
+      setImmediateSuperiorName('');
+      return;
+    }
+    const found = staffList.find(u => u.id === val);
+    if (found) {
+      setImmediateSuperiorId(found.id);
+      setImmediateSuperiorName(found.name || '');
+    } else {
+      setImmediateSuperiorId(val);
+    }
+  };
+
+  const handleDepartmentHeadChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (!val) {
+      setDepartmentHeadId('');
+      setDepartmentHeadName('');
+      return;
+    }
+    const found = staffList.find(u => u.id === val);
+    if (found) {
+      setDepartmentHeadId(found.id);
+      setDepartmentHeadName(found.name || '');
+    } else {
+      setDepartmentHeadId(val);
+    }
+  };
 
   React.useEffect(() => {
     console.log(`[Avatar Source] avatarPreview changed to: ${avatarPreview ? avatarPreview.substring(0, 40) + '...' : '(empty)'}`);
@@ -192,6 +270,9 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
     }
     setIsSaving(true);
 
+    const finalSuperiorId = immediateSuperiorId || selectedSuperiorValue || undefined;
+    const finalDeptHeadId = departmentHeadId || selectedDeptHeadValue || undefined;
+
     const updatedUser: User = {
       ...currentUser,
       firstName: firstName.trim(),
@@ -202,8 +283,13 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
       departmentName: departmentName.trim(),
       employeeNumber: employeeNumber.trim(),
       employmentStatus: employmentStatus as EmploymentStatus,
+      immediateSuperiorId: finalSuperiorId ? finalSuperiorId.trim() : undefined,
       immediateSuperiorName: immediateSuperiorName.trim(),
+      immediateSupervisorId: finalSuperiorId ? finalSuperiorId.trim() : undefined,
+      immediateSupervisorName: immediateSuperiorName.trim(),
+      departmentHeadId: finalDeptHeadId ? finalDeptHeadId.trim() : undefined,
       departmentHeadName: departmentHeadName.trim(),
+      isDepartmentHead: (finalDeptHeadId && finalDeptHeadId === currentUser.id) ? true : currentUser.isDepartmentHead,
       contactNumber: contactNumber.trim(),
       avatarUrl: avatarPreview || currentUser.avatarUrl,
     };
@@ -453,30 +539,68 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Immediate Superior
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>Immediate Superior</span>
+                  {immediateSuperiorName && (
+                    <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Assigned</span>
+                  )}
                 </label>
-                <input
-                  type="text"
-                  value={immediateSuperiorName}
-                  onChange={e => setImmediateSuperiorName(e.target.value)}
-                  placeholder="e.g. President & CEO"
-                  className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-[#F28C28] focus:ring-4 focus:ring-[#F28C28]/12 transition-all"
-                />
+                <select
+                  value={selectedSuperiorValue}
+                  onChange={handleImmediateSuperiorChange}
+                  className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-[#F28C28] focus:ring-4 focus:ring-[#F28C28]/12 transition-all cursor-pointer"
+                >
+                  <option value="">— Select Immediate Superior —</option>
+                  {immediateSuperiorName && !staffList.some(u => u.id === selectedSuperiorValue || (u.name && u.name.trim().toLowerCase() === immediateSuperiorName.trim().toLowerCase())) && (
+                    <option value={selectedSuperiorValue || immediateSuperiorName}>
+                      {immediateSuperiorName} (Current)
+                    </option>
+                  )}
+                  {staffList.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}{u.id === currentUser.id ? ' (Self)' : ''}{u.position ? ` — ${u.position}` : ''}{u.departmentName ? ` [${u.departmentName}]` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Department Head
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>Department Head</span>
+                  {departmentHeadName && (
+                    <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Assigned</span>
+                  )}
                 </label>
-                <input
-                  type="text"
-                  value={departmentHeadName}
-                  onChange={e => setDepartmentHeadName(e.target.value)}
-                  placeholder="e.g. Self / Department Head"
-                  className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-[#F28C28] focus:ring-4 focus:ring-[#F28C28]/12 transition-all"
-                />
+                <select
+                  value={selectedDeptHeadValue}
+                  onChange={handleDepartmentHeadChange}
+                  className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-[#F28C28] focus:ring-4 focus:ring-[#F28C28]/12 transition-all cursor-pointer"
+                >
+                  <option value="">— Select Department Head —</option>
+                  {departmentHeadName && !staffList.some(u => u.id === selectedDeptHeadValue || (u.name && u.name.trim().toLowerCase() === departmentHeadName.trim().toLowerCase())) && (
+                    <option value={selectedDeptHeadValue || departmentHeadName}>
+                      {departmentHeadName} (Current)
+                    </option>
+                  )}
+                  {staffList.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}{u.id === currentUser.id ? ' (Self / Department Head)' : ''}{u.position ? ` — ${u.position}` : ''}{u.departmentName ? ` [${u.departmentName}]` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                disabled={isSaving}
+                className="h-9 px-4 rounded-xl font-bold text-xs bg-gradient-to-r from-[#F28C28] to-[#E96B1A] hover:from-[#E96B1A] hover:to-[#D85A09] text-white shadow-sm hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{isSaving ? 'Saving...' : 'Save Employment Info'}</span>
+              </button>
             </div>
           </div>
 

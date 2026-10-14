@@ -1501,6 +1501,7 @@ export const App: React.FC = () => {
       return (
         <MyProfile
           currentUser={currentUser}
+          users={users}
           onUpdateUser={handleUpdateCurrentUser}
         />
       );

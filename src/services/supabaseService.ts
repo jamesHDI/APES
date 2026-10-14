@@ -777,9 +777,18 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
 
     if (isValidUuid(user.immediateSuperiorId)) {
       payload.immediate_superior_id = user.immediateSuperiorId;
+    } else if (user.immediateSuperiorId && SEED_UUID_MAP[user.immediateSuperiorId]) {
+      payload.immediate_superior_id = SEED_UUID_MAP[user.immediateSuperiorId];
+    } else if (user.immediateSuperiorId === '' || user.immediateSuperiorId === null) {
+      payload.immediate_superior_id = null;
     }
+
     if (isValidUuid(user.departmentHeadId)) {
       payload.department_head_id = user.departmentHeadId;
+    } else if (user.departmentHeadId && SEED_UUID_MAP[user.departmentHeadId]) {
+      payload.department_head_id = SEED_UUID_MAP[user.departmentHeadId];
+    } else if (user.departmentHeadId === '' || user.departmentHeadId === null) {
+      payload.department_head_id = null;
     }
 
     let saveErr: any = null;
