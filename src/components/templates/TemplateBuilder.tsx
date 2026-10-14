@@ -113,23 +113,37 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   // Check if currentUser is the creator or owner of a template
   const checkIsTemplateOwner = (t?: EvaluationTemplate | null): boolean => {
     if (!t) return false;
-    return Boolean(
-      (t.createdByUserId && t.createdByUserId === currentUser?.id) ||
-      (t.createdForEmployeeId && t.createdForEmployeeId === currentUser?.id) ||
-      (t.createdForEmployeeNumber && currentUser?.employeeNumber && t.createdForEmployeeNumber.toUpperCase() === currentUser.employeeNumber.toUpperCase()) ||
-      (t.createdForEmployeeName && currentUser?.name && t.createdForEmployeeName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
-    );
+    const curUserId = currentUser?.id?.toLowerCase();
+    const curUserAuthId = (currentUser as any)?.user_id?.toLowerCase();
+    const curEmpNum = currentUser?.employeeNumber?.toUpperCase()?.replace(/[^A-Z0-9]/g, '');
+    const curName = currentUser?.name?.trim()?.toLowerCase();
+
+    const tCreatedByUserId = t.createdByUserId?.toLowerCase();
+    const tCreatedForEmpId = t.createdForEmployeeId?.toLowerCase();
+    const tEmpNum = t.createdForEmployeeNumber?.toUpperCase()?.replace(/[^A-Z0-9]/g, '');
+    const tCreatedForName = t.createdForEmployeeName?.trim()?.toLowerCase();
+    const tCreatedByName = t.createdByName?.trim()?.toLowerCase();
+
+    if (tCreatedByUserId && (tCreatedByUserId === curUserId || tCreatedByUserId === curUserAuthId)) return true;
+    if (tCreatedForEmpId && (tCreatedForEmpId === curUserId || tCreatedForEmpId === curUserAuthId)) return true;
+    if (curEmpNum && tEmpNum && curEmpNum === tEmpNum) return true;
+    if (curName && tCreatedForName && curName === tCreatedForName) return true;
+    if (curName && tCreatedByName && curName === tCreatedByName) return true;
+    if (curName && t.title && t.title.toLowerCase().includes(curName)) return true;
+
+    return false;
   };
 
   // Filter templates visible to this user.
-  // CRITICAL RULE: A template with status === 'draft' is a PRIVATE draft and must NEVER appear to other users!
+  // Private drafts are accessible to their owners. POD governance has oversight of all templates.
   const allVisibleTemplates = isEmployeeMode
     ? templates.filter(t => {
         if (t.status === 'draft') return checkIsTemplateOwner(t);
         return (
+          checkIsTemplateOwner(t) ||
           t.createdForEmployeeId === currentUser?.id || 
           t.createdByUserId === currentUser?.id ||
-          (t.createdForEmployeeNumber && currentUser?.employeeNumber && t.createdForEmployeeNumber.toUpperCase() === currentUser.employeeNumber.toUpperCase()) ||
+          (t.createdForEmployeeNumber && currentUser?.employeeNumber && t.createdForEmployeeNumber.toUpperCase().replace(/[^A-Z0-9]/g, '') === (currentUser.employeeNumber || '').toUpperCase().replace(/[^A-Z0-9]/g, '')) ||
           (t.createdForEmployeeName && currentUser?.name && t.createdForEmployeeName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()) ||
           !t.departmentId ||
           t.departmentId === currentUser?.departmentId ||
@@ -146,13 +160,14 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         if (t.status === 'draft') return checkIsTemplateOwner(t);
         return (
           checkIsISForTemplate(t) ||
+          checkIsTemplateOwner(t) ||
           !t.departmentId || 
           t.departmentId === currentUser?.departmentId ||
           (t.departmentName && currentUser?.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
         );
       })
     : templates.filter(t => {
-        if (t.status === 'draft') return checkIsTemplateOwner(t);
+        // POD Governance / Admin mode: full visibility across all templates
         return true;
       });
 

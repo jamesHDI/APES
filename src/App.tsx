@@ -1165,7 +1165,25 @@ export const App: React.FC = () => {
     const latestEval = getUserLatestEvaluation(currentUser, evaluations);
     if (latestEval) return latestEval;
 
-    const fallbackTemplate = templates.find(t => t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
+    const userNormNum = currentUser.employeeNumber ? currentUser.employeeNumber.toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+    const userNormName = currentUser.name ? currentUser.name.trim().toLowerCase() : '';
+
+    const employeeTemplate = templates.find(t => 
+      t.status !== 'draft' && (
+        t.createdForEmployeeId === currentUser.id ||
+        (t.createdForEmployeeNumber && userNormNum && t.createdForEmployeeNumber.toUpperCase().replace(/[^A-Z0-9]/g, '') === userNormNum) ||
+        (t.createdForEmployeeName && userNormName && t.createdForEmployeeName.trim().toLowerCase() === userNormName) ||
+        (t.title && userNormName && t.title.toLowerCase().includes(userNormName))
+      )
+    );
+    const deptTemplate = templates.find(t => 
+      t.status !== 'draft' && (
+        (t.departmentId && currentUser.departmentId && t.departmentId === currentUser.departmentId) ||
+        (t.departmentName && currentUser.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
+      )
+    );
+
+    const fallbackTemplate = employeeTemplate || deptTemplate || templates.find(t => t.id === 'template_sales') || MASTER_SALES_EVALUATION_TEMPLATE;
     const currentYear = new Date().getFullYear();
     return createDraftEvaluationInMemory(currentUser, fallbackTemplate, `${currentYear} Annual Performance Evaluation`);
   }, [evaluations, selectedEvalId, currentUser, templates]);
