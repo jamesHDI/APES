@@ -21,18 +21,22 @@ const mergeMasterWithSupabaseUsers = (sbUsers: User[]): User[] => {
 
       let matchKey: string | null = null;
       for (const [key, existing] of resultsMap.entries()) {
-        const matchNum = u.employeeNumber && existing.employeeNumber && 
-          u.employeeNumber.toLowerCase().trim() === existing.employeeNumber.toLowerCase().trim();
-        const matchId = u.id && (u.id === existing.id || u.id.toLowerCase() === existing.id.toLowerCase());
-        const matchEmail = u.email && existing.email && 
-          u.email.toLowerCase().trim() === existing.email.toLowerCase().trim();
-        const matchUsername = u.username && existing.username && 
-          u.username.toLowerCase().trim() === existing.username.toLowerCase().trim();
+          const normalizeNum = (n?: string) => (n || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase().trim();
+          const matchNum = u.employeeNumber && existing.employeeNumber && 
+            (u.employeeNumber.toLowerCase().trim() === existing.employeeNumber.toLowerCase().trim() ||
+             (normalizeNum(u.employeeNumber) && normalizeNum(u.employeeNumber) === normalizeNum(existing.employeeNumber)));
+          const matchId = u.id && (u.id === existing.id || u.id.toLowerCase() === existing.id.toLowerCase());
+          const matchEmail = u.email && existing.email && 
+            u.email.toLowerCase().trim() === existing.email.toLowerCase().trim();
+          const matchUsername = u.username && existing.username && 
+            u.username.toLowerCase().trim() === existing.username.toLowerCase().trim();
+          const matchName = u.name && existing.name &&
+            u.name.toLowerCase().trim() === existing.name.toLowerCase().trim();
 
-        if (matchNum || matchId || matchEmail || matchUsername) {
-          matchKey = key;
-          break;
-        }
+          if (matchNum || matchId || matchEmail || matchUsername || matchName) {
+            matchKey = key;
+            break;
+          }
       }
 
       if (matchKey) {

@@ -132,6 +132,7 @@ const SEED_UUID_MAP: Record<string, string> = {
   'usr_dh_ops': '00000000-0000-4000-8000-000000000017',
   'usr_dh_pohr': '00000000-0000-4000-8000-000000000018',
   'usr_e1527': 'e1527000-0000-4000-8000-000000000000',
+  'usr_e1503': '04d8b7d3-0528-4603-9dc2-369affcc6256',
   'usr_dh_sls': '00000000-0000-4000-8000-000000000019',
   'usr_emp_01': '00000000-0000-4000-8000-000000000020',
   'usr_sup_01': '00000000-0000-4000-8000-000000000021',
@@ -153,38 +154,56 @@ export const ensureUuid = (id?: string): string => {
 // 1. EMPLOYEES & USERS SUPABASE OPERATIONS
 // ==============================================================================
 
-const mapRowToUser = (row: any): User => ({
-  id: row.id,
-  employeeNumber: row.employee_number,
-  firstName: row.first_name,
-  middleName: row.middle_name,
-  lastName: row.last_name,
-  suffix: row.suffix || '',
-  name: row.name || `${row.first_name || ''} ${row.last_name || ''}`.trim(),
-  email: row.email,
-  personalEmail: row.personal_email || '',
-  contactNumber: row.contact_number,
-  role: row.role,
-  departmentId: row.department_id,
-  departmentName: row.department_name,
-  position: row.position,
-  employmentStatus: row.employment_status,
-  dateHired: row.date_hired,
-  immediateSuperiorId: row.immediate_superior_id,
-  immediateSuperiorName: row.immediate_superior_name,
-  departmentHeadId: row.department_head_id,
-  departmentHeadName: row.department_head_name,
-  defaultTemplateId: row.default_template_id,
-  username: row.username,
-  password: row.password || '',
-  requiresPasswordChange: row.requires_password_change ?? false,
-  avatarUrl: row.avatar_url || '',
-  isActive: row.is_active,
-  isApproved: row.is_approved,
-  approvalStatus: row.approval_status,
-  hrRejectionRemarks: row.hr_rejection_remarks,
-  isDepartmentHead: row.is_department_head,
-});
+const normalizeEmpNum = (num?: string) => (num || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase().trim();
+
+const mapRowToUser = (row: any): User => {
+  const empNum = row.employee_number;
+  const rowEmail = (row.email || '').toLowerCase().trim();
+  const rowUser = (row.username || '').toLowerCase().trim();
+  const rowName = (row.name || `${row.first_name || ''} ${row.last_name || ''}`).toLowerCase().trim();
+
+  const masterMatch = MASTER_EMPLOYEES.find(m => 
+    (m.employeeNumber && empNum && normalizeEmpNum(m.employeeNumber) === normalizeEmpNum(empNum)) ||
+    (m.email && rowEmail && m.email.toLowerCase().trim() === rowEmail) ||
+    (m.username && rowUser && m.username.toLowerCase().trim() === rowUser) ||
+    (m.name && rowName && m.name.toLowerCase().trim() === rowName)
+  );
+
+  return {
+    id: row.id,
+    employeeNumber: row.employee_number,
+    firstName: row.first_name,
+    middleName: row.middle_name,
+    lastName: row.last_name,
+    suffix: row.suffix || '',
+    name: row.name || `${row.first_name || ''} ${row.last_name || ''}`.trim(),
+    email: row.email,
+    personalEmail: row.personal_email || '',
+    contactNumber: row.contact_number,
+    role: row.role,
+    companyId: row.company_id || masterMatch?.companyId || (row.department_name?.includes('CGP') || row.department_name?.toLowerCase().includes('capital growth') ? 'comp_capital_growth' : undefined),
+    companyName: row.company_name || masterMatch?.companyName || (row.department_name?.includes('CGP') || row.department_name?.toLowerCase().includes('capital growth') ? 'Capital Growth Properties' : undefined),
+    departmentId: row.department_id || masterMatch?.departmentId,
+    departmentName: row.department_name,
+    position: row.position,
+    employmentStatus: row.employment_status,
+    dateHired: row.date_hired,
+    immediateSuperiorId: row.immediate_superior_id || masterMatch?.immediateSuperiorId,
+    immediateSuperiorName: row.immediate_superior_name || masterMatch?.immediateSuperiorName,
+    departmentHeadId: row.department_head_id || masterMatch?.departmentHeadId,
+    departmentHeadName: row.department_head_name || masterMatch?.departmentHeadName,
+    defaultTemplateId: row.default_template_id,
+    username: row.username,
+    password: row.password || '',
+    requiresPasswordChange: row.requires_password_change ?? false,
+    avatarUrl: row.avatar_url || '',
+    isActive: row.is_active,
+    isApproved: row.is_approved,
+    approvalStatus: row.approval_status,
+    hrRejectionRemarks: row.hr_rejection_remarks,
+    isDepartmentHead: row.is_department_head,
+  };
+};
 
 
 export const findEmployeeInSupabase = async (cleanId: string): Promise<User | null> => {
@@ -434,6 +453,8 @@ export const fetchEmployeesFromSupabase = async (): Promise<User[] | null> => {
       u.employeeNumber === 'DH-POHR-01' ||
       u.employeeNumber === 'POD-01' ||
       u.employeeNumber === 'DISABLED_MALENE' ||
+      u.employeeNumber === 'E1503_SEED_ARCHIVED' ||
+      u.id === 'e1503000-0000-4000-8000-000000000000' ||
       (u.name && u.name.toLowerCase().includes('malene') && u.id !== 'usr_e1527') ||
       (u.email && u.email.toLowerCase().includes('malenepellazo')) ||
       (u.email && u.email.toLowerCase().trim() === 'supervisor.sales@hdiadventures.com') ||
@@ -2697,7 +2718,7 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       evaluationPeriod: template.evaluationPeriod || 'Annual 2026',
       startDate: template.startDate,
       endDate: template.endDate,
-      status: template.status || 'draft',
+      status: template.status || 'deployed',
       templateSource: template.templateSource,
       companyId: template.companyId,
       companyName: template.companyName,
@@ -2976,7 +2997,7 @@ export const fetchEvaluationTemplatesFromSupabase = async (): Promise<Evaluation
         kraWeights: full.kraWeights,
         isActive: row.is_active ?? full.isActive ?? true,
         createdAt: row.created_at ? new Date(row.created_at).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10),
-        status: (full.status || row.status || 'draft') as any,
+        status: (full.status || row.status || 'deployed') as any,
         templateSource: full.templateSource || row.template_source || undefined,
         companyId: full.companyId || row.company_id || undefined,
         companyName: full.companyName || row.company_name || undefined,

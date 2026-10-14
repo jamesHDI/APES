@@ -30,6 +30,9 @@ import {
   UserCheck,
   User as UserIcon,
   Search,
+  FileEdit,
+  Bookmark,
+  Check,
 } from 'lucide-react';
 
 interface TemplateBuilderProps {
@@ -107,31 +110,61 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     return false;
   };
 
-  // Filter templates visible to this user
+  // Check if currentUser is the creator or owner of a template
+  const checkIsTemplateOwner = (t?: EvaluationTemplate | null): boolean => {
+    if (!t) return false;
+    return Boolean(
+      (t.createdByUserId && t.createdByUserId === currentUser?.id) ||
+      (t.createdForEmployeeId && t.createdForEmployeeId === currentUser?.id) ||
+      (t.createdForEmployeeNumber && currentUser?.employeeNumber && t.createdForEmployeeNumber.toUpperCase() === currentUser.employeeNumber.toUpperCase()) ||
+      (t.createdForEmployeeName && currentUser?.name && t.createdForEmployeeName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
+    );
+  };
+
+  // Filter templates visible to this user.
+  // CRITICAL RULE: A template with status === 'draft' is a PRIVATE draft and must NEVER appear to other users!
   const allVisibleTemplates = isEmployeeMode
-    ? templates.filter(t => 
-        t.createdForEmployeeId === currentUser?.id || 
-        t.createdByUserId === currentUser?.id ||
-        (t.createdForEmployeeNumber && currentUser?.employeeNumber && t.createdForEmployeeNumber.toUpperCase() === currentUser.employeeNumber.toUpperCase()) ||
-        (t.createdForEmployeeName && currentUser?.name && t.createdForEmployeeName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
-      )
+    ? templates.filter(t => {
+        if (t.status === 'draft') return checkIsTemplateOwner(t);
+        return (
+          t.createdForEmployeeId === currentUser?.id || 
+          t.createdByUserId === currentUser?.id ||
+          (t.createdForEmployeeNumber && currentUser?.employeeNumber && t.createdForEmployeeNumber.toUpperCase() === currentUser.employeeNumber.toUpperCase()) ||
+          (t.createdForEmployeeName && currentUser?.name && t.createdForEmployeeName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()) ||
+          !t.departmentId ||
+          t.departmentId === currentUser?.departmentId ||
+          (t.departmentName && currentUser?.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
+        );
+      })
     : isSupervisorRole
-    ? templates.filter(t => checkIsISForTemplate(t))
+    ? templates.filter(t => {
+        if (t.status === 'draft') return checkIsTemplateOwner(t);
+        return checkIsISForTemplate(t);
+      })
     : isDeptHead
-    ? templates.filter(t => 
-        checkIsISForTemplate(t) ||
-        !t.departmentId || 
-        t.departmentId === currentUser?.departmentId ||
-        (t.departmentName && currentUser?.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
-      )
-    : templates;
+    ? templates.filter(t => {
+        if (t.status === 'draft') return checkIsTemplateOwner(t);
+        return (
+          checkIsISForTemplate(t) ||
+          !t.departmentId || 
+          t.departmentId === currentUser?.departmentId ||
+          (t.departmentName && currentUser?.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
+        );
+      })
+    : templates.filter(t => {
+        if (t.status === 'draft') return checkIsTemplateOwner(t);
+        return true;
+      });
 
   const safeTemplatesList = allVisibleTemplates.length > 0 
     ? allVisibleTemplates 
     : [MASTER_SALES_EVALUATION_TEMPLATE];
 
+  // User's own saved drafts
+  const myDraftTemplates = safeTemplatesList.filter(t => t.status === 'draft' && checkIsTemplateOwner(t));
+
   // POD Filter Tab & Company Filter
-  const [podFilterTab, setPodFilterTab] = useState<'all' | 'pending_is' | 'pending_pod' | 'returned' | 'approved_deployed' | 'drafts'>('all');
+  const [podFilterTab, setPodFilterTab] = useState<'all' | 'pending_is' | 'pending_pod' | 'returned' | 'approved_deployed'>('all');
   const [supervisorFilterTab, setSupervisorFilterTab] = useState<'all' | 'pending_review' | 'approved' | 'returned'>('all');
   const [companyFilter, setCompanyFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
@@ -144,18 +177,20 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         if (podFilterTab === 'pending_is') return t.status === 'submitted_to_is' || t.status === 'is_review';
         if (podFilterTab === 'pending_pod') return t.status === 'submitted_to_pod' || t.status === 'resubmitted_to_pod' || t.status === 'is_approved' || t.status === 'pod_review';
         if (podFilterTab === 'returned') return t.status === 'returned_by_is' || t.status === 'returned_by_pod' || t.status === 'returned_for_revision';
-        if (podFilterTab === 'approved_deployed') return t.status === 'approved' || t.status === 'pod_approved' || t.status === 'deployed';
-        if (podFilterTab === 'drafts') return t.status === 'draft' || !t.status;
+        if (podFilterTab === 'approved_deployed') return t.status === 'approved' || t.status === 'pod_approved' || t.status === 'deployed' || !t.status;
         return true;
       })
     : (isSupervisorRole || isDeptHead) && !isEmployeeMode
     ? safeTemplatesList.filter(t => {
         if (supervisorFilterTab === 'pending_review') return t.status === 'submitted_to_is' || t.status === 'is_review';
-        if (supervisorFilterTab === 'approved') return t.status === 'is_approved' || t.status === 'pod_approved' || t.status === 'deployed';
+        if (supervisorFilterTab === 'approved') return t.status === 'is_approved' || t.status === 'pod_approved' || t.status === 'deployed' || (!t.status && t.status !== 'draft');
         if (supervisorFilterTab === 'returned') return t.status === 'returned_by_is';
         return true;
       })
     : safeTemplatesList;
+
+  // Available / published templates (excluding drafts from the main list)
+  const availableTemplates = visibleTemplates.filter(t => t.status !== 'draft');
 
   const pendingSubmissionsCount = safeTemplatesList.filter(
     t => t.status === 'submitted_to_pod' || t.status === 'resubmitted_to_pod' || t.status === 'is_approved'
@@ -205,7 +240,14 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     return newTmpl;
   };
 
-  const initialList = visibleTemplates.length > 0 ? visibleTemplates : [isEmployeeMode ? getInitialEmployeeTemplate() : MASTER_SALES_EVALUATION_TEMPLATE];
+  const initialList = myDraftTemplates.length > 0 
+    ? [...myDraftTemplates, ...availableTemplates]
+    : availableTemplates.length > 0 
+    ? availableTemplates 
+    : visibleTemplates.length > 0
+    ? visibleTemplates
+    : [isEmployeeMode ? getInitialEmployeeTemplate() : MASTER_SALES_EVALUATION_TEMPLATE];
+
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialList[0]?.id || MASTER_SALES_EVALUATION_TEMPLATE.id);
   const [activeTemplate, setActiveTemplate] = useState<EvaluationTemplate>(
     initialList.find(t => t.id === selectedTemplateId) || initialList[0] || MASTER_SALES_EVALUATION_TEMPLATE
@@ -232,13 +274,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const currentLoadedTemplateIdRef = useRef<string>(selectedTemplateId);
 
   // Permission Checks: Strict role and target employee separation
-  const isTemplateOwner = 
-    Boolean(
-      (activeTemplate.createdForEmployeeId && activeTemplate.createdForEmployeeId === currentUser?.id) ||
-      (activeTemplate.createdForEmployeeNumber && currentUser?.employeeNumber && activeTemplate.createdForEmployeeNumber.toUpperCase() === currentUser.employeeNumber.toUpperCase()) ||
-      (activeTemplate.createdForEmployeeName && currentUser?.name && activeTemplate.createdForEmployeeName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()) ||
-      (activeTemplate.createdByUserId && activeTemplate.createdByUserId === currentUser?.id && activeTemplate.templateSource === 'EMPLOYEE')
-    );
+  const isTemplateOwner = checkIsTemplateOwner(activeTemplate);
 
   const isAssignedIS = 
     currentUser?.role !== 'employee' &&
@@ -256,8 +292,8 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     (isPODApprover && activeTemplate.status !== 'deployed' && !activeTemplate.isLocked)
     // System admin can edit unless deployed/locked
     || (currentUser?.role === 'system_admin' && !isEmployeeMode && activeTemplate.status !== 'deployed' && !activeTemplate.isLocked)
-    // Employee can edit only when in draft or returned
-    || (isEmployeeMode && isTemplateOwner && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_for_revision' || activeTemplate.status === 'returned_by_pod'))
+    // Template owner can edit their drafts or returned templates
+    || (isTemplateOwner && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_for_revision' || activeTemplate.status === 'returned_by_pod'))
     // Assigned IS can edit when reviewing (submitted_to_is or is_review)
     || (isAssignedIS && (activeTemplate.status === 'submitted_to_is' || activeTemplate.status === 'is_review'))
     // Dept Head can edit their drafts or returned templates
@@ -667,7 +703,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     setEmployeeSearchQuery('');
   };
 
-  const handleConfirmCreateTemplate = () => {
+  const handleConfirmCreateTemplate = (asDraft: boolean = false) => {
     const currentYear = new Date().getFullYear();
     const defaultStart = `${currentYear}-01-01`;
     const defaultEnd = `${currentYear}-12-31`;
@@ -688,7 +724,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       );
 
       newTemplate.id = generateUuid();
-      newTemplate.status = 'draft';
+      newTemplate.status = asDraft ? 'draft' : 'approved';
       newTemplate.templateSource = 'POD';
       newTemplate.createdForEmployeeId = emp.id;
       newTemplate.createdForEmployeeName = emp.name;
@@ -712,7 +748,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       setSelectedTemplateId(newTemplate.id);
       setShowCreateModal(false);
       setValidationErrors([]);
-      showToast(`New template created for ${emp.name} (${emp.companyName})!`);
+      showToast(asDraft ? `Template saved as private draft for ${emp.name}!` : `New template created and available for ${emp.name} (${emp.companyName})!`);
     } else {
       const dept = selectedDeptForNewTemplate || departments[0];
       const newTemplate = createMasterBasedTemplate(
@@ -723,7 +759,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       );
 
       newTemplate.id = generateUuid();
-      newTemplate.status = 'draft';
+      newTemplate.status = asDraft ? 'draft' : 'approved';
       newTemplate.templateSource = 'POD';
       newTemplate.companyName = dept.companyName || 'Adventures';
       newTemplate.departmentId = dept.id;
@@ -740,7 +776,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       setSelectedTemplateId(newTemplate.id);
       setShowCreateModal(false);
       setValidationErrors([]);
-      showToast(`New department template created for ${dept.name} (${dept.companyName || 'Adventures'})!`);
+      showToast(asDraft ? `Department template saved as private draft!` : `New department template created and available for ${dept.name} (${dept.companyName || 'Adventures'})!`);
     }
   };
 
@@ -885,6 +921,77 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     showToast('Template changes saved successfully!');
   };
 
+  const handleSaveAsDraft = () => {
+    let templateToSave = getTemplateWithCommittedWeights(activeTemplate);
+
+    if (weightInputs['formula_eligibility'] !== undefined) {
+      const raw = weightInputs['formula_eligibility'];
+      const numVal = raw === '' ? 85 : Number(raw);
+      templateToSave = {
+        ...templateToSave,
+        formulaConfig: { ...templateToSave.formulaConfig, eligibilityWeight: numVal }
+      };
+    }
+    if (weightInputs['formula_core_values'] !== undefined) {
+      const raw = weightInputs['formula_core_values'];
+      const numVal = raw === '' ? 15 : Number(raw);
+      templateToSave = {
+        ...templateToSave,
+        formulaConfig: { ...templateToSave.formulaConfig, coreValuesWeight: numVal }
+      };
+    }
+    setWeightInputs({});
+
+    templateToSave = {
+      ...templateToSave,
+      status: 'draft',
+      createdByUserId: templateToSave.createdByUserId || currentUser?.id,
+      createdByName: templateToSave.createdByName || currentUser?.name,
+    };
+
+    onSaveTemplate(templateToSave);
+    setActiveTemplate(templateToSave);
+    showToast('Saved as private draft in My Draft Templates!');
+  };
+
+  const handlePublishTemplate = () => {
+    let templateToSave = getTemplateWithCommittedWeights(activeTemplate);
+
+    if (weightInputs['formula_eligibility'] !== undefined) {
+      const raw = weightInputs['formula_eligibility'];
+      const numVal = raw === '' ? 85 : Number(raw);
+      templateToSave = {
+        ...templateToSave,
+        formulaConfig: { ...templateToSave.formulaConfig, eligibilityWeight: numVal }
+      };
+    }
+    if (weightInputs['formula_core_values'] !== undefined) {
+      const raw = weightInputs['formula_core_values'];
+      const numVal = raw === '' ? 15 : Number(raw);
+      templateToSave = {
+        ...templateToSave,
+        formulaConfig: { ...templateToSave.formulaConfig, coreValuesWeight: numVal }
+      };
+    }
+    setWeightInputs({});
+
+    const validation = validateEvaluationTemplate(templateToSave);
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      showToast('Please resolve all validation errors before publishing.');
+      return;
+    }
+
+    setValidationErrors([]);
+    const published: EvaluationTemplate = {
+      ...templateToSave,
+      status: 'approved',
+    };
+    onSaveTemplate(published);
+    setActiveTemplate(published);
+    showToast('Template published and made available for evaluations!');
+  };
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
@@ -937,12 +1044,12 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     returned_by_pod: 'Returned by POD',
     pod_review: 'POD Review',
     pod_approved: 'POD Approved',
-    approved: 'Approved',
+    approved: 'Available',
     deployed: 'Deployed',
   };
 
   const statusLabels: Record<string, string> = {
-    draft: 'Draft',
+    draft: 'Draft (Private)',
     submitted_to_is: 'Awaiting Immediate Supervisor Review',
     is_review: 'Under Immediate Supervisor Review',
     returned_by_is: 'Returned by Immediate Supervisor',
@@ -953,7 +1060,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     returned_by_pod: 'Returned by People Operations',
     pod_review: 'People Operations Review',
     pod_approved: 'Approved by People Operations',
-    approved: 'Approved',
+    approved: 'Available',
     deployed: 'Deployed',
   };
 
@@ -1142,70 +1249,123 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             </div>
           )}
 
-          <div className="space-y-2.5 flex-1 overflow-y-auto pr-1 pb-10">
-            {visibleTemplates.length === 0 ? (
-              <div className="p-6 text-center text-xs text-slate-400">
-                No templates found in this category.
-              </div>
-            ) : visibleTemplates.map((tmpl) => {
-              const sts = tmpl.status || 'draft';
-              return (
-                <div
-                  key={tmpl.id}
-                  onClick={() => handleSelectTemplate(tmpl.id)}
-                  className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
-                    selectedTemplateId === tmpl.id
-                      ? 'bg-orange-50 dark:bg-orange-950/40 border-[#E96B1A] ring-2 ring-[#E96B1A]/20'
-                      : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-1 flex-wrap">
-                    <div className="flex items-center gap-1.5">
-                      {tmpl.companyName && (
-                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
-                          {tmpl.companyName}
-                        </span>
-                      )}
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                        {tmpl.departmentName}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center space-x-1.5">
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${statusColors[sts] || statusColors.draft}`}>
-                        {statusBadgeLabels[sts] || statusLabels[sts] || sts}
-                      </span>
-                      {canDelete && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeleteTemplateAction(tmpl.id, e)}
-                          className="p-1 text-slate-400 hover:text-[#E96B1A] rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/40 transition-colors"
-                          title="Delete template"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="font-bold text-slate-900 dark:text-white text-xs mt-2">{tmpl.title}</p>
-                  
-                  {tmpl.createdForEmployeeName && (
-                    <p className="text-[11px] text-[#E96B1A] font-semibold mt-0.5 flex items-center gap-1">
-                      <UserIcon className="w-3 h-3" />
-                      For: {tmpl.createdForEmployeeName} ({tmpl.createdForPosition || 'Staff'})
-                    </p>
-                  )}
-
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    Period: {tmpl.evaluationPeriod || (tmpl.startDate && tmpl.endDate ? `${tmpl.startDate} – ${tmpl.endDate}` : 'Annual')}
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    {tmpl.kraCategories.length} KRAs • Formula: {tmpl.formulaConfig.eligibilityWeight}% KPI / {tmpl.formulaConfig.coreValuesWeight}% Core Values
-                  </p>
+          <div className="space-y-4 flex-1 overflow-y-auto pr-1 pb-10">
+            {/* My Draft Templates Section */}
+            {myDraftTemplates.length > 0 && (
+              <div className="space-y-2 p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 shadow-sm">
+                <div className="flex items-center space-x-1.5 px-1 text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                  <FileEdit className="w-3.5 h-3.5" />
+                  <span>My Draft Templates ({myDraftTemplates.length})</span>
                 </div>
-              );
-            })}
+                <div className="space-y-2">
+                  {myDraftTemplates.map((tmpl) => (
+                    <div
+                      key={tmpl.id}
+                      onClick={() => handleSelectTemplate(tmpl.id)}
+                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${
+                        selectedTemplateId === tmpl.id
+                          ? 'bg-amber-100/90 dark:bg-amber-900/50 border-amber-500 ring-2 ring-amber-500/20'
+                          : 'bg-white dark:bg-slate-800 border-amber-200/90 dark:border-amber-800/40 hover:border-amber-400'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 flex-wrap">
+                        <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+                          Draft
+                        </span>
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteTemplateAction(tmpl.id, e)}
+                            className="p-1 text-slate-400 hover:text-rose-500 rounded-lg transition-colors"
+                            title="Delete draft"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      <p className="font-bold text-slate-900 dark:text-white text-xs mt-1.5">{tmpl.title}</p>
+                      <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-1 font-semibold flex items-center gap-1">
+                        <Bookmark className="w-2.5 h-2.5" />
+                        Click to continue editing
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Available / Published Templates Section */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1 shrink-0">
+                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  {isEmployeeMode ? 'Available Templates' : isSupervisorRole ? 'Team Direct Report Templates' : 'Available Templates'} ({availableTemplates.length})
+                </h4>
+              </div>
+
+              {availableTemplates.length === 0 ? (
+                <div className="p-6 text-center text-xs text-slate-400">
+                  No published or available templates found in this category.
+                </div>
+              ) : availableTemplates.map((tmpl) => {
+                const sts = tmpl.status || 'deployed';
+                return (
+                  <div
+                    key={tmpl.id}
+                    onClick={() => handleSelectTemplate(tmpl.id)}
+                    className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
+                      selectedTemplateId === tmpl.id
+                        ? 'bg-orange-50 dark:bg-orange-950/40 border-[#E96B1A] ring-2 ring-[#E96B1A]/20'
+                        : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1 flex-wrap">
+                      <div className="flex items-center gap-1.5">
+                        {tmpl.companyName && (
+                          <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+                            {tmpl.companyName}
+                          </span>
+                        )}
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                          {tmpl.departmentName}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-1.5">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${statusColors[sts] || statusColors.deployed}`}>
+                          {statusBadgeLabels[sts] || statusLabels[sts] || sts}
+                        </span>
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteTemplateAction(tmpl.id, e)}
+                            className="p-1 text-slate-400 hover:text-[#E96B1A] rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/40 transition-colors"
+                            title="Delete template"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="font-bold text-slate-900 dark:text-white text-xs mt-2">{tmpl.title}</p>
+                    
+                    {tmpl.createdForEmployeeName && (
+                      <p className="text-[11px] text-[#E96B1A] font-semibold mt-0.5 flex items-center gap-1">
+                        <UserIcon className="w-3 h-3" />
+                        For: {tmpl.createdForEmployeeName} ({tmpl.createdForPosition || 'Staff'})
+                      </p>
+                    )}
+
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Period: {tmpl.evaluationPeriod || (tmpl.startDate && tmpl.endDate ? `${tmpl.startDate} – ${tmpl.endDate}` : 'Annual')}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      {tmpl.kraCategories.length} KRAs • Formula: {tmpl.formulaConfig.eligibilityWeight}% KPI / {tmpl.formulaConfig.coreValuesWeight}% Core Values
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -1236,7 +1396,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 </div>
 
                 <p className="text-slate-700 dark:text-slate-300">
-                  {activeTemplate.status === 'draft' && 'This template is currently in Draft mode. Complete your KRA/KPI configuration and submit to your Immediate Supervisor.'}
+                  {activeTemplate.status === 'draft' && 'This template is currently a private Draft. You can continue editing, save your work as a draft, or submit it for review when ready.'}
                   {(activeTemplate.status === 'submitted_to_is' || activeTemplate.status === 'is_review') && 'This template has been submitted to your assigned Immediate Supervisor for initial review and weight calibration.'}
                   {(activeTemplate.status === 'is_approved' || activeTemplate.status === 'submitted_to_pod' || activeTemplate.status === 'resubmitted_to_pod') && 'Approved by Immediate Supervisor. Awaiting final People Operations (POD) validation and deployment.'}
                   {activeTemplate.status === 'returned_by_is' && 'Your Immediate Supervisor has returned this template for revision. Please review the supervisor remarks below and resubmit.'}
@@ -1514,25 +1674,43 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               )}
 
               {canEdit && !activeTemplate.isLocked && (
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>{isAssignedIS || isPODApprover ? 'Save Changes / Calibration' : 'Save Draft'}</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleSaveAsDraft}
+                    className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-750 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
+                    title="Save as private draft in My Draft Templates"
+                  >
+                    <Bookmark className="w-4 h-4 text-amber-500" />
+                    <span>Save as Draft</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={activeTemplate.status === 'draft' && isPOD ? handlePublishTemplate : handleSave}
+                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>
+                      {isAssignedIS || isPODApprover 
+                        ? 'Save Changes / Calibration' 
+                        : activeTemplate.status === 'draft' && isPOD 
+                        ? 'Publish & Make Available' 
+                        : 'Save Changes'}
+                    </span>
+                  </button>
+                </>
               )}
 
-              {/* Employee Submit Button */}
-              {isEmployeeMode && (activeTemplate.status === 'draft' || activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_by_pod' || !activeTemplate.status) && (
+              {/* Submit for Review Button (Employee / Draft Owner) */}
+              {(isEmployeeMode || isTemplateOwner) && (activeTemplate.status === 'draft' || activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_by_pod' || !activeTemplate.status) && (
                 <button
                   type="button"
                   onClick={handleSubmitToIS}
                   className="px-5 py-2 rounded-xl bg-[#E96B1A] hover:bg-[#D45A0E] text-white text-xs font-extrabold flex items-center space-x-2 shadow-md transition-all animate-pulse"
                 >
                   <Send className="w-4 h-4" />
-                  <span>Submit to Immediate Supervisor</span>
+                  <span>Submit for Review</span>
                 </button>
               )}
             </div>
@@ -2011,16 +2189,26 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold"
+                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-300 transition-all"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleConfirmCreateTemplate}
-                className="px-5 py-2 rounded-xl bg-[#E96B1A] hover:bg-[#D45A0E] text-white text-xs font-extrabold shadow-md transition-all"
+                onClick={() => handleConfirmCreateTemplate(true)}
+                className="px-4 py-2 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 text-xs font-bold transition-all flex items-center space-x-1.5"
+                title="Save as private draft in My Draft Templates"
               >
-                Create Template
+                <Bookmark className="w-3.5 h-3.5 text-amber-500" />
+                <span>Save as Draft</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleConfirmCreateTemplate(false)}
+                className="px-5 py-2 rounded-xl bg-[#E96B1A] hover:bg-[#D45A0E] text-white text-xs font-extrabold shadow-md transition-all flex items-center space-x-1.5"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Create Template</span>
               </button>
             </div>
           </div>

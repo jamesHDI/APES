@@ -568,7 +568,7 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
                     onChange={(e) => setTemplateId(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
                   >
-                    {templates.map(t => (
+                    {templates.filter(t => t.status !== 'draft').map(t => (
                       <option key={t.id} value={t.id}>{t.title} ({t.departmentName})</option>
                     ))}
                   </select>

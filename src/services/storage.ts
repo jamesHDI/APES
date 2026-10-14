@@ -107,11 +107,15 @@ export const isExcludedUser = (u: User) =>
   u.employeeNumber === 'DH-POHR-01' ||
   u.employeeNumber === 'POD-01' ||
   u.employeeNumber === 'DISABLED_MALENE' ||
+  u.employeeNumber === 'E1503_SEED_ARCHIVED' ||
+  u.id === 'e1503000-0000-4000-8000-000000000000' ||
   (u.name && u.name.toLowerCase().includes('malene') && u.id !== 'usr_e1527') ||
   (u.email && u.email.toLowerCase().includes('malenepellazo')) ||
   (u.email && u.email.toLowerCase().trim() === 'supervisor.sales@hdiadventures.com') ||
   (u.email && u.email.toLowerCase().trim() === 'pohr.head@hdiadventures.com') ||
   (u.email && u.email.toLowerCase().trim() === 'malenepellazo@hdiholdings.com');
+
+const normalizeEmpNumKey = (n?: string) => (n || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase().trim();
 
 export const getStoredUsers = (): User[] => {
   const resultsMap = new Map<string, User>();
@@ -135,14 +139,17 @@ export const getStoredUsers = (): User[] => {
           let matchKey: string | null = null;
           for (const [key, existing] of resultsMap.entries()) {
             const matchNum = u.employeeNumber && existing.employeeNumber && 
-              u.employeeNumber.toLowerCase().trim() === existing.employeeNumber.toLowerCase().trim();
+              (u.employeeNumber.toLowerCase().trim() === existing.employeeNumber.toLowerCase().trim() ||
+               (normalizeEmpNumKey(u.employeeNumber) && normalizeEmpNumKey(u.employeeNumber) === normalizeEmpNumKey(existing.employeeNumber)));
             const matchId = u.id && (u.id === existing.id || u.id.toLowerCase() === existing.id.toLowerCase());
             const matchEmail = u.email && existing.email && 
               u.email.toLowerCase().trim() === existing.email.toLowerCase().trim();
             const matchUsername = u.username && existing.username && 
               u.username.toLowerCase().trim() === existing.username.toLowerCase().trim();
+            const matchName = u.name && existing.name &&
+              u.name.toLowerCase().trim() === existing.name.toLowerCase().trim();
 
-            if (matchNum || matchId || matchEmail || matchUsername) {
+            if (matchNum || matchId || matchEmail || matchUsername || matchName) {
               matchKey = key;
               break;
             }

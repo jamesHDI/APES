@@ -29,6 +29,7 @@ export const MASTER_SALES_EVALUATION_TEMPLATE: EvaluationTemplate = {
     { min: 1.00, max: 1.99, label: 'Did Not Meet Expectations (DME)', code: 'DME', color: 'rose' },
   ],
   isActive: true,
+  status: 'deployed',
   createdAt: '2025-01-01',
   kraCategories: [
     {

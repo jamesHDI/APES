@@ -258,7 +258,7 @@ export const RegisterEmployeeModal: React.FC<RegisterEmployeeModalProps> = ({
               2. Employment & Org Hierarchy
             </p>
 
-            {/* Emp# / Employment Status / Date Hired */}
+            {/* Emp# / Employment Status / Date Access */}
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className={LABEL_CLS}>Employee Number</label>
@@ -283,7 +283,7 @@ export const RegisterEmployeeModal: React.FC<RegisterEmployeeModalProps> = ({
                 </select>
               </div>
               <div>
-                <label className={LABEL_CLS}>Date Hired</label>
+                <label className={LABEL_CLS}>Date Access</label>
                 <input
                   type="date"
                   value={formData.dateHired}

@@ -361,7 +361,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onUpdateUser 
               <div className="flex items-center justify-between py-1">
                 <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-[#F28C28] shrink-0" />
-                  Date Hired
+                  Date Access
                 </span>
                 <span className="font-semibold text-slate-900 dark:text-slate-100">
                   {currentUser.dateHired ? new Date(currentUser.dateHired).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
