@@ -1,6 +1,8 @@
 import { Notification, Evaluation, User, NotificationCategory, Role } from '../types';
 import { saveNotificationToSupabase, saveNotificationsBatchToSupabase, generateUuid, fetchEmployeesFromSupabase } from './supabaseService';
 import { triggerRealtimeBroadcast } from './supabaseClient';
+import { matchIds, matchNames } from '../utils/supervisorMatching';
+import { getStoredUsers } from './storage';
 
 export const INITIAL_SEED_NOTIFICATIONS: Notification[] = [
   {
@@ -91,7 +93,12 @@ export const getRoleBasedNotifications = (
     }
 
     // 2. Direct User ID match (Private alert targeted to specific user)
-    if (n.userId && (n.userId === currentUser.id || n.userId === currentUser.employeeNumber)) {
+    const curAuthId = (currentUser as any)?.user_id;
+    if (n.userId && (
+      matchIds(n.userId, currentUser.id) ||
+      (curAuthId && matchIds(n.userId, curAuthId)) ||
+      matchIds(n.userId, currentUser.employeeNumber)
+    )) {
       return true;
     }
 
@@ -105,7 +112,64 @@ export const getRoleBasedNotifications = (
       return currentUser.role === 'system_admin' || currentUser.role === 'hr_admin' || currentUser.role === 'pod';
     }
 
-    // 5. Targeted Role Broadcast or Workflow match
+    // 5. Immediate Supervisor workflow match:
+    // When a template or evaluation is submitted to an Immediate Supervisor, the reviewer can be
+    // a Supervisor, a Department Head, or the President (CEO).
+    if (n.recipientRole === 'supervisor' || n.recipientRole === 'dept_head' || n.recipientRole === 'president') {
+      const isReviewerRole = currentUser.role === 'supervisor' || currentUser.role === 'dept_head' || currentUser.role === 'president';
+      if (isReviewerRole) {
+        // If targeted by userId, check direct match or cluster alias match
+        if (n.userId) {
+          if (
+            matchIds(n.userId, currentUser.id) ||
+            (curAuthId && matchIds(n.userId, curAuthId)) ||
+            matchIds(n.userId, currentUser.employeeNumber)
+          ) {
+            return true;
+          }
+
+          // Universal Direct Report sender match: If the sender reports to currentUser, the supervisor should receive the alert!
+          if (n.senderName) {
+            try {
+              const allUsers = getStoredUsers();
+              const senderReport = (allUsers || []).find(u => matchNames(u.name, n.senderName));
+              if (senderReport) {
+                const supId = senderReport.immediateSuperiorId || (senderReport as any).immediateSupervisorId;
+                const supName = senderReport.immediateSuperiorName || (senderReport as any).immediateSupervisorName;
+                if (
+                  matchIds(supId, currentUser.id) ||
+                  (curAuthId && matchIds(supId, curAuthId)) ||
+                  matchNames(supName, currentUser.name)
+                ) {
+                  return true;
+                }
+                if (currentUser.role === 'dept_head' && (
+                  matchIds(senderReport.departmentHeadId, currentUser.id) ||
+                  (curAuthId && matchIds(senderReport.departmentHeadId, curAuthId)) ||
+                  matchNames(senderReport.departmentHeadName, currentUser.name) ||
+                  (currentUser.departmentName && senderReport.departmentName && senderReport.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
+                )) {
+                  return true;
+                }
+              }
+            } catch {}
+          }
+
+          return false;
+        }
+
+        // If targetUserId is not specified, route by department or leadership role
+        if (currentUser.role === 'dept_head') {
+          return !n.departmentName || (currentUser.departmentName && n.departmentName.toLowerCase().trim() === currentUser.departmentName.toLowerCase().trim());
+        }
+        if (currentUser.role === 'president') {
+          return true;
+        }
+        return true;
+      }
+    }
+
+    // 6. Targeted Role Broadcast or Workflow match
     if (n.recipientRole && n.recipientRole === currentUser.role) {
       if (n.recipientDepartment && currentUser.role === 'dept_head') {
         return n.recipientDepartment.toLowerCase() === currentUser.departmentName.toLowerCase();

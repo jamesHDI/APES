@@ -26,6 +26,8 @@ import {
   X,
 } from 'lucide-react';
 
+import { matchIds, matchNames } from '../../utils/supervisorMatching';
+
 interface MyProfileProps {
   currentUser: User;
   users?: User[];
@@ -129,11 +131,11 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, users = [], o
   // Resolves the select value matching immediate superior
   const selectedSuperiorValue = React.useMemo(() => {
     if (immediateSuperiorId) {
-      const match = staffList.find(u => u.id === immediateSuperiorId || (u.employeeNumber && u.employeeNumber === immediateSuperiorId));
+      const match = staffList.find(u => matchIds(u.id, immediateSuperiorId) || (u.employeeNumber && matchIds(u.employeeNumber, immediateSuperiorId)));
       if (match) return match.id;
     }
     if (immediateSuperiorName) {
-      const match = staffList.find(u => u.name && u.name.trim().toLowerCase() === immediateSuperiorName.trim().toLowerCase());
+      const match = staffList.find(u => matchNames(u.name, immediateSuperiorName));
       if (match) return match.id;
     }
     return immediateSuperiorId || '';
@@ -142,11 +144,11 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, users = [], o
   // Resolves the select value matching department head
   const selectedDeptHeadValue = React.useMemo(() => {
     if (departmentHeadId) {
-      const match = staffList.find(u => u.id === departmentHeadId || (u.employeeNumber && u.employeeNumber === departmentHeadId));
+      const match = staffList.find(u => matchIds(u.id, departmentHeadId) || (u.employeeNumber && matchIds(u.employeeNumber, departmentHeadId)));
       if (match) return match.id;
     }
     if (departmentHeadName) {
-      const match = staffList.find(u => u.name && u.name.trim().toLowerCase() === departmentHeadName.trim().toLowerCase());
+      const match = staffList.find(u => matchNames(u.name, departmentHeadName));
       if (match) return match.id;
     }
     return departmentHeadId || '';

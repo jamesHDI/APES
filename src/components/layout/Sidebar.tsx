@@ -105,6 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items = [
         ...common,
         { id: 'org_hierarchy', label: 'Org Chart', icon: GitBranch },
+        { id: 'my_template', label: 'My Evaluation Template', icon: SlidersHorizontal },
         { id: 'dept_actions', label: 'Personnel Actions', icon: FileCheck },
         { id: 'template_builder', label: 'Dept Template Reviews', icon: SlidersHorizontal, badge: pendingTemplateCount > 0 ? pendingTemplateCount : undefined },
         { id: 'calibration_requests', label: 'Calibration Requests', icon: MessageSquare },
@@ -117,6 +118,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ...common,
         { id: 'org_hierarchy', label: 'Org Chart', icon: GitBranch },
         { id: 'dept_head_reviews', label: 'Dept Head Reviews', icon: Crown },
+        { id: 'template_builder', label: 'Template Reviews', icon: SlidersHorizontal, badge: pendingTemplateCount > 0 ? pendingTemplateCount : undefined },
         { id: 'reports', label: 'Executive Reports', icon: BarChart3 },
         { id: 'my_history', label: 'Evaluation History', icon: History },
         { id: 'my_profile', label: 'My Profile', icon: UserCircle },

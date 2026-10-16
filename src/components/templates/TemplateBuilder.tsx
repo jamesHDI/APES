@@ -6,6 +6,7 @@ import { triggerTemplateWorkflowNotification } from '../../services/notification
 import { generateUuid } from '../../services/supabaseService';
 import { createDraftEvaluationInMemory } from '../../services/storage';
 import { PrintableScorecard } from '../evaluation/PrintableScorecard';
+import { checkIsISForTemplate, checkIsTemplateOwner, matchNames, matchIds, resolveSupervisorForUser } from '../../utils/supervisorMatching';
 import { 
   Plus,
   Trash2,
@@ -57,130 +58,89 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   mode = 'all',
 }) => {
   const isEmployeeMode = mode === 'employee' || (currentUser?.role === 'employee' && mode !== 'supervisor' && mode !== 'pod');
-  const isSupervisorRole = currentUser?.role === 'supervisor';
+  const isSupervisorRole = currentUser?.role === 'supervisor' || currentUser?.role === 'dept_head' || currentUser?.role === 'president';
   const isDeptHead = currentUser?.role === 'dept_head';
+  const isReviewerRole = currentUser?.role === 'supervisor' || currentUser?.role === 'dept_head' || currentUser?.role === 'president';
   const isPOD = currentUser?.role === 'pod' || currentUser?.role === 'hr_admin' || currentUser?.role === 'system_admin';
 
   const canCreate = isEmployeeMode || isPOD || isDeptHead || currentUser?.role === 'system_admin';
   const canDelete = currentUser?.role === 'system_admin' || isPOD || isDeptHead;
 
-  // Helper: check if currentUser is the Immediate Supervisor for a given template
-  const checkIsISForTemplate = (t: EvaluationTemplate): boolean => {
-    if (!currentUser) return false;
-    const curId = currentUser.id;
-    const curEmpNo = currentUser.employeeNumber?.toUpperCase();
-    const curName = currentUser.name?.trim().toLowerCase();
-
-    // CRITICAL: An employee can NEVER be the Immediate Supervisor of their own template!
-    const isTargetEmployee = 
-      (t.createdForEmployeeId && t.createdForEmployeeId === curId) ||
-      (t.createdByUserId && t.createdByUserId === curId && t.templateSource === 'EMPLOYEE') ||
-      (curEmpNo && t.createdForEmployeeNumber && t.createdForEmployeeNumber.toUpperCase() === curEmpNo) ||
-      (curName && t.createdForEmployeeName && t.createdForEmployeeName.trim().toLowerCase() === curName);
-
-    if (isTargetEmployee) return false;
-
-    // 1. Direct match on template immediateSupervisor fields
-    if (t.immediateSupervisorId && (t.immediateSupervisorId === curId || (curEmpNo && t.immediateSupervisorId.toUpperCase() === curEmpNo))) return true;
-    if (t.immediateSupervisorName && curName && t.immediateSupervisorName.trim().toLowerCase() === curName) return true;
-
-    // 2. Direct report lookup in users list
-    const myReports = (users || []).filter(u => 
-      u.immediateSuperiorId === curId ||
-      (curEmpNo && u.immediateSuperiorId && u.immediateSuperiorId.toUpperCase() === curEmpNo) ||
-      (curName && u.immediateSuperiorName && u.immediateSuperiorName.trim().toLowerCase() === curName)
-    );
-
-    const isDirectReportTemplate = myReports.some(r => 
-      r.id === t.createdForEmployeeId ||
-      (r.employeeNumber && t.createdForEmployeeNumber && r.employeeNumber.toUpperCase() === t.createdForEmployeeNumber.toUpperCase()) ||
-      (r.name && t.createdForEmployeeName && r.name.trim().toLowerCase() === t.createdForEmployeeName.trim().toLowerCase())
-    );
-
-    if (isDirectReportTemplate) return true;
-
-    // 3. Dept head matches department templates
-    if (currentUser.role === 'dept_head' && (
-      (t.departmentId && t.departmentId === currentUser.departmentId) ||
-      (t.departmentName && currentUser.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
-    )) {
-      return true;
-    }
-
-    return false;
+  // Helper wrappers using robust matching logic
+  const checkIsISForTemplateLocal = (t: EvaluationTemplate): boolean => {
+    return checkIsISForTemplate(currentUser, t, users);
   };
 
-  // Check if currentUser is the creator or owner of a template
-  const checkIsTemplateOwner = (t?: EvaluationTemplate | null): boolean => {
-    if (!t) return false;
-    const curUserId = currentUser?.id?.toLowerCase();
-    const curUserAuthId = (currentUser as any)?.user_id?.toLowerCase();
-    const curEmpNum = currentUser?.employeeNumber?.toUpperCase()?.replace(/[^A-Z0-9]/g, '');
-    const curName = currentUser?.name?.trim()?.toLowerCase();
-
-    const tCreatedByUserId = t.createdByUserId?.toLowerCase();
-    const tCreatedForEmpId = t.createdForEmployeeId?.toLowerCase();
-    const tEmpNum = t.createdForEmployeeNumber?.toUpperCase()?.replace(/[^A-Z0-9]/g, '');
-    const tCreatedForName = t.createdForEmployeeName?.trim()?.toLowerCase();
-    const tCreatedByName = t.createdByName?.trim()?.toLowerCase();
-
-    if (tCreatedByUserId && (tCreatedByUserId === curUserId || tCreatedByUserId === curUserAuthId)) return true;
-    if (tCreatedForEmpId && (tCreatedForEmpId === curUserId || tCreatedForEmpId === curUserAuthId)) return true;
-    if (curEmpNum && tEmpNum && curEmpNum === tEmpNum) return true;
-    if (curName && tCreatedForName && curName === tCreatedForName) return true;
-    if (curName && tCreatedByName && curName === tCreatedByName) return true;
-    if (curName && t.title && t.title.toLowerCase().includes(curName)) return true;
-
-    return false;
+  const checkIsTemplateOwnerLocal = (t?: EvaluationTemplate | null): boolean => {
+    return checkIsTemplateOwner(currentUser, t);
   };
 
   // Filter templates visible to this user.
-  // Private drafts are accessible to their owners. POD governance has oversight of all templates.
+  // Private drafts are accessible to their owners. Reviewers see direct reports. POD governance has oversight of all templates.
   const allVisibleTemplates = isEmployeeMode
-    ? templates.filter(t => {
-        if (t.status === 'draft') return checkIsTemplateOwner(t);
-        return (
-          checkIsTemplateOwner(t) ||
-          t.createdForEmployeeId === currentUser?.id || 
-          t.createdByUserId === currentUser?.id ||
-          (t.createdForEmployeeNumber && currentUser?.employeeNumber && t.createdForEmployeeNumber.toUpperCase().replace(/[^A-Z0-9]/g, '') === (currentUser.employeeNumber || '').toUpperCase().replace(/[^A-Z0-9]/g, '')) ||
-          (t.createdForEmployeeName && currentUser?.name && t.createdForEmployeeName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()) ||
-          !t.departmentId ||
-          t.departmentId === currentUser?.departmentId ||
-          (t.departmentName && currentUser?.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
-        );
-      })
-    : isSupervisorRole
-    ? templates.filter(t => {
-        if (t.status === 'draft') return checkIsTemplateOwner(t);
-        return checkIsISForTemplate(t);
-      })
-    : isDeptHead
-    ? templates.filter(t => {
-        if (t.status === 'draft') return checkIsTemplateOwner(t);
-        return (
-          checkIsISForTemplate(t) ||
-          checkIsTemplateOwner(t) ||
-          !t.departmentId || 
-          t.departmentId === currentUser?.departmentId ||
-          (t.departmentName && currentUser?.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
-        );
-      })
-    : templates.filter(t => {
-        // POD Governance / Admin mode: full visibility across all templates
-        return true;
-      });
+    ? templates
+        .filter(t => {
+          if (t.status === 'draft') return checkIsTemplateOwnerLocal(t);
+          return (
+            checkIsTemplateOwnerLocal(t) ||
+            !t.departmentId ||
+            t.departmentId === currentUser?.departmentId ||
+            (t.departmentName && currentUser?.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
+          );
+        })
+        .sort((a, b) => {
+          // Employee's own template always sorts to the top
+          const aMine = checkIsTemplateOwnerLocal(a) ? 1 : 0;
+          const bMine = checkIsTemplateOwnerLocal(b) ? 1 : 0;
+          return bMine - aMine;
+        })
+    : isPOD
+    ? templates
+    : isReviewerRole
+    ? templates
+        .filter(t => {
+          if (t.status === 'draft') return checkIsTemplateOwnerLocal(t);
+          return (
+            checkIsISForTemplateLocal(t) ||
+            checkIsTemplateOwnerLocal(t) ||
+            (isDeptHead && (
+              !t.departmentId || 
+              t.departmentId === currentUser?.departmentId ||
+              (t.departmentName && currentUser?.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
+            ))
+          );
+        })
+        .sort((a, b) => {
+          // Direct reports pending IS review always sort to the top for the supervisor
+          const aPending = checkIsISForTemplateLocal(a) && (a.status === 'submitted_to_is' || a.status === 'is_review') ? 1 : 0;
+          const bPending = checkIsISForTemplateLocal(b) && (b.status === 'submitted_to_is' || b.status === 'is_review') ? 1 : 0;
+          return bPending - aPending;
+        })
+    : templates;
 
   const safeTemplatesList = allVisibleTemplates.length > 0 
     ? allVisibleTemplates 
     : [MASTER_SALES_EVALUATION_TEMPLATE];
 
   // User's own saved drafts
-  const myDraftTemplates = safeTemplatesList.filter(t => t.status === 'draft' && checkIsTemplateOwner(t));
+  const myDraftTemplates = safeTemplatesList.filter(t => t.status === 'draft' && checkIsTemplateOwnerLocal(t));
+
+  // User's own templates (any status)
+  const myOwnTemplates = safeTemplatesList.filter(t => checkIsTemplateOwnerLocal(t));
+
+  const pendingSubmissionsCount = safeTemplatesList.filter(
+    t => t.status === 'submitted_to_pod' || t.status === 'resubmitted_to_pod' || t.status === 'is_approved'
+  ).length;
+
+  const pendingISCount = safeTemplatesList.filter(
+    t => (t.status === 'submitted_to_is' || t.status === 'is_review') && (isPOD || checkIsISForTemplateLocal(t))
+  ).length;
 
   // POD Filter Tab & Company Filter
   const [podFilterTab, setPodFilterTab] = useState<'all' | 'pending_is' | 'pending_pod' | 'returned' | 'approved_deployed'>('all');
-  const [supervisorFilterTab, setSupervisorFilterTab] = useState<'all' | 'pending_review' | 'approved' | 'returned'>('all');
+  const [supervisorFilterTab, setSupervisorFilterTab] = useState<'all' | 'pending_review' | 'approved' | 'returned'>(
+    pendingISCount > 0 ? 'pending_review' : 'all'
+  );
   const [companyFilter, setCompanyFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
 
@@ -195,7 +155,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         if (podFilterTab === 'approved_deployed') return t.status === 'approved' || t.status === 'pod_approved' || t.status === 'deployed' || !t.status;
         return true;
       })
-    : (isSupervisorRole || isDeptHead) && !isEmployeeMode
+    : isReviewerRole && !isEmployeeMode
     ? safeTemplatesList.filter(t => {
         if (supervisorFilterTab === 'pending_review') return t.status === 'submitted_to_is' || t.status === 'is_review';
         if (supervisorFilterTab === 'approved') return t.status === 'is_approved' || t.status === 'pod_approved' || t.status === 'deployed' || (!t.status && t.status !== 'draft');
@@ -207,16 +167,14 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   // Available / published templates (excluding drafts from the main list)
   const availableTemplates = visibleTemplates.filter(t => t.status !== 'draft');
 
-  const pendingSubmissionsCount = safeTemplatesList.filter(
-    t => t.status === 'submitted_to_pod' || t.status === 'resubmitted_to_pod' || t.status === 'is_approved'
-  ).length;
-
-  const pendingISCount = safeTemplatesList.filter(
-    t => t.status === 'submitted_to_is' || t.status === 'is_review'
-  ).length;
-
   // Initialize employee personal template if in employee mode and list is empty
   const getInitialEmployeeTemplate = (): EvaluationTemplate => {
+    // If user already has an existing template, return that!
+    const existing = templates.find(t => checkIsTemplateOwnerLocal(t));
+    if (existing) {
+      return existing;
+    }
+
     const defaultStart = `${new Date().getFullYear()}-01-01`;
     const defaultEnd = `${new Date().getFullYear()}-12-31`;
     const defaultPeriod = `Jan 1, ${new Date().getFullYear()} – Dec 31, ${new Date().getFullYear()}`;
@@ -228,10 +186,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       defaultPeriod
     );
 
-    const matchedSupervisor = (users || []).find(u => 
-      (currentUser?.immediateSuperiorId && (u.id === currentUser.immediateSuperiorId || (u.employeeNumber && u.employeeNumber.toUpperCase() === currentUser.immediateSuperiorId.toUpperCase()))) ||
-      (currentUser?.immediateSuperiorName && u.name && u.name.trim().toLowerCase() === currentUser.immediateSuperiorName.trim().toLowerCase())
-    );
+    const matchedSupervisor = resolveSupervisorForUser(currentUser, users);
 
     newTmpl.id = generateUuid();
     newTmpl.status = 'draft';
@@ -244,8 +199,8 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     newTmpl.companyName = currentUser?.companyName || 'Adventures';
     newTmpl.departmentId = currentUser?.departmentId || 'dept_gen';
     newTmpl.departmentName = currentUser?.departmentName || 'General';
-    newTmpl.immediateSupervisorId = currentUser?.immediateSuperiorId || matchedSupervisor?.id;
-    newTmpl.immediateSupervisorName = currentUser?.immediateSuperiorName || matchedSupervisor?.name;
+    newTmpl.immediateSupervisorId = matchedSupervisor?.id || currentUser?.immediateSuperiorId;
+    newTmpl.immediateSupervisorName = matchedSupervisor?.name || currentUser?.immediateSuperiorName;
     newTmpl.createdByRole = currentUser?.role;
     newTmpl.createdByUserId = currentUser?.id;
     newTmpl.createdByName = currentUser?.name;
@@ -255,13 +210,27 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     return newTmpl;
   };
 
-  const initialList = myDraftTemplates.length > 0 
-    ? [...myDraftTemplates, ...availableTemplates]
-    : availableTemplates.length > 0 
-    ? availableTemplates 
-    : visibleTemplates.length > 0
-    ? visibleTemplates
-    : [isEmployeeMode ? getInitialEmployeeTemplate() : MASTER_SALES_EVALUATION_TEMPLATE];
+  // Build initial list with intelligent priority:
+  // - In Employee mode: User's own templates always come first (never fall back to sales template if user has a scorecard)
+  // - In Reviewer mode: Direct report templates pending review come first
+  const initialList = isEmployeeMode
+    ? (myDraftTemplates.length > 0 
+        ? [...myDraftTemplates, ...myOwnTemplates.filter(t => t.status !== 'draft'), ...availableTemplates.filter(t => !checkIsTemplateOwnerLocal(t))]
+        : myOwnTemplates.length > 0
+        ? [...myOwnTemplates, ...availableTemplates.filter(t => !checkIsTemplateOwnerLocal(t))]
+        : availableTemplates.length > 0
+        ? availableTemplates
+        : [getInitialEmployeeTemplate()])
+    : isReviewerRole
+    ? (safeTemplatesList.filter(t => checkIsISForTemplateLocal(t) && (t.status === 'submitted_to_is' || t.status === 'is_review')).length > 0
+        ? [
+            ...safeTemplatesList.filter(t => checkIsISForTemplateLocal(t) && (t.status === 'submitted_to_is' || t.status === 'is_review')),
+            ...visibleTemplates.filter(t => !(checkIsISForTemplateLocal(t) && (t.status === 'submitted_to_is' || t.status === 'is_review')))
+          ]
+        : visibleTemplates.length > 0
+        ? visibleTemplates
+        : [MASTER_SALES_EVALUATION_TEMPLATE])
+    : (visibleTemplates.length > 0 ? visibleTemplates : [MASTER_SALES_EVALUATION_TEMPLATE]);
 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialList[0]?.id || MASTER_SALES_EVALUATION_TEMPLATE.id);
   const [activeTemplate, setActiveTemplate] = useState<EvaluationTemplate>(
@@ -289,13 +258,13 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const currentLoadedTemplateIdRef = useRef<string>(selectedTemplateId);
 
   // Permission Checks: Strict role and target employee separation
-  const isTemplateOwner = checkIsTemplateOwner(activeTemplate);
+  const isTemplateOwner = checkIsTemplateOwnerLocal(activeTemplate);
 
   const isAssignedIS = 
     currentUser?.role !== 'employee' &&
     !isTemplateOwner &&
     !isEmployeeMode &&
-    (checkIsISForTemplate(activeTemplate) || (currentUser?.role === 'system_admin' && mode === 'supervisor'));
+    (checkIsISForTemplateLocal(activeTemplate) || (currentUser?.role === 'system_admin' && mode === 'supervisor'));
 
   const isPODApprover = 
     !isEmployeeMode && 
@@ -307,12 +276,12 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     (isPODApprover && activeTemplate.status !== 'deployed' && !activeTemplate.isLocked)
     // System admin can edit unless deployed/locked
     || (currentUser?.role === 'system_admin' && !isEmployeeMode && activeTemplate.status !== 'deployed' && !activeTemplate.isLocked)
-    // Template owner can edit their drafts or returned templates
-    || (isTemplateOwner && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_for_revision' || activeTemplate.status === 'returned_by_pod'))
-    // Assigned IS can edit when reviewing (submitted_to_is or is_review)
+    // Assigned IS can edit/calibrate when reviewing (submitted_to_is or is_review)
     || (isAssignedIS && (activeTemplate.status === 'submitted_to_is' || activeTemplate.status === 'is_review'))
-    // Dept Head can edit their drafts or returned templates
-    || (isDeptHead && !isEmployeeMode && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_for_revision'));
+    // Template owner can edit ONLY their drafts or returned templates (CANNOT edit once submitted to IS!)
+    || (isTemplateOwner && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_for_revision' || activeTemplate.status === 'returned_by_pod'))
+    // Dept Head can edit their own drafts or returned templates
+    || (isDeptHead && isTemplateOwner && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_for_revision' || activeTemplate.status === 'returned_by_is'));
 
   useEffect(() => {
     if (selectedTemplateId !== currentLoadedTemplateIdRef.current) {
@@ -322,6 +291,30 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         setActiveTemplate(match);
       }
     } else {
+      // 1. If in Employee Mode and user is currently defaulted to MASTER_SALES_EVALUATION_TEMPLATE,
+      // but their personal draft/submitted template is available:
+      if (isEmployeeMode && selectedTemplateId === MASTER_SALES_EVALUATION_TEMPLATE.id) {
+        const myTmpl = visibleTemplates.find(t => checkIsTemplateOwnerLocal(t));
+        if (myTmpl) {
+          currentLoadedTemplateIdRef.current = myTmpl.id;
+          setSelectedTemplateId(myTmpl.id);
+          setActiveTemplate(myTmpl);
+          return;
+        }
+      }
+
+      // 2. If in Reviewer Mode and reviewer is currently on MASTER_SALES_EVALUATION_TEMPLATE,
+      // but pending direct report submissions exist:
+      if (isReviewerRole && !isEmployeeMode && selectedTemplateId === MASTER_SALES_EVALUATION_TEMPLATE.id) {
+        const pendingTmpl = visibleTemplates.find(t => checkIsISForTemplateLocal(t) && (t.status === 'submitted_to_is' || t.status === 'is_review'));
+        if (pendingTmpl) {
+          currentLoadedTemplateIdRef.current = pendingTmpl.id;
+          setSelectedTemplateId(pendingTmpl.id);
+          setActiveTemplate(pendingTmpl);
+          return;
+        }
+      }
+
       const exists = visibleTemplates.some(t => t.id === selectedTemplateId) || safeTemplatesList.some(t => t.id === selectedTemplateId);
       if (!exists && visibleTemplates.length > 0) {
         currentLoadedTemplateIdRef.current = visibleTemplates[0].id;
@@ -329,7 +322,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         setActiveTemplate(visibleTemplates[0]);
       }
     }
-  }, [selectedTemplateId, visibleTemplates, safeTemplatesList]);
+  }, [selectedTemplateId, visibleTemplates, safeTemplatesList, isEmployeeMode, isReviewerRole]);
 
   const getWeightInputValue = (id: string, defaultValue: number | string): string => {
     return weightInputs[id] ?? String(defaultValue);
@@ -392,15 +385,18 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const handleSubmitToIS = async () => {
     const isResubmission = activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_by_pod' || activeTemplate.status === 'returned_for_revision';
 
-    const matchedSupervisor = (users || []).find(u => 
-      (activeTemplate.immediateSupervisorId && (u.id === activeTemplate.immediateSupervisorId || (u.employeeNumber && u.employeeNumber.toUpperCase() === activeTemplate.immediateSupervisorId.toUpperCase()))) ||
-      (activeTemplate.immediateSupervisorName && u.name && u.name.trim().toLowerCase() === activeTemplate.immediateSupervisorName.trim().toLowerCase()) ||
-      (currentUser?.immediateSuperiorName && u.name && u.name.trim().toLowerCase() === currentUser.immediateSuperiorName.trim().toLowerCase()) ||
-      (currentUser?.immediateSuperiorId && (u.id === currentUser.immediateSuperiorId || (u.employeeNumber && u.employeeNumber.toUpperCase() === currentUser.immediateSuperiorId.toUpperCase())))
-    );
+    const matchedSupervisor = 
+      resolveSupervisorForUser(currentUser, users) ||
+      (users || []).find(u => 
+        (activeTemplate.immediateSupervisorId && matchIds(activeTemplate.immediateSupervisorId, u.id)) ||
+        (activeTemplate.immediateSupervisorName && matchNames(activeTemplate.immediateSupervisorName, u.name)) ||
+        (currentUser?.immediateSuperiorName && matchNames(currentUser.immediateSuperiorName, u.name)) ||
+        (currentUser?.immediateSuperiorId && matchIds(currentUser.immediateSuperiorId, u.id))
+      );
 
-    const isId = activeTemplate.immediateSupervisorId || currentUser?.immediateSuperiorId || matchedSupervisor?.id;
-    const isName = activeTemplate.immediateSupervisorName || currentUser?.immediateSuperiorName || matchedSupervisor?.name || 'Immediate Supervisor';
+    const isId = matchedSupervisor?.id || activeTemplate.immediateSupervisorId || currentUser?.immediateSuperiorId;
+    const isName = matchedSupervisor?.name || activeTemplate.immediateSupervisorName || currentUser?.immediateSuperiorName || 'Immediate Supervisor';
+    const isRole = matchedSupervisor?.role || 'supervisor';
 
     const confirmMsg = isResubmission
       ? `Resubmit your revised evaluation template to your Immediate Supervisor (${isName}) for review?`
@@ -445,7 +441,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
     try {
       await triggerTemplateWorkflowNotification({
-        recipientRole: 'supervisor',
+        recipientRole: (isRole as any) || 'supervisor',
         targetUserId: isId,
         templateId: submitted.id,
         templateTitle: submitted.title,
@@ -1718,7 +1714,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               )}
 
               {/* Submit for Review Button (Employee / Draft Owner) */}
-              {(isEmployeeMode || isTemplateOwner) && (activeTemplate.status === 'draft' || activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_by_pod' || !activeTemplate.status) && (
+              {(isEmployeeMode || isTemplateOwner) && (activeTemplate.status === 'draft' || activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_by_pod' || activeTemplate.status === 'approved' || !activeTemplate.status) && (
                 <button
                   type="button"
                   onClick={handleSubmitToIS}

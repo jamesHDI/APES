@@ -1171,6 +1171,11 @@ export const fetchNotificationsFromSupabase = async (userId?: string, userRole?:
       const targetUuid = ensureUuid(userId);
       if (userRole === 'system_admin' || userRole === 'hr_admin' || userRole === 'pod') {
         query = query.or(`user_id.eq.${targetUuid},user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,recipient_role.eq.ALL_ADMINS,recipient_role.eq.${userRole},recipient_role.eq.pod,is_announcement.eq.true`);
+      } else if (userRole === 'dept_head' || userRole === 'president' || userRole === 'supervisor') {
+        // Any supervisor, dept head, or president can be an Immediate Supervisor receiving workflow notifications
+        // Include common aliases for dual-profile leadership accounts (e.g. Emily Floresca and Brandon Chia)
+        const emilyAndBrandonIds = 'user_id.eq.13200000-0000-4000-8000-000000000000,user_id.eq.b0000000-0000-0000-0000-000000000006,user_id.eq.cebad000-0000-4000-8000-000000000000';
+        query = query.or(`user_id.eq.${targetUuid},user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,recipient_role.eq.${userRole},recipient_role.eq.supervisor,recipient_role.eq.dept_head,recipient_role.eq.president,is_announcement.eq.true,${emilyAndBrandonIds}`);
       } else if (userRole) {
         query = query.or(`user_id.eq.${targetUuid},user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,recipient_role.eq.${userRole},is_announcement.eq.true`);
       } else {
@@ -1178,7 +1183,7 @@ export const fetchNotificationsFromSupabase = async (userId?: string, userRole?:
       }
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(50);
+    const { data, error } = await query.order('created_at', { ascending: false }).limit(100);
 
     if (error) {
       console.error('Supabase fetchNotifications error:', error.message, error.details);
@@ -1209,7 +1214,7 @@ export const fetchNotificationsFromSupabase = async (userId?: string, userRole?:
         actionLink: n.action_link,
         expirationDate: n.expiration_date,
         evaluationId: n.evaluation_id,
-        templateId: n.template_id || n.templateId || undefined,
+        templateId: n.template_id || n.templateId || (n.action_link && n.action_link.includes('id=') ? n.action_link.split('id=')[1] : undefined),
         date: formattedDate,
         dateTime: formattedDateTime,
       };
@@ -1239,7 +1244,7 @@ export const saveNotificationToSupabase = async (notif: Notification): Promise<b
       read_by_users: notif.readByUsers || [],
       is_announcement: Boolean(notif.isAnnouncement),
       sender_name: notif.senderName || null,
-      action_link: notif.actionLink || null,
+      action_link: notif.actionLink || (notif.templateId ? `/templates?id=${notif.templateId}` : null),
       expiration_date: notif.expirationDate || null,
       evaluation_id: isValidUuid(notif.evaluationId || '') ? notif.evaluationId : null
     };
@@ -1272,7 +1277,7 @@ export const saveNotificationsBatchToSupabase = async (notifs: Notification[]): 
       read_by_users: notif.readByUsers || [],
       is_announcement: Boolean(notif.isAnnouncement),
       sender_name: notif.senderName || null,
-      action_link: notif.actionLink || null,
+      action_link: notif.actionLink || (notif.templateId ? `/templates?id=${notif.templateId}` : null),
       expiration_date: notif.expirationDate || null,
       evaluation_id: isValidUuid(notif.evaluationId || '') ? notif.evaluationId : null
     }));

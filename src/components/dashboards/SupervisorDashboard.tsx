@@ -1,7 +1,8 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { User, Evaluation, EvaluationTemplate } from '../../types';
 import { Users, Clock, CheckCircle2, ArrowRight, Search, FileSpreadsheet, Layers, ChevronRight } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
+import { matchIds, matchNames, checkIsISForTemplate } from '../../utils/supervisorMatching';
 
 interface SupervisorDashboardProps {
   currentUser: User;
@@ -33,15 +34,15 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   // Direct reports assigned to this Immediate Supervisor
   const myDirectReports = allUsers.filter(u => 
     u.id !== currentUser.id && 
-    (u.immediateSuperiorId === currentUser.id || 
-     u.immediateSuperiorId === currentUser.employeeNumber ||
-     u.immediateSuperiorName?.toLowerCase() === currentUser.name.toLowerCase())
+    (matchIds(u.immediateSuperiorId, currentUser.id) || 
+     matchIds(u.immediateSuperiorId, currentUser.employeeNumber) ||
+     matchNames(u.immediateSuperiorName, currentUser.name))
   );
 
   // Evaluations for team members where this user is the Immediate Supervisor
   const teamEvaluations = evaluations.filter((e) => {
     if (e.employeeId === currentUser.id) return false;
-    const isReport = myDirectReports.some(r => r.id === e.employeeId || r.employeeNumber === e.employeeId);
+    const isReport = myDirectReports.some(r => matchIds(r.id, e.employeeId) || matchIds(r.employeeNumber, e.employeeId));
     const isSameDept = (e.departmentName || '').toLowerCase() === (currentUser.departmentName || '').toLowerCase();
     return isReport || isSameDept;
   });
@@ -53,9 +54,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
   // Pending template reviews from direct reports
   const pendingTemplateReviews = templates.filter(
-    (t) => (t.immediateSupervisorId === currentUser.id || 
-            t.immediateSupervisorName?.toLowerCase() === currentUser.name.toLowerCase() ||
-            myDirectReports.some(r => r.id === t.createdForEmployeeId || r.name === t.createdForEmployeeName)) &&
+    (t) => checkIsISForTemplate(currentUser, t, allUsers) &&
            (t.status === 'submitted_to_is' || t.status === 'is_review')
   );
 

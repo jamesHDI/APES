@@ -1,15 +1,18 @@
-﻿import React, { useState } from 'react';
-import { User, Evaluation } from '../../types';
-import { Building2, Clock, FileCheck, ArrowRight, TrendingUp, Users, AlertCircle, Search, ShieldCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Evaluation, EvaluationTemplate } from '../../types';
+import { Building2, Clock, FileCheck, ArrowRight, TrendingUp, Users, AlertCircle, Search, ShieldCheck, Layers } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
 import { EvaluationProgressCard } from '../workflow/EvaluationProgressCard';
 import { getUserActiveEvaluation } from '../../utils/workflowUtils';
+import { matchIds, matchNames, checkIsISForTemplate } from '../../utils/supervisorMatching';
 
 interface DeptHeadDashboardProps {
   currentUser: User;
   evaluations: Evaluation[];
   allUsers?: User[];
+  templates?: EvaluationTemplate[];
   onOpenEvaluation: (evalId: string) => void;
+  onOpenTemplateBuilder?: () => void;
 }
 
 const getGreeting = () => {
@@ -49,7 +52,9 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
   currentUser,
   evaluations,
   allUsers = [],
+  templates = [],
   onOpenEvaluation,
+  onOpenTemplateBuilder,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'COMPLETED'>('PENDING');
@@ -61,10 +66,10 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
   const deptEvaluations = evaluations.filter((e) => {
     if (e.employeeId === currentUser.id) return false;
     const sameDept = isSameDepartment(e.departmentName || e.departmentId, currentUser.departmentName || currentUser.departmentId);
-    const empUser = allUsers.find(u => u.id === e.employeeId || u.employeeNumber === e.employeeId || (e.employeeEmail && u.email.toLowerCase() === e.employeeEmail.toLowerCase()));
+    const empUser = allUsers.find(u => matchIds(u.id, e.employeeId) || matchIds(u.employeeNumber, e.employeeId) || (e.employeeEmail && u.email.toLowerCase() === e.employeeEmail.toLowerCase()));
     const assignedToMe = Boolean(
-      (empUser?.departmentHeadId && (empUser.departmentHeadId === currentUser.id || empUser.departmentHeadId === currentUser.employeeNumber)) ||
-      (empUser?.immediateSuperiorId && (empUser.immediateSuperiorId === currentUser.id || empUser.immediateSuperiorId === currentUser.employeeNumber || empUser.immediateSuperiorName === currentUser.name))
+      (empUser?.departmentHeadId && (matchIds(empUser.departmentHeadId, currentUser.id) || matchIds(empUser.departmentHeadId, currentUser.employeeNumber))) ||
+      (empUser?.immediateSuperiorId && (matchIds(empUser.immediateSuperiorId, currentUser.id) || matchIds(empUser.immediateSuperiorId, currentUser.employeeNumber) || matchNames(empUser.immediateSuperiorName, currentUser.name)))
     );
     return sameDept || assignedToMe;
   });
@@ -101,6 +106,12 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
     return true;
   });
 
+  // Pending template reviews from direct reports (when Dept Head acts as Immediate Supervisor)
+  const pendingTemplateReviews = (templates || []).filter(
+    (t) => checkIsISForTemplate(currentUser, t, allUsers) &&
+           (t.status === 'submitted_to_is' || t.status === 'is_review')
+  );
+
   return (
     <div className="space-y-6 pb-12">
 
@@ -122,6 +133,33 @@ export const DeptHeadDashboard: React.FC<DeptHeadDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Alert if there are pending template reviews */}
+      {pendingTemplateReviews.length > 0 && (
+        <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0">
+              <Layers className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="text-sm font-black text-amber-900 dark:text-amber-200">
+                You have {pendingTemplateReviews.length} evaluation template{pendingTemplateReviews.length > 1 ? 's' : ''} awaiting your Immediate Supervisor review.
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                Review KRAs, KPIs, and calibrate weights before forwarding to People Operations (POD).
+              </p>
+            </div>
+          </div>
+          {onOpenTemplateBuilder && (
+            <button
+              onClick={onOpenTemplateBuilder}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shrink-0 shadow-sm transition-all"
+            >
+              Review Templates
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Personal Dept Head Self-Evaluation Progress */}
       {mySelfEvaluation && (

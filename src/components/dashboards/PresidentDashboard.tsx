@@ -1,12 +1,16 @@
 import React from 'react';
-import { User, Evaluation } from '../../types';
-import { Crown, Building2, CheckCircle2, Clock, ArrowRight } from 'lucide-react';
+import { User, Evaluation, EvaluationTemplate } from '../../types';
+import { Crown, Building2, CheckCircle2, Clock, ArrowRight, Layers } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
+import { checkIsISForTemplate } from '../../utils/supervisorMatching';
 
 interface PresidentDashboardProps {
   currentUser: User;
   evaluations: Evaluation[];
+  allUsers?: User[];
+  templates?: EvaluationTemplate[];
   onOpenEvaluation: (evalId: string) => void;
+  onOpenTemplateBuilder?: () => void;
 }
 
 const getGreeting = () => {
@@ -19,7 +23,10 @@ const getGreeting = () => {
 export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({
   currentUser,
   evaluations,
+  allUsers = [],
+  templates = [],
   onOpenEvaluation,
+  onOpenTemplateBuilder,
 }) => {
   const deptHeadEvals = evaluations.filter(
     (e) => e.workflowType === 'WORKFLOW_DEPT_HEAD' || e.workflowType === 'WORKFLOW_B' || e.isDepartmentHead,
@@ -29,6 +36,11 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({
   );
   const completedPresidentReviews = deptHeadEvals.filter(
     (e) => e.status === 'pending_pod' || e.status === 'archived',
+  );
+
+  const pendingTemplateReviews = (templates || []).filter(
+    (t) => checkIsISForTemplate(currentUser, t, allUsers) &&
+           (t.status === 'submitted_to_is' || t.status === 'is_review')
   );
 
   return (
@@ -50,6 +62,33 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Alert if there are pending template reviews */}
+      {pendingTemplateReviews.length > 0 && (
+        <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0">
+              <Layers className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="text-sm font-black text-amber-900 dark:text-amber-200">
+                You have {pendingTemplateReviews.length} Department Head evaluation template{pendingTemplateReviews.length > 1 ? 's' : ''} awaiting your executive review.
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                Review KRAs, KPIs, and calibrate weights before forwarding to People Operations (POD).
+              </p>
+            </div>
+          </div>
+          {onOpenTemplateBuilder && (
+            <button
+              onClick={onOpenTemplateBuilder}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shrink-0 shadow-sm transition-all"
+            >
+              Review Templates
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Alert for pending reviews */}
       {pendingPresidentReviews.length > 0 && (

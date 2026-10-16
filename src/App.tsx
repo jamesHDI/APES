@@ -108,6 +108,7 @@ import {
   getStoredDeployments,
   saveDeployments
 } from './services/storage';
+import { checkIsISForTemplate, checkIsTemplateOwner } from './utils/supervisorMatching';
 import { 
   fetchEmployeesFromSupabase, 
   fetchDepartmentsFromSupabase, 
@@ -183,7 +184,7 @@ export const isTabAllowedForRole = (tab: string, role?: Role): boolean => {
     case 'dept_head':
       return ['dashboard', 'evaluations', 'org_hierarchy', 'my_template', 'dept_actions', 'template_builder', 'calibration_requests', 'reports', 'my_history', 'my_profile'].includes(tab);
     case 'president':
-      return ['dashboard', 'evaluations', 'org_hierarchy', 'my_template', 'dept_head_reviews', 'reports', 'my_history', 'my_profile'].includes(tab);
+      return ['dashboard', 'evaluations', 'org_hierarchy', 'my_template', 'dept_head_reviews', 'template_builder', 'reports', 'my_history', 'my_profile'].includes(tab);
     case 'pod':
       return [
         'dashboard', 'evaluations', 'my_template', 'pod_validation', 'employee_mgmt', 'pending_approvals',
@@ -273,15 +274,8 @@ export const App: React.FC = () => {
     if (currentUser.role === 'pod' || currentUser.role === 'hr_admin' || currentUser.role === 'system_admin') {
       return templates.filter(t => t.status === 'submitted_to_pod' || t.status === 'resubmitted_to_pod' || t.status === 'is_approved').length;
     }
-    const myReports = (users || []).filter(u => 
-      u.immediateSuperiorId === currentUser.id || 
-      (u.immediateSuperiorId && currentUser.employeeNumber && u.immediateSuperiorId.toUpperCase() === currentUser.employeeNumber.toUpperCase()) ||
-      (u.immediateSuperiorName && currentUser.name && u.immediateSuperiorName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
-    );
     return templates.filter(t => {
-      const isIS = (t.immediateSupervisorId && (t.immediateSupervisorId === currentUser.id || (currentUser.employeeNumber && t.immediateSupervisorId.toUpperCase() === currentUser.employeeNumber.toUpperCase()))) ||
-                   (t.immediateSupervisorName && currentUser.name && t.immediateSupervisorName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()) ||
-                   myReports.some(r => r.id === t.createdForEmployeeId || (r.employeeNumber && t.createdForEmployeeNumber && r.employeeNumber.toUpperCase() === t.createdForEmployeeNumber.toUpperCase()) || (r.name && t.createdForEmployeeName && r.name.trim().toLowerCase() === t.createdForEmployeeName.trim().toLowerCase()));
+      const isIS = checkIsISForTemplate(currentUser, t, users);
       return isIS && (t.status === 'submitted_to_is' || t.status === 'is_review');
     }).length;
   }, [currentUser, templates, users]);
@@ -1169,12 +1163,11 @@ export const App: React.FC = () => {
     const userNormName = currentUser.name ? currentUser.name.trim().toLowerCase() : '';
 
     const employeeTemplate = templates.find(t => 
-      t.status !== 'draft' && (
-        t.createdForEmployeeId === currentUser.id ||
-        (t.createdForEmployeeNumber && userNormNum && t.createdForEmployeeNumber.toUpperCase().replace(/[^A-Z0-9]/g, '') === userNormNum) ||
-        (t.createdForEmployeeName && userNormName && t.createdForEmployeeName.trim().toLowerCase() === userNormName) ||
-        (t.title && userNormName && t.title.toLowerCase().includes(userNormName))
-      )
+      checkIsTemplateOwner(currentUser, t) && (t.status === 'approved' || t.status === 'pod_approved' || t.status === 'deployed')
+    ) || templates.find(t => 
+      checkIsTemplateOwner(currentUser, t) && (t.status === 'submitted_to_is' || t.status === 'is_review' || t.status === 'submitted_to_pod' || t.status === 'is_approved')
+    ) || templates.find(t => 
+      checkIsTemplateOwner(currentUser, t)
     );
     const deptTemplate = templates.find(t => 
       t.status !== 'draft' && (
@@ -1265,7 +1258,9 @@ export const App: React.FC = () => {
             currentUser={currentUser}
             evaluations={evaluations}
             allUsers={users}
+            templates={templates}
             onOpenEvaluation={handleOpenEvaluation}
+            onOpenTemplateBuilder={() => setActiveTab('template_builder')}
           />
         );
       case 'president':
@@ -1273,7 +1268,10 @@ export const App: React.FC = () => {
           <PresidentDashboard
             currentUser={currentUser}
             evaluations={evaluations}
+            allUsers={users}
+            templates={templates}
             onOpenEvaluation={handleOpenEvaluation}
+            onOpenTemplateBuilder={() => setActiveTab('template_builder')}
           />
         );
       case 'pod':
@@ -1353,7 +1351,9 @@ export const App: React.FC = () => {
           currentUser={currentUser}
           evaluations={evaluations}
           allUsers={users}
+          templates={templates}
           onOpenEvaluation={handleOpenEvaluation}
+          onOpenTemplateBuilder={() => setActiveTab('template_builder')}
         />
       );
     }
