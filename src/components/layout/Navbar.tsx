@@ -33,7 +33,6 @@ interface NavbarProps {
   onOpenAnnouncementModal?: () => void;
   onOpenMessenger?: () => void;
   unreadMessagesCount?: number;
-  isDevMode?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -51,7 +50,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAnnouncementModal,
   onOpenMessenger,
   unreadMessagesCount = 0,
-  isDevMode = false,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -131,17 +129,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right: Sync + Dark Mode + Notifications + User */}
           <div className="flex items-center gap-1">
-
-            {/* Developer Testing Mode Indicator */}
-            {isDevMode && (
-              <div
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 shadow-sm"
-                title="Account accessed under Developer Testing Mode (123456) - Testing safeguards active"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                <span className="tracking-wide">DEV TEST</span>
-              </div>
-            )}
 
             {/* Cloud Sync Status Badge */}
             <div className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors ${
@@ -365,11 +352,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <p className="text-[10px] font-mono text-slate-400 dark:text-slate-400 mt-0.5">
                         {currentUser?.employeeNumber || 'EMP-001'}
                       </p>
-                      {isDevMode && (
-                        <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">
-                          Developer Testing Session
-                        </p>
-                      )}
                     </div>
                   </div>
 

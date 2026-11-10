@@ -1687,7 +1687,6 @@ export const App: React.FC = () => {
             onOpenAnnouncementModal={() => setShowAnnouncementModal(true)}
             onOpenMessenger={() => setShowMessengerModal(true)}
             unreadMessagesCount={unreadDirectMessagesCount}
-            isDevMode={isDevMode}
           />
         </div>
 

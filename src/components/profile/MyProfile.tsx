@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 import { User, EmploymentStatus } from '../../types';
 import { changeUserPassword } from '../../services/authService';
 import { verifyPassword } from '../../utils/crypto';
-import { isDevTestingModeActive } from '../../services/devTestingService';
 import {
   Camera,
   Eye,
@@ -312,10 +311,6 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, users = [], o
   };
 
   const handleChangePassword = async () => {
-    if (isDevTestingModeActive()) {
-      showPasswordFeedback('error', 'Password updates are disabled in Developer Testing Mode to preserve real credentials.');
-      return;
-    }
     if (currentUser.password) {
       const isCurrentValid = await verifyPassword(currentPassword, currentUser.password);
       if (!isCurrentValid) {
@@ -710,13 +705,6 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, users = [], o
               <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">Change Password</h3>
             </div>
 
-            {isDevTestingModeActive() && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-xs font-semibold">
-                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                <span>Developer Testing Mode Active: Password modification is disabled to protect real user credentials.</span>
-              </div>
-            )}
-
             {passwordToast && (
               <div className={`flex items-center gap-2 p-3 rounded-xl text-xs font-semibold ${
                 passwordToast.type === 'success'
@@ -800,8 +788,7 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, users = [], o
               <button
                 type="button"
                 onClick={handleChangePassword}
-                disabled={isDevTestingModeActive() || !newPassword || !confirmPassword}
-                title={isDevTestingModeActive() ? 'Password modification disabled in Developer Testing Mode' : undefined}
+                disabled={!newPassword || !confirmPassword}
                 className="h-10 px-5 rounded-xl font-extrabold text-xs uppercase tracking-wider bg-gradient-to-r from-[#F28C28] to-[#E96B1A] hover:from-[#E96B1A] hover:to-[#D85A09] text-white shadow-md shadow-brand-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-40"
               >
                 <Lock className="w-4 h-4" />
