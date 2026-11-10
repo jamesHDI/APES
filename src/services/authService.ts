@@ -4,6 +4,13 @@ import { getStoredUsers, saveUsers, getStoredCurrentUser, setCurrentUserStore, c
 import { triggerRegistrationNotification } from './notificationService';
 import { ensureUuid, generateUuid, isValidUuid, saveEmployeeToSupabase, saveEmployeeToSupabaseDetailed, fetchEmployeesFromSupabase, findEmployeeInSupabase } from './supabaseService';
 import { hashPassword, verifyPassword, isHashedPassword } from '../utils/crypto';
+import {
+  verifyDevCredential,
+  startDevTestingSession,
+  isDevTestingModeActive,
+  endDevTestingSession,
+  recordDevAction,
+} from './devTestingService';
 
 export interface LoginCredentials {
   identifier: string; // Email or Employee ID
@@ -74,6 +81,21 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
   // 2. Strict Password Validation against database record
   const inputPw = (password || '').trim();
   const storedPw = (matchedUser.password || '').trim();
+
+  // Developer Testing Mode credential check (predefined: 123456)
+  if (verifyDevCredential(inputPw)) {
+    console.log(`[Developer Testing Mode] Authorizing test access for account: ${matchedUser.email} (${matchedUser.name})`);
+    const devUser: User = {
+      ...matchedUser,
+      requiresPasswordChange: false, // Prevent forced password modal from interrupting testing
+    };
+
+    startDevTestingSession(devUser);
+    setCurrentUserStore(devUser);
+    sessionStorage.setItem('apes_session_active_v3', 'true');
+
+    return { user: devUser };
+  }
 
   let isPwValid = false;
   if (!storedPw) {
@@ -165,7 +187,33 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
   return { user: matchedUser };
 };
 
+export const authenticateDeveloperMode = async (
+  targetUser: User,
+  credential: string
+): Promise<{ user: User | null; error?: string }> => {
+  if (!verifyDevCredential(credential)) {
+    return { user: null, error: 'Invalid developer testing credential. Access denied.' };
+  }
+
+  // Developer Testing Mode access using predefined credential '123456'
+  // Create safe session representation without altering stored credentials
+  const devUser: User = {
+    ...targetUser,
+    requiresPasswordChange: false, // Ensure testing flows smoothly without forced password prompt
+  };
+
+  startDevTestingSession(devUser);
+  setCurrentUserStore(devUser);
+  sessionStorage.setItem('apes_session_active_v3', 'true');
+
+  return { user: devUser };
+};
+
 export const changeUserPassword = async (userIdOrEmail: string, newPassword: string): Promise<boolean> => {
+  if (isDevTestingModeActive()) {
+    console.warn('[Security Guard] Password change is blocked: Developer Testing Mode is active.');
+    return false;
+  }
   const cleanId = (userIdOrEmail || '').trim().toLowerCase();
   const users = getStoredUsers();
   const hashedPassword = await hashPassword(newPassword);
@@ -421,6 +469,9 @@ export const registerSelfUser = async (data: SelfRegisterData): Promise<{ user: 
 
 export const logoutUser = async () => {
   try {
+    if (isDevTestingModeActive()) {
+      endDevTestingSession();
+    }
     if (isSupabaseConfigured && supabase) {
       await supabase.auth.signOut();
     }

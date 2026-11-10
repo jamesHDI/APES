@@ -6,6 +6,7 @@
  */
 
 import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { isDevTestingModeActive, recordDevAction } from './devTestingService';
 
 export interface EvalEmailRecipient {
   name: string;
@@ -29,6 +30,23 @@ export interface EvalEmailPayload {
 export async function sendEvaluationDeploymentEmail(
   payload: EvalEmailPayload
 ): Promise<{ sent: number; failed: number; errors: string[] } | null> {
+  // Developer Testing Mode Guard: Do NOT dispatch emails to real users during test sessions
+  if (isDevTestingModeActive()) {
+    console.log(
+      `[Developer Testing Mode] Suppressed real email dispatch for deployment "${payload.deploymentTitle}" (${payload.recipients.length} recipients protected)`
+    );
+    recordDevAction('SUPPRESSED_EXTERNAL_EMAIL', {
+      deploymentTitle: payload.deploymentTitle,
+      recipientCount: payload.recipients.length,
+      sampleRecipients: payload.recipients.slice(0, 3).map(r => r.email)
+    });
+    return {
+      sent: payload.recipients.length,
+      failed: 0,
+      errors: ['Simulated send: Developer Testing Mode active (real inbox delivery protected).']
+    };
+  }
+
   if (!isSupabaseConfigured || !supabase) {
     console.warn('[emailService] Supabase not configured — email notifications skipped.');
     return null;

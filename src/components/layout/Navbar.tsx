@@ -16,6 +16,8 @@ import {
   Wifi,
   WifiOff,
   MessageSquare,
+  Terminal,
+  Users,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -33,6 +35,8 @@ interface NavbarProps {
   onOpenAnnouncementModal?: () => void;
   onOpenMessenger?: () => void;
   unreadMessagesCount?: number;
+  isDevMode?: boolean;
+  onOpenDevModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -50,6 +54,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAnnouncementModal,
   onOpenMessenger,
   unreadMessagesCount = 0,
+  isDevMode = false,
+  onOpenDevModal,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -129,6 +135,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right: Sync + Dark Mode + Notifications + User */}
           <div className="flex items-center gap-1">
+
+            {/* Developer Testing Mode Pill */}
+            {isDevMode && onOpenDevModal && (
+              <button
+                onClick={onOpenDevModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 transition-colors shadow-sm cursor-pointer"
+                title="Developer Testing Mode Active - Click to switch accounts"
+              >
+                <Terminal className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 animate-pulse" />
+                <span className="tracking-wide">DEV TEST</span>
+              </button>
+            )}
 
             {/* Cloud Sync Status Badge */}
             <div className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors ${
@@ -357,6 +375,22 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                   {/* Navigation & Logout Actions */}
                   <div className="p-2 space-y-0.5">
+                    {isDevMode && onOpenDevModal && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setShowUserDropdown(false);
+                            onOpenDevModal();
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-indigo-700 dark:text-indigo-300 bg-indigo-50/70 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 font-bold text-xs transition-colors text-left"
+                        >
+                          <Users className="w-4 h-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
+                          <span>Switch Test Account</span>
+                        </button>
+                        <div className="border-t border-slate-100 dark:border-slate-700 my-1" />
+                      </>
+                    )}
+
                     <button
                       onClick={() => {
                         setShowUserDropdown(false);

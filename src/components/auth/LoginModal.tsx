@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Department } from '../../types';
-import { authenticateUser, requestPasswordReset } from '../../services/authService';
+import { authenticateUser, requestPasswordReset, authenticateDeveloperMode } from '../../services/authService';
 import { SelfRegisterModal } from './SelfRegisterModal';
+import { DeveloperTestingModal } from '../dev/DeveloperTestingModal';
 import {
   Lock,
   Mail,
@@ -12,7 +13,8 @@ import {
   UserPlus,
   Eye,
   EyeOff,
-  Clock
+  Clock,
+  Terminal,
 } from 'lucide-react';
 
 interface LoginModalProps {
@@ -41,6 +43,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [showSelfRegister, setShowSelfRegister] = useState(false);
+  const [showDevModal, setShowDevModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotToast, setForgotToast] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -313,6 +316,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   </>
                 )}
               </button>
+
+              {/* Developer Testing Mode Access Trigger */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDevModal(true)}
+                  className="w-full py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-800 font-bold text-xs transition-all flex items-center justify-center gap-2 group"
+                >
+                  <Terminal className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                  <span>Developer Testing Mode</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-mono font-bold">123456</span>
+                </button>
+              </div>
             </form>
           </div>
 
@@ -366,6 +382,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         onClose={() => setShowSelfRegister(false)}
         departments={departments}
         onRegisterSuccess={onRegisterNewUser}
+      />
+
+      <DeveloperTestingModal
+        isOpen={showDevModal}
+        onClose={() => setShowDevModal(false)}
+        allUsers={allUsers}
+        onSelectUser={async (selectedUser) => {
+          setShowDevModal(false);
+          const res = await authenticateDeveloperMode(selectedUser, '123456');
+          if (res.user) {
+            onLoginSuccess(res.user);
+          }
+        }}
       />
     </div>
   );

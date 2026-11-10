@@ -3,6 +3,7 @@ import { User, Department, Evaluation, Notification, EvaluationHistory, Evaluati
 import { hashPassword, isHashedPassword } from '../utils/crypto';
 import { MASTER_SALES_EVALUATION_TEMPLATE, createMasterBasedTemplate } from '../constants/masterSalesTemplate';
 import { MASTER_EMPLOYEES } from '../constants/masterOrganization';
+import { isDevTestingModeActive, recordDevAction } from './devTestingService';
 
 export const logEmployeesSchema = async (): Promise<void> => {
   if (!isSupabaseConfigured || !supabase) return;
@@ -526,6 +527,12 @@ export const uploadAvatarToSupabase = async (file: File | Blob, userId: string):
 };
 
 export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?: string): Promise<SupabaseSaveResult> => {
+  if (isDevTestingModeActive()) {
+    console.log(`[Developer Testing Mode] Suppressed database employee update for: ${user.name}`);
+    recordDevAction('SUPPRESSED_DB_EMPLOYEE_SAVE', { userId: user.id, name: user.name });
+    return { success: true, id: user.id };
+  }
+
   if (!isSupabaseConfigured || !supabase) {
     return { success: false, error: { code: 'NO_SB_CONFIG', message: 'Supabase cloud client is not configured.' } };
   }
@@ -1723,6 +1730,12 @@ export const syncChildTablesToSupabase = async (evaluation: Evaluation): Promise
 };
 
 export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<boolean> => {
+  if (isDevTestingModeActive()) {
+    console.log(`[Developer Testing Mode] Suppressed database evaluation write for ID: ${evaluation.id}`);
+    recordDevAction('SUPPRESSED_DB_EVALUATION_SAVE', { evaluationId: evaluation.id, status: evaluation.status });
+    return true;
+  }
+
   if (!isSupabaseConfigured || !supabase) return false;
 
   try {
@@ -1908,6 +1921,10 @@ export const saveEvaluationToSupabase = async (evaluation: Evaluation): Promise<
 };
 
 export const saveEvaluationHistoryToSupabase = async (history: EvaluationHistory): Promise<boolean> => {
+  if (isDevTestingModeActive()) {
+    return true;
+  }
+
   if (!isSupabaseConfigured || !supabase) return false;
 
   try {
@@ -1970,6 +1987,10 @@ export const saveEvaluationHistoryToSupabase = async (history: EvaluationHistory
 };
 
 export const saveScorecardArchiveToSupabase = async (archive: EvaluationScorecardArchive): Promise<boolean> => {
+  if (isDevTestingModeActive()) {
+    return true;
+  }
+
   if (!isSupabaseConfigured || !supabase) return false;
 
   try {
