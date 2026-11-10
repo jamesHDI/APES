@@ -165,11 +165,8 @@ import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
 import { CalibrationRequestForm } from './components/calibration/CalibrationRequestForm';
 import { CalibrationRequestsManager } from './components/calibration/CalibrationRequestsManager';
 import { MessengerModal } from './components/messenger/MessengerModal';
-import { DeveloperTestingBar } from './components/dev/DeveloperTestingBar';
-import { DeveloperTestingModal } from './components/dev/DeveloperTestingModal';
 import {
   isDevTestingModeActive,
-  switchDevTestingAccount,
   endDevTestingSession,
   isDevSessionExpired,
 } from './services/devTestingService';
@@ -252,7 +249,6 @@ export const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isSessionLoading, setIsSessionLoading] = useState<boolean>(true);
   const [isDevMode, setIsDevMode] = useState<boolean>(() => isDevTestingModeActive());
-  const [showInAppDevModal, setShowInAppDevModal] = useState<boolean>(false);
 
   const [departments, setDepartments] = useState<Department[]>(getStoredDepartments());
   const [templates, setTemplates] = useState<EvaluationTemplate[]>(getStoredTemplates());
@@ -829,32 +825,11 @@ export const App: React.FC = () => {
     const interval = setInterval(() => {
       if (isDevSessionExpired()) {
         console.log('[Developer Testing Mode] Session expired. Automatically ending session.');
-        handleExitDevMode();
+        handleLogout();
       }
     }, 10000);
     return () => clearInterval(interval);
   }, [isDevMode]);
-
-  const handleSwitchDevAccount = (newUser: User) => {
-    switchDevTestingAccount(newUser);
-    const safeUser: User = {
-      ...newUser,
-      requiresPasswordChange: false,
-    };
-    setCurrentUser(safeUser);
-    setCurrentUserStore(safeUser);
-    currentUserRef.current = safeUser;
-    if (!isTabAllowedForRole(activeTab, newUser.role)) {
-      setActiveTab('dashboard');
-    }
-    setNotifications(getRoleBasedNotifications(newUser));
-  };
-
-  const handleExitDevMode = async () => {
-    endDevTestingSession();
-    setIsDevMode(false);
-    await handleLogout();
-  };
 
   const handleLogout = async () => {
     endDevTestingSession();
@@ -1693,13 +1668,6 @@ export const App: React.FC = () => {
 
       <div className="flex flex-1 flex-col overflow-hidden min-h-0">
         <div className="no-print">
-          {isAuthenticated && isDevMode && (
-            <DeveloperTestingBar
-              currentUser={currentUser}
-              onSwitchAccount={() => setShowInAppDevModal(true)}
-              onExitDevMode={handleExitDevMode}
-            />
-          )}
           <Navbar
             currentUser={currentUser}
             onLogout={handleLogout}
@@ -1720,7 +1688,6 @@ export const App: React.FC = () => {
             onOpenMessenger={() => setShowMessengerModal(true)}
             unreadMessagesCount={unreadDirectMessagesCount}
             isDevMode={isDevMode}
-            onOpenDevModal={() => setShowInAppDevModal(true)}
           />
         </div>
 
@@ -1769,18 +1736,6 @@ export const App: React.FC = () => {
             setDirectMessages(getStoredDirectMessages());
           }}
         />
-
-        {/* In-App Developer Testing Account Switcher Modal */}
-        {showInAppDevModal && (
-          <DeveloperTestingModal
-            isOpen={showInAppDevModal}
-            onClose={() => setShowInAppDevModal(false)}
-            allUsers={users}
-            currentUserId={currentUser.id}
-            isAlreadyAuthorized={true}
-            onSelectUser={handleSwitchDevAccount}
-          />
-        )}
 
         {/* Forced Password Change Modal for Default Admin / Flagged Accounts */}
         {isAuthenticated && !isDevMode && currentUser.requiresPasswordChange && (

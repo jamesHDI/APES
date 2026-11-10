@@ -16,8 +16,6 @@ import {
   Wifi,
   WifiOff,
   MessageSquare,
-  Terminal,
-  Users,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -36,7 +34,6 @@ interface NavbarProps {
   onOpenMessenger?: () => void;
   unreadMessagesCount?: number;
   isDevMode?: boolean;
-  onOpenDevModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -55,7 +52,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenMessenger,
   unreadMessagesCount = 0,
   isDevMode = false,
-  onOpenDevModal,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -136,16 +132,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Right: Sync + Dark Mode + Notifications + User */}
           <div className="flex items-center gap-1">
 
-            {/* Developer Testing Mode Pill */}
-            {isDevMode && onOpenDevModal && (
-              <button
-                onClick={onOpenDevModal}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 transition-colors shadow-sm cursor-pointer"
-                title="Developer Testing Mode Active - Click to switch accounts"
+            {/* Developer Testing Mode Indicator */}
+            {isDevMode && (
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 shadow-sm"
+                title="Account accessed under Developer Testing Mode (123456) - Testing safeguards active"
               >
-                <Terminal className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                 <span className="tracking-wide">DEV TEST</span>
-              </button>
+              </div>
             )}
 
             {/* Cloud Sync Status Badge */}
@@ -370,27 +365,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <p className="text-[10px] font-mono text-slate-400 dark:text-slate-400 mt-0.5">
                         {currentUser?.employeeNumber || 'EMP-001'}
                       </p>
+                      {isDevMode && (
+                        <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                          Developer Testing Session
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   {/* Navigation & Logout Actions */}
                   <div className="p-2 space-y-0.5">
-                    {isDevMode && onOpenDevModal && (
-                      <>
-                        <button
-                          onClick={() => {
-                            setShowUserDropdown(false);
-                            onOpenDevModal();
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-indigo-700 dark:text-indigo-300 bg-indigo-50/70 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 font-bold text-xs transition-colors text-left"
-                        >
-                          <Users className="w-4 h-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
-                          <span>Switch Test Account</span>
-                        </button>
-                        <div className="border-t border-slate-100 dark:border-slate-700 my-1" />
-                      </>
-                    )}
-
                     <button
                       onClick={() => {
                         setShowUserDropdown(false);

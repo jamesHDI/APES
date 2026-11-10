@@ -1,4 +1,4 @@
-﻿/**
+/**
  * emailService.ts
  * Calls the Supabase Edge Function "send-eval-email" to send Outlook / inbox
  * notifications when POD deploys a new evaluation campaign.
