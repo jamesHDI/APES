@@ -1708,13 +1708,15 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
           )}
 
           {/* People Operations (POD) Action Card */}
-          {isPODApprover && (activeTemplate.status === 'submitted_to_pod' || activeTemplate.status === 'resubmitted_to_pod' || activeTemplate.status === 'is_approved' || activeTemplate.status === 'pod_review') && (
+          {isPODApprover && (activeTemplate.status === 'submitted_to_pod' || activeTemplate.status === 'resubmitted_to_pod' || activeTemplate.status === 'is_approved' || activeTemplate.status === 'pod_review' || activeTemplate.status === 'draft') && (
             <div className="p-5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border-2 border-indigo-300 dark:border-indigo-700 space-y-3 shadow-md">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-indigo-600" />
                   <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 uppercase tracking-wide">
-                    People Operations (POD) Final Validation Required
+                    {activeTemplate.status === 'draft' 
+                      ? 'People Operations (POD) Draft Template Control & Direct Deployment' 
+                      : 'People Operations (POD) Final Validation Required'}
                   </span>
                 </div>
                 {activeTemplate.createdForEmployeeName && (
@@ -1742,31 +1744,34 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               <div className="flex items-center gap-2.5 flex-wrap pt-1">
                 <button
                   type="button"
+                  onClick={() => handlePODAction('deploy')}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm flex items-center space-x-1.5 transition-all"
+                  title="Directly deploy this draft template and make it active & locked for evaluations"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Deploy Template Immediately</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => handlePODAction('approve')}
                   className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm flex items-center space-x-1.5 transition-all"
                 >
                   <CheckCheck className="w-4 h-4" />
                   <span>Approve Template</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handlePODAction('deploy')}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm flex items-center space-x-1.5 transition-all"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Deploy Template</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (showPODReturnInput) handlePODAction('return');
-                    else setShowPODReturnInput(true);
-                  }}
-                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-sm flex items-center space-x-1.5 transition-all"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>{showPODReturnInput ? 'Confirm Return for Revision' : 'Return for Revision'}</span>
-                </button>
+                {activeTemplate.status !== 'draft' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (showPODReturnInput) handlePODAction('return');
+                      else setShowPODReturnInput(true);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-sm flex items-center space-x-1.5 transition-all"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>{showPODReturnInput ? 'Confirm Return for Revision' : 'Return for Revision'}</span>
+                  </button>
+                )}
                 {showPODReturnInput && (
                   <button
                     type="button"

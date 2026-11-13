@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Department, EvaluationTemplate, EvaluationDeployment, DeploymentStatus, AssignmentType } from '../../types';
-import { getStoredDeployments, saveDeployments, getStoredEvaluations, saveEvaluations, assignNewEvaluationToEmployee, saveSingleEvaluation } from '../../services/storage';
+import { getStoredDeployments, saveDeployments, getStoredEvaluations, saveEvaluations, assignNewEvaluationToEmployee, saveSingleEvaluation, getStoredTemplates, saveTemplates } from '../../services/storage';
+import { saveEvaluationTemplateToSupabase } from '../../services/supabaseService';
 import { triggerWorkflowNotification } from '../../services/notificationService';
 import { triggerRealtimeBroadcast, isSupabaseConfigured } from '../../services/supabaseClient';
 import { sendEvaluationDeploymentEmail } from '../../services/emailService';
@@ -120,6 +121,22 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
     if (targetUsers.length === 0) {
       alert('No employees matched the selected assignment criteria.');
       return;
+    }
+
+    // If the selected template is currently in draft status, POD deploying it auto-promotes it to deployed
+    if (template.status === 'draft') {
+      const deployedTemplate: EvaluationTemplate = {
+        ...template,
+        status: 'deployed',
+        isLocked: true,
+        deployedAt: new Date().toISOString(),
+      };
+      const existing = getStoredTemplates();
+      const updatedList = existing.map((t: EvaluationTemplate) => t.id === template.id ? deployedTemplate : t);
+      saveTemplates(updatedList);
+      saveEvaluationTemplateToSupabase(deployedTemplate).catch((err: any) => {
+        console.warn('[Deployment] Note auto-deploying draft template:', err);
+      });
     }
 
     const deploymentId = `deploy_${Date.now()}`;
@@ -568,8 +585,10 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
                     onChange={(e) => setTemplateId(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
                   >
-                    {templates.filter(t => t.status !== 'draft').map(t => (
-                      <option key={t.id} value={t.id}>{t.title} ({t.departmentName})</option>
+                    {templates.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.title} ({t.departmentName}){t.status === 'draft' ? ' [Draft - Auto-Deploys]' : ''}
+                      </option>
                     ))}
                   </select>
                 </div>
