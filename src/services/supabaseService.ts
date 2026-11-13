@@ -1183,10 +1183,9 @@ export const fetchNotificationsFromSupabase = async (userId?: string, userRole?:
         // Include common aliases for dual-profile leadership accounts (e.g. Emily Floresca and Brandon Chia)
         const emilyAndBrandonIds = 'user_id.eq.13200000-0000-4000-8000-000000000000,user_id.eq.b0000000-0000-0000-0000-000000000006,user_id.eq.cebad000-0000-4000-8000-000000000000';
         query = query.or(`user_id.eq.${targetUuid},user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,recipient_role.eq.${userRole},recipient_role.eq.supervisor,recipient_role.eq.dept_head,recipient_role.eq.president,is_announcement.eq.true,${emilyAndBrandonIds}`);
-      } else if (userRole) {
-        query = query.or(`user_id.eq.${targetUuid},user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,recipient_role.eq.${userRole},is_announcement.eq.true`);
       } else {
-        query = query.or(`user_id.eq.${targetUuid},user_id.eq.${userId},user_id.is.null,recipient_role.eq.ALL,is_announcement.eq.true`);
+        // Regular employee: STRICT privacy - ONLY fetch notifications explicitly targeted to this employee's ID, or broadcast announcements
+        query = query.or(`user_id.eq.${targetUuid},user_id.eq.${userId},recipient_role.eq.ALL,is_announcement.eq.true`);
       }
     }
 

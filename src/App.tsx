@@ -357,7 +357,10 @@ export const App: React.FC = () => {
         campaignBlockedModal.evaluationId
       );
       setCampaignBlockedModal(prev => ({ ...prev, requestSent: true, isSending: false }));
-      setNotifications(getRoleBasedNotifications(currentUser));
+      if (isSupabaseConfigured && currentUser) {
+        const fresh = await fetchNotificationsFromSupabase(currentUser.id, currentUser.role);
+        if (fresh) setNotifications(getRoleBasedNotifications(fresh, currentUser));
+      }
     } catch (err) {
       console.error('Failed to submit campaign access request:', err);
       setCampaignBlockedModal(prev => ({ ...prev, isSending: false }));
@@ -1168,7 +1171,11 @@ export const App: React.FC = () => {
       updatedList.unshift(updatedEval);
     }
     setEvaluations(updatedList);
-    setNotifications(getRoleBasedNotifications(currentUser));
+    if (isSupabaseConfigured && currentUser) {
+      fetchNotificationsFromSupabase(currentUser.id, currentUser.role).then(fresh => {
+        if (fresh) setNotifications(getRoleBasedNotifications(fresh, currentUser));
+      });
+    }
   };
 
   const handleSaveTemplate = async (updatedTemplate: EvaluationTemplate) => {
@@ -1821,8 +1828,11 @@ export const App: React.FC = () => {
           isOpen={showAnnouncementModal}
           onClose={() => setShowAnnouncementModal(false)}
           senderName={currentUser.name}
-          onAnnouncementCreated={() => {
-            setNotifications(getRoleBasedNotifications(currentUser));
+          onAnnouncementCreated={async () => {
+            if (currentUser && isSupabaseConfigured) {
+              const fresh = await fetchNotificationsFromSupabase(currentUser.id, currentUser.role);
+              if (fresh) setNotifications(getRoleBasedNotifications(fresh, currentUser));
+            }
           }}
         />
 

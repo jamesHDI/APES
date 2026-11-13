@@ -6,31 +6,13 @@ import { getStoredUsers } from './storage';
 
 export const INITIAL_SEED_NOTIFICATIONS: Notification[] = [
   {
-    id: '00000000-0000-4000-8000-000000000102',
-    userId: 'usr_pres_01',
-    recipientRole: 'president',
-    title: 'Action Required: Department Head Scorecard Review',
-    message: 'Elena Rostova (Head of Sales) has submitted her self-assessment for Presidential Executive Review.',
-    category: 'approval',
-    date: '1 hour ago',
-    read: false,
-    type: 'action_required',
-    employeeName: 'Elena Rostova',
-    departmentName: 'Sales',
-    appraisalPeriod: 'January-September 2025',
-    status: 'pending_president',
-    senderName: 'Elena Rostova',
-    dateTime: new Date().toLocaleString(),
-    evaluationId: 'eval_elena_depthead_2025'
-  },
-  {
     id: '00000000-0000-4000-8000-000000000103',
     recipientRole: 'ALL',
     isAnnouncement: true,
-    title: 'System Announcement: 2026 Q3 Performance Appraisal Cycle Launched',
-    message: 'Welcome to the APES v3.0 Performance Evaluation Cycle. All regular employees are requested to complete self-evaluations.',
+    title: 'System Announcement: Performance Evaluation System Active',
+    message: 'Welcome to the APES Performance Evaluation System. Please check your assigned scorecard and evaluation deadlines.',
     category: 'announcement',
-    date: '1 day ago',
+    date: 'Active',
     read: false,
     type: 'info',
     senderName: 'People Operations & POD',
@@ -82,97 +64,117 @@ export const getRoleBasedNotifications = (
 
   if (!currentUser || !notifications) return [];
 
+  const curAuthId = (currentUser as any)?.user_id;
+
   const filtered = notifications.filter((n) => {
-    // 1. Administrative / Account / System Alerts (STRICTLY for System Admin, HR Admin, or POD)
-    if (
-      n.category === 'account' || 
-      n.category === 'system' || 
-      n.status === 'pending_approval'
-    ) {
+    // ── 1. ADMINISTRATIVE & ACCOUNT GOVERNANCE ─────────────────────────────
+    // Alerts regarding new user registration, system events, or approval requests
+    // must ONLY be visible to System Administrator, HR Administrator, or POD.
+    const isAdminAlert =
+      n.category === 'account' ||
+      n.category === 'system' ||
+      n.status === 'pending_approval' ||
+      (n.recipientRole as string) === 'ALL_ADMINS';
+
+    if (isAdminAlert) {
       return currentUser.role === 'system_admin' || currentUser.role === 'hr_admin' || currentUser.role === 'pod';
     }
 
-    // 2. Direct User ID match (Private alert targeted to specific user)
-    const curAuthId = (currentUser as any)?.user_id;
-    if (n.userId && (
-      matchIds(n.userId, currentUser.id) ||
-      (curAuthId && matchIds(n.userId, curAuthId)) ||
-      matchIds(n.userId, currentUser.employeeNumber)
-    )) {
+    // ── 2. GLOBAL & BROADCAST ANNOUNCEMENTS ────────────────────────────────
+    // Announcements for all employees must never leak confidential reviews.
+    if (n.isAnnouncement || n.category === 'announcement' || (n.recipientRole as string) === 'ALL') {
+      if (n.recipientDepartment && n.recipientDepartment.trim().length > 0) {
+        return Boolean(
+          currentUser.departmentName &&
+          n.recipientDepartment.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase()
+        );
+      }
       return true;
     }
 
-    // 3. Organization-Wide Announcements to ALL
-    if ((n.recipientRole as string) === 'ALL' || (n.isAnnouncement && (!n.recipientRole || (n.recipientRole as string) === 'ALL'))) {
-      return true;
-    }
+    // ── 3. PRIVATE TARGETED NOTIFICATIONS (userId is explicitly specified) ─
+    // When a notification is directed to a specific user (e.g. employee's evaluation returned,
+    // scorecard deployed to an employee, private template review feedback), STRICT privacy applies:
+    if (n.userId && n.userId.trim().length > 0) {
+      // Direct recipient match: currentUser IS the targeted user
+      const isDirectMatch =
+        matchIds(n.userId, currentUser.id) ||
+        (curAuthId && matchIds(n.userId, curAuthId)) ||
+        matchIds(n.userId, currentUser.employeeNumber);
 
-    // 4. Admin Broadcast target
-    if ((n.recipientRole as string) === 'ALL_ADMINS') {
-      return currentUser.role === 'system_admin' || currentUser.role === 'hr_admin' || currentUser.role === 'pod';
-    }
-
-    // 5. Immediate Supervisor workflow match:
-    // When a template or evaluation is submitted to an Immediate Supervisor, the reviewer can be
-    // a Supervisor, a Department Head, or the President (CEO).
-    if (n.recipientRole === 'supervisor' || n.recipientRole === 'dept_head' || n.recipientRole === 'president') {
-      const isReviewerRole = currentUser.role === 'supervisor' || currentUser.role === 'dept_head' || currentUser.role === 'president';
-      if (isReviewerRole) {
-        // If targeted by userId, check direct match or cluster alias match
-        if (n.userId) {
-          if (
-            matchIds(n.userId, currentUser.id) ||
-            (curAuthId && matchIds(n.userId, curAuthId)) ||
-            matchIds(n.userId, currentUser.employeeNumber)
-          ) {
-            return true;
-          }
-
-          // Universal Direct Report sender match: If the sender reports to currentUser, the supervisor should receive the alert!
-          if (n.senderName) {
-            try {
-              const allUsers = getStoredUsers();
-              const senderReport = (allUsers || []).find(u => matchNames(u.name, n.senderName));
-              if (senderReport) {
-                const supId = senderReport.immediateSuperiorId || (senderReport as any).immediateSupervisorId;
-                const supName = senderReport.immediateSuperiorName || (senderReport as any).immediateSupervisorName;
-                if (
-                  matchIds(supId, currentUser.id) ||
-                  (curAuthId && matchIds(supId, curAuthId)) ||
-                  matchNames(supName, currentUser.name)
-                ) {
-                  return true;
-                }
-                if (currentUser.role === 'dept_head' && (
-                  matchIds(senderReport.departmentHeadId, currentUser.id) ||
-                  (curAuthId && matchIds(senderReport.departmentHeadId, curAuthId)) ||
-                  matchNames(senderReport.departmentHeadName, currentUser.name) ||
-                  (currentUser.departmentName && senderReport.departmentName && senderReport.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
-                )) {
-                  return true;
-                }
-              }
-            } catch {}
-          }
-
-          return false;
-        }
-
-        // If targetUserId is not specified, route by department or leadership role
-        if (currentUser.role === 'dept_head') {
-          return !n.departmentName || (currentUser.departmentName && n.departmentName.toLowerCase().trim() === currentUser.departmentName.toLowerCase().trim());
-        }
-        if (currentUser.role === 'president') {
-          return true;
-        }
+      if (isDirectMatch) {
         return true;
       }
+
+      // Reviewer Exception:
+      // If the notification represents an action required by a supervisor/reviewer,
+      // allow ONLY if currentUser is the verified Immediate Superior or Department Head
+      // of the employee who submitted the evaluation or template.
+      const isReviewAction = n.type === 'action_required' && (
+        n.status === 'submitted_to_is' ||
+        n.status === 'is_review' ||
+        n.status === 'pending_supervisor' ||
+        n.status === 'pending_dept_head' ||
+        n.status === 'pending_president'
+      );
+
+      if (isReviewAction) {
+        if (n.status === 'pending_president') {
+          return currentUser.role === 'president';
+        }
+
+        const isReviewerRole = currentUser.role === 'supervisor' || currentUser.role === 'dept_head' || currentUser.role === 'president';
+        if (isReviewerRole && (n.senderName || n.employeeName)) {
+          try {
+            const allUsers = getStoredUsers();
+            const senderReport = (allUsers || []).find(u =>
+              matchNames(u.name, n.senderName) || matchNames(u.name, n.employeeName)
+            );
+
+            if (senderReport) {
+              const supId = senderReport.immediateSuperiorId || (senderReport as any).immediateSupervisorId;
+              const supName = senderReport.immediateSuperiorName || (senderReport as any).immediateSupervisorName;
+
+              // Check if currentUser is the explicit Immediate Supervisor
+              if (
+                matchIds(supId, currentUser.id) ||
+                (curAuthId && matchIds(supId, curAuthId)) ||
+                matchNames(supName, currentUser.name)
+              ) {
+                return true;
+              }
+
+              // Check if currentUser is the explicit Department Head
+              if (currentUser.role === 'dept_head' && (
+                matchIds(senderReport.departmentHeadId, currentUser.id) ||
+                (curAuthId && matchIds(senderReport.departmentHeadId, curAuthId)) ||
+                matchNames(senderReport.departmentHeadName, currentUser.name)
+              )) {
+                return true;
+              }
+            }
+          } catch {}
+        }
+      }
+
+      // PRIVACY BOUNDARY: If targeted to someone else and currentUser is not their authorized reviewer,
+      // DO NOT DISPLAY under any circumstances.
+      return false;
     }
 
-    // 6. Targeted Role Broadcast or Workflow match
-    if (n.recipientRole && n.recipientRole === currentUser.role) {
-      if (n.recipientDepartment && currentUser.role === 'dept_head') {
-        return n.recipientDepartment.toLowerCase() === currentUser.departmentName.toLowerCase();
+    // ── 4. BROADCAST ROLE-BASED NOTIFICATIONS (NO target userId) ───────────
+    // Only genuine broadcasts that have NO specific userId (e.g. general notice to department heads)
+    if (!n.userId && n.recipientRole && n.recipientRole === currentUser.role) {
+      // Employees should NEVER receive role-broadcast evaluation alerts without a userId
+      if (currentUser.role === 'employee' && n.category === 'approval') {
+        return false;
+      }
+
+      if (n.recipientDepartment && n.recipientDepartment.trim().length > 0) {
+        return Boolean(
+          currentUser.departmentName &&
+          n.recipientDepartment.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase()
+        );
       }
       return true;
     }
