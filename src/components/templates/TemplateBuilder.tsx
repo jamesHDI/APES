@@ -36,7 +36,13 @@ import {
   Bookmark,
   Check,
   Undo2,
+  Clock,
+  Inbox,
+  ArrowRight,
+  Info,
 } from 'lucide-react';
+
+export type WorkspaceSection = 'drafts' | 'pending_is' | 'pending_pod' | 'deployed' | 'returned';
 
 interface TemplateBuilderProps {
   currentUser?: User;
@@ -77,9 +83,9 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     return checkIsTemplateOwner(currentUser, t);
   };
 
-  // Filter templates visible to this user.
-  // Private drafts are accessible to their owners. Reviewers see direct reports. POD governance has oversight of all templates.
-  const allVisibleTemplates = isEmployeeMode
+  // Base list of accessible templates
+  // Drafts remain strictly private to their owner unless user is POD or system_admin governance
+  const allAccessibleTemplates = isEmployeeMode
     ? templates
         .filter(t => {
           if (t.status === 'draft') return checkIsTemplateOwnerLocal(t);
@@ -90,106 +96,118 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             (t.departmentName && currentUser?.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
           );
         })
-        .sort((a, b) => {
-          // Employee's own template always sorts to the top
-          const aMine = checkIsTemplateOwnerLocal(a) ? 1 : 0;
-          const bMine = checkIsTemplateOwnerLocal(b) ? 1 : 0;
-          return bMine - aMine;
-        })
     : isPOD
     ? templates
     : isReviewerRole
-    ? templates
-        .filter(t => {
-          if (t.status === 'draft') return checkIsTemplateOwnerLocal(t);
-          return (
-            checkIsISForTemplateLocal(t) ||
-            checkIsTemplateOwnerLocal(t) ||
-            (isDeptHead && (
-              !t.departmentId || 
-              t.departmentId === currentUser?.departmentId ||
-              (t.departmentName && currentUser?.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
-            ))
-          );
-        })
-        .sort((a, b) => {
-          // Direct reports pending IS review always sort to the top for the supervisor
-          const aPending = checkIsISForTemplateLocal(a) && (a.status === 'submitted_to_is' || a.status === 'is_review') ? 1 : 0;
-          const bPending = checkIsISForTemplateLocal(b) && (b.status === 'submitted_to_is' || b.status === 'is_review') ? 1 : 0;
-          return bPending - aPending;
-        })
+    ? templates.filter(t => {
+        if (t.status === 'draft') return checkIsTemplateOwnerLocal(t);
+        return (
+          checkIsISForTemplateLocal(t) ||
+          checkIsTemplateOwnerLocal(t) ||
+          (isDeptHead && (
+            !t.departmentId || 
+            t.departmentId === currentUser?.departmentId ||
+            (t.departmentName && currentUser?.departmentName && t.departmentName.trim().toLowerCase() === currentUser.departmentName.trim().toLowerCase())
+          ))
+        );
+      })
     : templates;
 
-  const safeTemplatesList = allVisibleTemplates.length > 0 
-    ? allVisibleTemplates 
+  const safeTemplatesList = allAccessibleTemplates.length > 0 
+    ? allAccessibleTemplates 
     : [MASTER_SALES_EVALUATION_TEMPLATE];
 
-  // User's own saved drafts
-  const myDraftTemplates = safeTemplatesList.filter(t => t.status === 'draft' && checkIsTemplateOwnerLocal(t));
+  // ── STRICT SECTION-BASED QUEUES (Mutually Exclusive, Zero Leaks) ─────────────
+  // 1. DRAFTS: ONLY status === 'draft'. (Never appears in Pending IS, Pending POD, or Deployed)
+  const draftsQueue = safeTemplatesList.filter(t => {
+    if (t.status !== 'draft') return false;
+    if (isPOD || currentUser?.role === 'system_admin') return true;
+    return checkIsTemplateOwnerLocal(t);
+  });
 
-  // User's own templates (any status)
-  const myOwnTemplates = safeTemplatesList.filter(t => checkIsTemplateOwnerLocal(t));
+  // 2. PENDING IS: ONLY status === 'submitted_to_is' || 'is_review'. (No drafts, no pending POD, no deployed)
+  const pendingISQueue = safeTemplatesList.filter(t => {
+    const isMatch = t.status === 'submitted_to_is' || t.status === 'is_review';
+    if (!isMatch) return false;
+    if (isPOD || currentUser?.role === 'system_admin') return true;
+    return checkIsISForTemplateLocal(t) || checkIsTemplateOwnerLocal(t);
+  });
 
-  const pendingSubmissionsCount = safeTemplatesList.filter(
-    t => t.status === 'submitted_to_pod' || t.status === 'resubmitted_to_pod' || t.status === 'is_approved'
-  ).length;
+  // 3. PENDING POD: ONLY submitted_to_pod, resubmitted_to_pod, is_approved, pod_review. (Zero drafts)
+  const pendingPODQueue = safeTemplatesList.filter(t => {
+    const isMatch = t.status === 'submitted_to_pod' || t.status === 'resubmitted_to_pod' || t.status === 'is_approved' || t.status === 'pod_review';
+    return isMatch;
+  });
 
-  const pendingISCount = safeTemplatesList.filter(
-    t => (t.status === 'submitted_to_is' || t.status === 'is_review') && (isPOD || checkIsISForTemplateLocal(t))
-  ).length;
+  // 4. DEPLOYED: ONLY deployed templates (or locked active scorecards). (No drafts, no pending reviews)
+  const deployedQueue = safeTemplatesList.filter(t => {
+    return t.status === 'deployed' || (t.status === 'approved' && !t.submittedAt && t.isLocked);
+  });
 
-  const podDraftsCount = safeTemplatesList.filter(t => t.status === 'draft').length;
+  // 5. RETURNED: ONLY returned_by_is, returned_by_pod, returned_for_revision
+  const returnedQueue = safeTemplatesList.filter(t => {
+    const isMatch = t.status === 'returned_by_is' || t.status === 'returned_by_pod' || t.status === 'returned_for_revision';
+    if (!isMatch) return false;
+    if (isPOD || currentUser?.role === 'system_admin') return true;
+    return checkIsTemplateOwnerLocal(t);
+  });
 
-  // POD Filter Tab & Company Filter
-  const [podFilterTab, setPodFilterTab] = useState<'all' | 'draft' | 'pending_is' | 'pending_pod' | 'returned' | 'approved_deployed'>('all');
-  const [supervisorFilterTab, setSupervisorFilterTab] = useState<'all' | 'pending_review' | 'approved' | 'returned'>(
-    pendingISCount > 0 ? 'pending_review' : 'all'
-  );
-  const [companyFilter, setCompanyFilter] = useState<string>('all');
-  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const draftsCount = draftsQueue.length;
+  const pendingISCount = pendingISQueue.length;
+  const pendingPODCount = pendingPODQueue.length;
+  const deployedCount = deployedQueue.length;
+  const returnedCount = returnedQueue.length;
 
-  const visibleTemplates = isPOD
-    ? safeTemplatesList.filter(t => {
-        if (companyFilter !== 'all' && t.companyName && t.companyName !== companyFilter) return false;
-        if (departmentFilter !== 'all' && t.departmentName && t.departmentName !== departmentFilter) return false;
+  // Initial Section determination
+  const getInitialWorkspaceSection = (): WorkspaceSection => {
+    if (isReviewerRole && !isEmployeeMode && pendingISCount > 0) return 'pending_is';
+    if (isPOD && pendingPODCount > 0) return 'pending_pod';
+    if (returnedCount > 0) return 'returned';
+    if (draftsCount > 0) return 'drafts';
+    if (deployedCount > 0) return 'deployed';
+    return 'drafts';
+  };
 
-        if (podFilterTab === 'draft') return t.status === 'draft';
-        if (podFilterTab === 'pending_is') return t.status === 'submitted_to_is' || t.status === 'is_review';
-        if (podFilterTab === 'pending_pod') return t.status === 'submitted_to_pod' || t.status === 'resubmitted_to_pod' || t.status === 'is_approved' || t.status === 'pod_review';
-        if (podFilterTab === 'returned') return t.status === 'returned_by_is' || t.status === 'returned_by_pod' || t.status === 'returned_for_revision';
-        if (podFilterTab === 'approved_deployed') return t.status === 'approved' || t.status === 'pod_approved' || t.status === 'deployed' || !t.status;
-        return true;
-      })
-    : isReviewerRole && !isEmployeeMode
-    ? safeTemplatesList.filter(t => {
-        if (supervisorFilterTab === 'pending_review') return t.status === 'submitted_to_is' || t.status === 'is_review';
-        if (supervisorFilterTab === 'approved') return t.status === 'is_approved' || t.status === 'pod_approved' || t.status === 'deployed' || (!t.status && t.status !== 'draft');
-        if (supervisorFilterTab === 'returned') return t.status === 'returned_by_is';
-        return true;
-      })
-    : safeTemplatesList;
+  const [workspaceSection, setWorkspaceSection] = useState<WorkspaceSection>(getInitialWorkspaceSection);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [companyFilter, setCompanyFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
 
-  // Available / published templates (when viewing draft tab in POD, show drafts; otherwise exclude drafts from the main available list)
-  const availableTemplates = (isPOD && podFilterTab === 'draft')
-    ? visibleTemplates.filter(t => t.status === 'draft')
-    : visibleTemplates.filter(t => t.status !== 'draft');
+  // Filter templates inside active workspace section
+  const getTemplatesForSection = (section: WorkspaceSection): EvaluationTemplate[] => {
+    let list: EvaluationTemplate[] = [];
+    if (section === 'drafts') list = draftsQueue;
+    else if (section === 'pending_is') list = pendingISQueue;
+    else if (section === 'pending_pod') list = pendingPODQueue;
+    else if (section === 'deployed') list = deployedQueue;
+    else if (section === 'returned') list = returnedQueue;
 
-  // Draft templates for sidebar section (POD sees all drafts across system; others see their own)
-  const draftTemplatesForSection = isPOD
-    ? safeTemplatesList.filter(t => t.status === 'draft')
-    : myDraftTemplates;
+    return list.filter(t => {
+      if (companyFilter !== 'all' && t.companyName && t.companyName !== companyFilter) return false;
+      if (departmentFilter !== 'all' && t.departmentName && t.departmentName !== departmentFilter) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const titleMatch = t.title.toLowerCase().includes(q);
+        const nameMatch = t.createdForEmployeeName?.toLowerCase().includes(q) || t.createdByName?.toLowerCase().includes(q);
+        const deptMatch = t.departmentName?.toLowerCase().includes(q);
+        const compMatch = t.companyName?.toLowerCase().includes(q);
+        if (!titleMatch && !nameMatch && !deptMatch && !compMatch) return false;
+      }
+      return true;
+    });
+  };
+
+  const currentSectionTemplates = getTemplatesForSection(workspaceSection);
 
   // Initialize employee personal template if in employee mode and list is empty
   const getInitialEmployeeTemplate = (): EvaluationTemplate => {
-    // If user already has an existing template, return that!
     const existing = templates.find(t => checkIsTemplateOwnerLocal(t));
-    if (existing) {
-      return existing;
-    }
+    if (existing) return existing;
 
-    const defaultStart = `${new Date().getFullYear()}-01-01`;
-    const defaultEnd = `${new Date().getFullYear()}-12-31`;
-    const defaultPeriod = `Jan 1, ${new Date().getFullYear()} – Dec 31, ${new Date().getFullYear()}`;
+    const currentYear = new Date().getFullYear();
+    const defaultStart = `${currentYear}-01-01`;
+    const defaultEnd = `${currentYear}-12-31`;
+    const defaultPeriod = `Jan 1, ${currentYear} – Dec 31, ${currentYear}`;
 
     const newTmpl = createMasterBasedTemplate(
       currentUser?.departmentId || 'dept_gen',
@@ -222,39 +240,21 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     return newTmpl;
   };
 
-  // Build initial list with intelligent priority:
-  // - In Employee mode: User's own templates always come first (never fall back to sales template if user has a scorecard)
-  // - In Reviewer mode: Direct report templates pending review come first
-  const initialList = isEmployeeMode
-    ? (myDraftTemplates.length > 0 
-        ? [...myDraftTemplates, ...myOwnTemplates.filter(t => t.status !== 'draft'), ...availableTemplates.filter(t => !checkIsTemplateOwnerLocal(t))]
-        : myOwnTemplates.length > 0
-        ? [...myOwnTemplates, ...availableTemplates.filter(t => !checkIsTemplateOwnerLocal(t))]
-        : availableTemplates.length > 0
-        ? availableTemplates
-        : [getInitialEmployeeTemplate()])
-    : isReviewerRole
-    ? (safeTemplatesList.filter(t => checkIsISForTemplateLocal(t) && (t.status === 'submitted_to_is' || t.status === 'is_review')).length > 0
-        ? [
-            ...safeTemplatesList.filter(t => checkIsISForTemplateLocal(t) && (t.status === 'submitted_to_is' || t.status === 'is_review')),
-            ...visibleTemplates.filter(t => !(checkIsISForTemplateLocal(t) && (t.status === 'submitted_to_is' || t.status === 'is_review')))
-          ]
-        : visibleTemplates.length > 0
-        ? visibleTemplates
-        : [MASTER_SALES_EVALUATION_TEMPLATE])
-    : (visibleTemplates.length > 0 ? visibleTemplates : [MASTER_SALES_EVALUATION_TEMPLATE]);
+  const initialTemplateToSelect = currentSectionTemplates[0] || (workspaceSection === 'drafts' && isEmployeeMode ? getInitialEmployeeTemplate() : safeTemplatesList[0]);
 
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialList[0]?.id || MASTER_SALES_EVALUATION_TEMPLATE.id);
-  const [activeTemplate, setActiveTemplate] = useState<EvaluationTemplate>(
-    initialList.find(t => t.id === selectedTemplateId) || initialList[0] || MASTER_SALES_EVALUATION_TEMPLATE
-  );
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialTemplateToSelect?.id || MASTER_SALES_EVALUATION_TEMPLATE.id);
+  const [activeTemplate, setActiveTemplate] = useState<EvaluationTemplate>(initialTemplateToSelect || MASTER_SALES_EVALUATION_TEMPLATE);
   const [mobileTab, setMobileTab] = useState<'list' | 'editor'>('editor');
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
-  
+
+  // Save status indicator states
+  const [isDirty, setIsDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+
   // Return/Review remarks states
   const [isRemarkInput, setIsRemarkInput] = useState('');
   const [showISReturnInput, setShowISReturnInput] = useState(false);
@@ -286,56 +286,54 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
   const canEdit = 
     // POD or System Admin can edit any template unless deployed/locked
-    (isPOD && activeTemplate.status !== 'deployed' && !activeTemplate.isLocked)
+    (isPOD && activeTemplate?.status !== 'deployed' && !activeTemplate?.isLocked)
     // Assigned IS can edit/calibrate when reviewing (submitted_to_is or is_review)
-    || (isAssignedIS && (activeTemplate.status === 'submitted_to_is' || activeTemplate.status === 'is_review'))
+    || (isAssignedIS && (activeTemplate?.status === 'submitted_to_is' || activeTemplate?.status === 'is_review'))
     // Template owner can edit their drafts or returned templates
-    || (isTemplateOwner && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_for_revision' || activeTemplate.status === 'returned_by_pod'))
+    || (isTemplateOwner && (!activeTemplate?.status || activeTemplate?.status === 'draft' || activeTemplate?.status === 'returned_by_is' || activeTemplate?.status === 'returned_for_revision' || activeTemplate?.status === 'returned_by_pod'))
     // Dept Head can edit their own drafts or returned templates
-    || (isDeptHead && isTemplateOwner && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_for_revision' || activeTemplate.status === 'returned_by_is'));
+    || (isDeptHead && isTemplateOwner && (!activeTemplate?.status || activeTemplate?.status === 'draft' || activeTemplate?.status === 'returned_for_revision' || activeTemplate?.status === 'returned_by_is'));
 
+  // Ensure active template synchronizes when section changes or when templates update
   useEffect(() => {
-    if (selectedTemplateId !== currentLoadedTemplateIdRef.current) {
-      currentLoadedTemplateIdRef.current = selectedTemplateId;
-      const match = visibleTemplates.find(t => t.id === selectedTemplateId) || safeTemplatesList.find(t => t.id === selectedTemplateId);
-      if (match) {
-        setActiveTemplate(match);
+    const list = getTemplatesForSection(workspaceSection);
+    const found = list.find(t => t.id === selectedTemplateId);
+
+    if (found) {
+      if (found.id !== currentLoadedTemplateIdRef.current) {
+        currentLoadedTemplateIdRef.current = found.id;
+        setActiveTemplate(found);
+        setIsDirty(false);
       }
     } else {
-      // 1. If in Employee Mode and user is currently defaulted to MASTER_SALES_EVALUATION_TEMPLATE,
-      // but their personal draft/submitted template is available:
-      if (isEmployeeMode && selectedTemplateId === MASTER_SALES_EVALUATION_TEMPLATE.id) {
-        const myTmpl = visibleTemplates.find(t => checkIsTemplateOwnerLocal(t));
-        if (myTmpl) {
-          currentLoadedTemplateIdRef.current = myTmpl.id;
-          setSelectedTemplateId(myTmpl.id);
-          setActiveTemplate(myTmpl);
-          return;
-        }
-      }
-
-      // 2. If in Reviewer Mode and reviewer is currently on MASTER_SALES_EVALUATION_TEMPLATE,
-      // but pending direct report submissions exist:
-      if (isReviewerRole && !isEmployeeMode && selectedTemplateId === MASTER_SALES_EVALUATION_TEMPLATE.id) {
-        const pendingTmpl = visibleTemplates.find(t => checkIsISForTemplateLocal(t) && (t.status === 'submitted_to_is' || t.status === 'is_review'));
-        if (pendingTmpl) {
-          currentLoadedTemplateIdRef.current = pendingTmpl.id;
-          setSelectedTemplateId(pendingTmpl.id);
-          setActiveTemplate(pendingTmpl);
-          return;
-        }
-      }
-
-      const exists = (activeTemplate && activeTemplate.id === selectedTemplateId) ||
-        visibleTemplates.some(t => t.id === selectedTemplateId) || 
-        safeTemplatesList.some(t => t.id === selectedTemplateId);
-      if (!exists && visibleTemplates.length > 0) {
-        currentLoadedTemplateIdRef.current = visibleTemplates[0].id;
-        setSelectedTemplateId(visibleTemplates[0].id);
-        setActiveTemplate(visibleTemplates[0]);
+      if (list.length > 0) {
+        currentLoadedTemplateIdRef.current = list[0].id;
+        setSelectedTemplateId(list[0].id);
+        setActiveTemplate(list[0]);
+        setIsDirty(false);
       }
     }
-  }, [selectedTemplateId, visibleTemplates, safeTemplatesList, isEmployeeMode, isReviewerRole]);
+  }, [workspaceSection, templates, companyFilter, departmentFilter, searchQuery]);
+
+  // Debounced autosave for drafts (saves unfinished progress seamlessly after 4 seconds of inactivity)
+  useEffect(() => {
+    if (!isDirty || !activeTemplate || activeTemplate.status !== 'draft') return;
+
+    const timer = setTimeout(() => {
+      const committed = getTemplateWithCommittedWeights(activeTemplate);
+      const autoSavedDraft: EvaluationTemplate = {
+        ...committed,
+        status: 'draft',
+        createdByUserId: committed.createdByUserId || currentUser?.id,
+        createdByName: committed.createdByName || currentUser?.name,
+      };
+      onSaveTemplate(autoSavedDraft);
+      setLastSavedAt(new Date());
+      setIsDirty(false);
+    }, 4500);
+
+    return () => clearTimeout(timer);
+  }, [isDirty, activeTemplate]);
 
   const getWeightInputValue = (id: string, defaultValue: number | string): string => {
     return weightInputs[id] ?? String(defaultValue);
@@ -344,6 +342,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const handleWeightInputChange = (id: string, rawValue: string) => {
     const sanitized = rawValue.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
     setWeightInputs(prev => ({ ...prev, [id]: sanitized }));
+    setIsDirty(true);
   };
 
   const commitWeightInput = (id: string, defaultValue: number): number => {
@@ -392,7 +391,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   };
 
   const formatPeriodFromDates = (startDate?: string, endDate?: string): string => {
-    if (!startDate && !endDate) return activeTemplate.evaluationPeriod || '';
+    if (!startDate && !endDate) return activeTemplate?.evaluationPeriod || '';
     const fmt = (d: string) => {
       const dt = new Date(d + 'T00:00:00');
       return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -402,45 +401,90 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     return endDate ? `Until ${fmt(endDate)}` : '';
   };
 
-  // ── 1. EMPLOYEE SUBMISSION TO IMMEDIATE SUPERVISOR (IS) ─────────────────────
-  const handleSubmitToIS = async () => {
+  // ── 1. DRAFTS: SAVE UNFINISHED DRAFT (RELAXED VALIDATION — EMAIL-LIKE) ──────
+  const handleSaveAsDraft = () => {
+    let templateToSave = getTemplateWithCommittedWeights(activeTemplate);
+
+    if (weightInputs['formula_eligibility'] !== undefined) {
+      const raw = weightInputs['formula_eligibility'];
+      const numVal = raw === '' ? 85 : Number(raw);
+      templateToSave = {
+        ...templateToSave,
+        formulaConfig: { ...templateToSave.formulaConfig, eligibilityWeight: numVal }
+      };
+    }
+    if (weightInputs['formula_core_values'] !== undefined) {
+      const raw = weightInputs['formula_core_values'];
+      const numVal = raw === '' ? 15 : Number(raw);
+      templateToSave = {
+        ...templateToSave,
+        formulaConfig: { ...templateToSave.formulaConfig, coreValuesWeight: numVal }
+      };
+    }
+    setWeightInputs({});
+
+    // Email-like drafting: does NOT block on 100% total weight checks.
+    templateToSave = {
+      ...templateToSave,
+      status: 'draft',
+      createdByUserId: templateToSave.createdByUserId || currentUser?.id,
+      createdByName: templateToSave.createdByName || currentUser?.name,
+      createdByRole: templateToSave.createdByRole || currentUser?.role,
+    };
+
+    onSaveTemplate(templateToSave);
+    setActiveTemplate(templateToSave);
+    setIsDirty(false);
+    setLastSavedAt(new Date());
+    setValidationErrors([]);
+    showToast('Saved as draft in your Drafts workspace!');
+  };
+
+  // ── 2. SUBMIT FOR EVALUATION (DELIBERATE ACTION WITH 100% FORMULA VALIDATION) ─
+  const handleSubmitForEvaluation = async () => {
     const isResubmission = activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_by_pod' || activeTemplate.status === 'returned_for_revision';
+
+    const baseTmpl = getTemplateWithCommittedWeights(activeTemplate);
+
+    // Strict validation before moving to review queue
+    const validation = validateEvaluationTemplate(baseTmpl);
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      showToast('Please resolve all validation errors before submitting for evaluation.');
+      return;
+    }
 
     const matchedSupervisor = 
       resolveSupervisorForUser(currentUser, users) ||
       (users || []).find(u => 
-        (activeTemplate.immediateSupervisorId && matchIds(activeTemplate.immediateSupervisorId, u.id)) ||
-        (activeTemplate.immediateSupervisorName && matchNames(activeTemplate.immediateSupervisorName, u.name)) ||
+        (baseTmpl.immediateSupervisorId && matchIds(baseTmpl.immediateSupervisorId, u.id)) ||
+        (baseTmpl.immediateSupervisorName && matchNames(baseTmpl.immediateSupervisorName, u.name)) ||
         (currentUser?.immediateSuperiorName && matchNames(currentUser.immediateSuperiorName, u.name)) ||
         (currentUser?.immediateSuperiorId && matchIds(currentUser.immediateSuperiorId, u.id))
       );
 
-    const isId = matchedSupervisor?.id || activeTemplate.immediateSupervisorId || currentUser?.immediateSuperiorId;
-    const isName = matchedSupervisor?.name || activeTemplate.immediateSupervisorName || currentUser?.immediateSuperiorName || 'Immediate Supervisor';
+    const isEmployeeDraft = isEmployeeMode || (currentUser?.role === 'employee');
+    const hasIS = Boolean(matchedSupervisor || baseTmpl.immediateSupervisorId || currentUser?.immediateSuperiorId);
+
+    // Target route: If employee draft with supervisor -> submitted_to_is; otherwise submitted_to_pod
+    const targetStatus: TemplateStatus = (isEmployeeDraft && hasIS) ? 'submitted_to_is' : 'submitted_to_pod';
+    const isId = matchedSupervisor?.id || baseTmpl.immediateSupervisorId || currentUser?.immediateSuperiorId;
+    const isName = (targetStatus === 'submitted_to_is')
+      ? (matchedSupervisor?.name || baseTmpl.immediateSupervisorName || currentUser?.immediateSuperiorName || 'Immediate Supervisor')
+      : 'People Operations (POD)';
     const isRole = matchedSupervisor?.role || 'supervisor';
 
     const confirmMsg = isResubmission
-      ? `Resubmit your revised evaluation template to your Immediate Supervisor (${isName}) for review?`
-      : `Submit your evaluation template to your Immediate Supervisor (${isName}) for review?`;
+      ? `Resubmit your revised evaluation template to ${isName} for review?\n\nOnce submitted, this template will move to the review queue.`
+      : `Submit "${baseTmpl.title}" for evaluation to ${isName}?\n\nOnce submitted, this template moves out of Drafts into the review queue and cannot be edited as an unfinished draft.`;
 
     if (!window.confirm(confirmMsg)) return;
 
-    const baseTmpl = getTemplateWithCommittedWeights(activeTemplate);
-
-    // Validate before submission
-    const validation = validateEvaluationTemplate(baseTmpl);
-    if (!validation.isValid) {
-      setValidationErrors(validation.errors);
-      showToast('Please resolve all validation errors before submitting.');
-      return;
-    }
-
-    const newStatus: TemplateStatus = 'submitted_to_is';
     const submitted: EvaluationTemplate = {
       ...baseTmpl,
-      status: newStatus,
+      status: targetStatus,
       submittedAt: new Date().toISOString(),
-      templateSource: baseTmpl.templateSource || 'EMPLOYEE',
+      templateSource: baseTmpl.templateSource || (isEmployeeDraft ? 'EMPLOYEE' : isDeptHead ? 'DEPT_HEAD' : 'POD'),
       createdForEmployeeId: baseTmpl.createdForEmployeeId || currentUser?.id,
       createdForEmployeeName: baseTmpl.createdForEmployeeName || currentUser?.name,
       createdForEmployeeNumber: baseTmpl.createdForEmployeeNumber || currentUser?.employeeNumber,
@@ -455,32 +499,51 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     };
 
     setWeightInputs({});
+    setValidationErrors([]);
+    setIsDirty(false);
     currentLoadedTemplateIdRef.current = submitted.id;
     setSelectedTemplateId(submitted.id);
     onSaveTemplate(submitted);
     setActiveTemplate(submitted);
 
+    // Switch view to the appropriate review queue
+    setWorkspaceSection(targetStatus === 'submitted_to_is' ? 'pending_is' : 'pending_pod');
+
     try {
-      await triggerTemplateWorkflowNotification({
-        recipientRole: (isRole as any) || 'supervisor',
-        targetUserId: isId,
-        templateId: submitted.id,
-        templateTitle: submitted.title,
-        departmentName: submitted.departmentName,
-        senderName: currentUser?.name || 'Employee',
-        title: isResubmission ? 'Revised Evaluation Template Resubmitted' : 'Evaluation Template Submitted',
-        message: `${currentUser?.name || 'Employee'} has submitted an evaluation template for your Immediate Supervisor review.`,
-        type: 'action_required',
-        status: newStatus,
-      });
+      if (targetStatus === 'submitted_to_is') {
+        await triggerTemplateWorkflowNotification({
+          recipientRole: (isRole as any) || 'supervisor',
+          targetUserId: isId,
+          templateId: submitted.id,
+          templateTitle: submitted.title,
+          departmentName: submitted.departmentName,
+          senderName: currentUser?.name || 'Employee',
+          title: isResubmission ? 'Revised Evaluation Template Resubmitted' : 'Evaluation Template Submitted',
+          message: `${currentUser?.name || 'Employee'} has submitted an evaluation template for your Immediate Supervisor review.`,
+          type: 'action_required',
+          status: targetStatus,
+        });
+      } else {
+        await triggerTemplateWorkflowNotification({
+          recipientRole: 'pod',
+          templateId: submitted.id,
+          templateTitle: submitted.title,
+          departmentName: submitted.departmentName,
+          senderName: currentUser?.name || 'Staff Member',
+          title: 'Evaluation Template Submitted for POD Validation',
+          message: `${currentUser?.name} has submitted an evaluation template for People Operations validation.`,
+          type: 'action_required',
+          status: targetStatus,
+        });
+      }
     } catch (e) {
       console.warn('[TemplateBuilder] Notification error:', e);
     }
 
-    showToast(`Template successfully submitted to ${isName} for review!`);
+    showToast(`Template successfully submitted to ${isName} for evaluation!`);
   };
 
-  // ── 2. IMMEDIATE SUPERVISOR (IS) ACTION: APPROVE OR RETURN ──────────────────
+  // ── 3. IMMEDIATE SUPERVISOR (IS) ACTION: APPROVE OR RETURN ──────────────────
   const handleISAction = async (action: 'approve' | 'return') => {
     const baseTmpl = getTemplateWithCommittedWeights(activeTemplate);
 
@@ -556,7 +619,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     }
   };
 
-  // ── 3. PEOPLE OPERATIONS (POD) ACTION: APPROVE, DEPLOY, RETURN ───────────────
+  // ── 4. PEOPLE OPERATIONS (POD) ACTION: APPROVE, DEPLOY, RETURN ───────────────
   const handlePODAction = async (action: 'approve' | 'deploy' | 'return') => {
     const baseTmpl = getTemplateWithCommittedWeights(activeTemplate);
 
@@ -632,6 +695,13 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       setPodRemarkInput('');
       showToast('Template validated and approved by POD. Ready to deploy.');
     } else if (action === 'deploy') {
+      const validation = validateEvaluationTemplate(baseTmpl);
+      if (!validation.isValid) {
+        setValidationErrors(validation.errors);
+        showToast('Template must satisfy all 100% weight criteria before official deployment.');
+        return;
+      }
+
       const deployed: EvaluationTemplate = {
         ...baseTmpl,
         status: 'deployed',
@@ -643,10 +713,12 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       setWeightInputs({});
       onSaveTemplate(deployed);
       setActiveTemplate(deployed);
+      setWorkspaceSection('deployed');
       showToast('Evaluation template deployed successfully! Template is now locked and active for self-evaluations.');
     }
   };
 
+  // ── 5. CREATE NEW REVISION (FROM DEPLOYED) ──────────────────────────────────
   const handleCreateRevision = () => {
     const nextVersion = (activeTemplate.version || 1) + 1;
     const revision: EvaluationTemplate = {
@@ -670,39 +742,39 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     onSaveTemplate(revision);
     setActiveTemplate(revision);
     setSelectedTemplateId(revision.id);
+    setWorkspaceSection('drafts');
     showToast(`Created new draft Revision v${nextVersion}! Original deployed template remains locked & immutable.`);
   };
 
-  const handleDeleteTemplateAction = (templateId: string, e?: React.MouseEvent) => {
+  // ── 6. DELETE DRAFT ACTION ──────────────────────────────────────────────────
+  const handleDeleteDraftAction = (templateId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
 
-    if (!canDelete) {
-      alert('Only authorized supervisors, department heads, or administrators can delete evaluation templates.');
-      return;
-    }
-
-    const tmplToDelete = templates.find(t => t.id === templateId) || visibleTemplates.find(t => t.id === templateId);
+    const tmplToDelete = templates.find(t => t.id === templateId) || safeTemplatesList.find(t => t.id === templateId);
     if (!tmplToDelete) return;
 
-    const isInUse = evaluations?.some(
-      (ev) => ev.templateId === templateId && ev.status !== 'archived'
-    );
-
-    if (isInUse) {
-      alert('This template cannot be deleted because it is currently in use by an active evaluation.');
+    if (tmplToDelete.status !== 'draft') {
+      alert('Only draft templates can be deleted here.');
       return;
     }
 
-    if (window.confirm(`Are you sure you want to delete "${tmplToDelete.title}"?`)) {
+    if (!checkIsTemplateOwnerLocal(tmplToDelete) && !isPOD && currentUser?.role !== 'system_admin') {
+      alert('You can only delete your own draft templates.');
+      return;
+    }
+
+    if (window.confirm(`Are you sure you want to delete the draft "${tmplToDelete.title}"? This cannot be undone.`)) {
       if (onDeleteTemplate) {
         onDeleteTemplate(templateId);
       }
-      const remaining = visibleTemplates.filter(t => t.id !== templateId);
-      if (selectedTemplateId === templateId && remaining.length > 0) {
-        setSelectedTemplateId(remaining[0].id);
-        setActiveTemplate(remaining[0]);
+      const remaining = draftsQueue.filter(t => t.id !== templateId);
+      if (selectedTemplateId === templateId) {
+        if (remaining.length > 0) {
+          setSelectedTemplateId(remaining[0].id);
+          setActiveTemplate(remaining[0]);
+        }
       }
-      showToast('Evaluation template deleted successfully!');
+      showToast('Draft template deleted successfully!');
     }
   };
 
@@ -710,33 +782,33 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     currentLoadedTemplateIdRef.current = id;
     setSelectedTemplateId(id);
     setValidationErrors([]);
-    const tmpl = visibleTemplates.find((t) => t.id === id) || safeTemplatesList.find((t) => t.id === id);
+    setIsDirty(false);
+    const tmpl = safeTemplatesList.find((t) => t.id === id);
     if (tmpl) setActiveTemplate(tmpl);
     setMobileTab('editor');
   };
 
-  // ── POD / ADMIN CREATE NEW TEMPLATE (WITH SEARCHABLE EMPLOYEE SELECTOR) ─────
+  // ── CREATE NEW TEMPLATE MODAL ───────────────────────────────────────────────
   const handleOpenCreateModal = () => {
     if (isEmployeeMode) {
-      // Employee creating own template
       const newTmpl = getInitialEmployeeTemplate();
       currentLoadedTemplateIdRef.current = newTmpl.id;
       onSaveTemplate(newTmpl);
       setActiveTemplate(newTmpl);
       setSelectedTemplateId(newTmpl.id);
+      setWorkspaceSection('drafts');
       setValidationErrors([]);
       showToast('New draft template initialized for your evaluation!');
       return;
     }
 
-    // POD / Admin opening creation modal
     setShowCreateModal(true);
     setCreateType('employee');
     setSelectedEmployeeForNewTemplate(null);
     setEmployeeSearchQuery('');
   };
 
-  const handleConfirmCreateTemplate = (asDraft: boolean = false) => {
+  const handleConfirmCreateTemplate = (asDraft: boolean = true) => {
     const currentYear = new Date().getFullYear();
     const defaultStart = `${currentYear}-01-01`;
     const defaultEnd = `${currentYear}-12-31`;
@@ -757,7 +829,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       );
 
       newTemplate.id = generateUuid();
-      newTemplate.status = asDraft ? 'draft' : 'approved';
+      newTemplate.status = 'draft'; // Always starts in Drafts
       newTemplate.templateSource = 'POD';
       newTemplate.createdForEmployeeId = emp.id;
       newTemplate.createdForEmployeeName = emp.name;
@@ -779,9 +851,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       onSaveTemplate(newTemplate);
       setActiveTemplate(newTemplate);
       setSelectedTemplateId(newTemplate.id);
+      setWorkspaceSection('drafts');
       setShowCreateModal(false);
       setValidationErrors([]);
-      showToast(asDraft ? `Template saved as private draft for ${emp.name}!` : `New template created and available for ${emp.name} (${emp.companyName})!`);
+      showToast(`Draft template initialized for ${emp.name} in Drafts!`);
     } else {
       const dept = selectedDeptForNewTemplate || departments[0];
       const newTemplate = createMasterBasedTemplate(
@@ -792,7 +865,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       );
 
       newTemplate.id = generateUuid();
-      newTemplate.status = asDraft ? 'draft' : 'approved';
+      newTemplate.status = 'draft'; // Always starts in Drafts
       newTemplate.templateSource = 'POD';
       newTemplate.companyName = dept.companyName || 'Adventures';
       newTemplate.departmentId = dept.id;
@@ -807,12 +880,14 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       onSaveTemplate(newTemplate);
       setActiveTemplate(newTemplate);
       setSelectedTemplateId(newTemplate.id);
+      setWorkspaceSection('drafts');
       setShowCreateModal(false);
       setValidationErrors([]);
-      showToast(asDraft ? `Department template saved as private draft!` : `New department template created and available for ${dept.name} (${dept.companyName || 'Adventures'})!`);
+      showToast(`Department template saved as draft in Drafts workspace!`);
     }
   };
 
+  // ── KRA / KPI ACTIONS ───────────────────────────────────────────────────────
   const handleAddKRA = () => {
     const newKra: KRACategory = {
       id: `kra_${Date.now()}`,
@@ -824,6 +899,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       ...activeTemplate,
       kraCategories: [...activeTemplate.kraCategories, newKra]
     });
+    setIsDirty(true);
   };
 
   const handleRemoveKRA = (kraId: string) => {
@@ -831,6 +907,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       ...activeTemplate,
       kraCategories: activeTemplate.kraCategories.filter(k => k.id !== kraId)
     });
+    setIsDirty(true);
   };
 
   const handleAddKPI = (kraId: string) => {
@@ -861,6 +938,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     });
 
     setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+    setIsDirty(true);
   };
 
   const handleRemoveKPI = (kraId: string, kpiId: string) => {
@@ -871,6 +949,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       return k;
     });
     setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+    setIsDirty(true);
   };
 
   const handleUpdateKPIStandard = (
@@ -901,6 +980,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       return { ...kra, kpis: updatedKpis };
     });
     setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+    setIsDirty(true);
   };
 
   const handleAddKPIStandard = (kraId: string, kpiId: string) => {
@@ -920,6 +1000,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       return { ...kra, kpis: updatedKpis };
     });
     setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+    setIsDirty(true);
   };
 
   const handleRemoveKPIStandard = (kraId: string, kpiId: string, standardIndex: number) => {
@@ -934,6 +1015,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       return { ...kra, kpis: updatedKpis };
     });
     setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+    setIsDirty(true);
   };
 
   const handleResetKPIStandards = (kraId: string, kpiId: string) => {
@@ -952,8 +1034,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       return { ...kra, kpis: updatedKpis };
     });
     setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+    setIsDirty(true);
   };
 
+  // ── CORE VALUES ACTIONS ─────────────────────────────────────────────────────
   const handleAddCoreValue = () => {
     const newCoreValue: CoreValue = {
       id: `cv_${Date.now()}`,
@@ -966,6 +1050,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       ...activeTemplate,
       coreValues: [...(activeTemplate.coreValues || []), newCoreValue]
     });
+    setIsDirty(true);
   };
 
   const handleRemoveCoreValue = (coreValueId: string) => {
@@ -974,6 +1059,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       ...activeTemplate,
       coreValues: (activeTemplate.coreValues || []).filter(cv => cv.id !== coreValueId)
     });
+    setIsDirty(true);
   };
 
   const handleUpdateCoreValue = (coreValueId: string, field: keyof CoreValue, value: string | number) => {
@@ -983,6 +1069,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         cv.id === coreValueId ? { ...cv, [field]: value } : cv
       )
     });
+    setIsDirty(true);
   };
 
   const recalculateCoreValueWeights = () => {
@@ -998,156 +1085,11 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         sortOrder: idx + 1
       }))
     });
+    setIsDirty(true);
   };
 
-  const totalCoreValueWeight = (activeTemplate.coreValues || []).reduce((sum, cv) => sum + (Number(cv.weightPercent) || 0), 0);
-  const isCoreValuesValid = Math.abs(totalCoreValueWeight - (activeTemplate.formulaConfig.coreValuesWeight || 0)) < 0.01;
-
-  const handleSave = () => {
-    let templateToSave = getTemplateWithCommittedWeights(activeTemplate);
-
-    // Commit any in-flight formula weight inputs
-    if (weightInputs['formula_eligibility'] !== undefined) {
-      const raw = weightInputs['formula_eligibility'];
-      const numVal = raw === '' ? 85 : Number(raw);
-      templateToSave = {
-        ...templateToSave,
-        formulaConfig: { ...templateToSave.formulaConfig, eligibilityWeight: numVal }
-      };
-    }
-    if (weightInputs['formula_core_values'] !== undefined) {
-      const raw = weightInputs['formula_core_values'];
-      const numVal = raw === '' ? 15 : Number(raw);
-      templateToSave = {
-        ...templateToSave,
-        formulaConfig: { ...templateToSave.formulaConfig, coreValuesWeight: numVal }
-      };
-    }
-    setWeightInputs({});
-
-    const validation = validateEvaluationTemplate(templateToSave);
-    if (!validation.isValid) {
-      setValidationErrors(validation.errors);
-      showToast('Please resolve all validation errors before saving.');
-      return;
-    }
-
-    setValidationErrors([]);
-    onSaveTemplate(templateToSave);
-    setActiveTemplate(templateToSave);
-    showToast('Template changes saved successfully!');
-  };
-
-  const handleSaveAsDraft = () => {
-    let templateToSave = getTemplateWithCommittedWeights(activeTemplate);
-
-    if (weightInputs['formula_eligibility'] !== undefined) {
-      const raw = weightInputs['formula_eligibility'];
-      const numVal = raw === '' ? 85 : Number(raw);
-      templateToSave = {
-        ...templateToSave,
-        formulaConfig: { ...templateToSave.formulaConfig, eligibilityWeight: numVal }
-      };
-    }
-    if (weightInputs['formula_core_values'] !== undefined) {
-      const raw = weightInputs['formula_core_values'];
-      const numVal = raw === '' ? 15 : Number(raw);
-      templateToSave = {
-        ...templateToSave,
-        formulaConfig: { ...templateToSave.formulaConfig, coreValuesWeight: numVal }
-      };
-    }
-    setWeightInputs({});
-
-    templateToSave = {
-      ...templateToSave,
-      status: 'draft',
-      createdByUserId: templateToSave.createdByUserId || currentUser?.id,
-      createdByName: templateToSave.createdByName || currentUser?.name,
-    };
-
-    onSaveTemplate(templateToSave);
-    setActiveTemplate(templateToSave);
-    showToast('Saved as private draft in My Draft Templates!');
-  };
-
-  const handlePublishTemplate = () => {
-    let templateToSave = getTemplateWithCommittedWeights(activeTemplate);
-
-    if (weightInputs['formula_eligibility'] !== undefined) {
-      const raw = weightInputs['formula_eligibility'];
-      const numVal = raw === '' ? 85 : Number(raw);
-      templateToSave = {
-        ...templateToSave,
-        formulaConfig: { ...templateToSave.formulaConfig, eligibilityWeight: numVal }
-      };
-    }
-    if (weightInputs['formula_core_values'] !== undefined) {
-      const raw = weightInputs['formula_core_values'];
-      const numVal = raw === '' ? 15 : Number(raw);
-      templateToSave = {
-        ...templateToSave,
-        formulaConfig: { ...templateToSave.formulaConfig, coreValuesWeight: numVal }
-      };
-    }
-    setWeightInputs({});
-
-    const validation = validateEvaluationTemplate(templateToSave);
-    if (!validation.isValid) {
-      setValidationErrors(validation.errors);
-      showToast('Please resolve all validation errors before publishing.');
-      return;
-    }
-
-    setValidationErrors([]);
-    const published: EvaluationTemplate = {
-      ...templateToSave,
-      status: 'approved',
-    };
-    onSaveTemplate(published);
-    setActiveTemplate(published);
-    showToast('Template published and made available for evaluations!');
-  };
-
-  const handleUndraftTemplate = () => {
-    let templateToSave = getTemplateWithCommittedWeights(activeTemplate);
-
-    if (weightInputs['formula_eligibility'] !== undefined) {
-      const raw = weightInputs['formula_eligibility'];
-      const numVal = raw === '' ? 85 : Number(raw);
-      templateToSave = {
-        ...templateToSave,
-        formulaConfig: { ...templateToSave.formulaConfig, eligibilityWeight: numVal }
-      };
-    }
-    if (weightInputs['formula_core_values'] !== undefined) {
-      const raw = weightInputs['formula_core_values'];
-      const numVal = raw === '' ? 15 : Number(raw);
-      templateToSave = {
-        ...templateToSave,
-        formulaConfig: { ...templateToSave.formulaConfig, coreValuesWeight: numVal }
-      };
-    }
-    setWeightInputs({});
-
-    const validation = validateEvaluationTemplate(templateToSave);
-    if (!validation.isValid) {
-      setValidationErrors(validation.errors);
-      showToast('Please resolve all validation errors before undrafting.');
-      return;
-    }
-
-    setValidationErrors([]);
-    const nextStatus: TemplateStatus = isPOD ? 'deployed' : 'approved';
-    const undrafted: EvaluationTemplate = {
-      ...templateToSave,
-      status: nextStatus,
-      isLocked: isPOD ? true : false,
-    };
-    onSaveTemplate(undrafted);
-    setActiveTemplate(undrafted);
-    showToast(`Template undrafted successfully! Status is now ${isPOD ? 'Deployed & Available' : 'Available for Evaluations'}.`);
-  };
+  const totalCoreValueWeight = (activeTemplate?.coreValues || []).reduce((sum, cv) => sum + (Number(cv.weightPercent) || 0), 0);
+  const isCoreValuesValid = Math.abs(totalCoreValueWeight - (activeTemplate?.formulaConfig?.coreValuesWeight || 0)) < 0.01;
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -1159,19 +1101,18 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   };
 
   const getKraTotalWeight = () => {
-    return activeTemplate.kraCategories.reduce((sum, kra) => sum + (Number(kra.categoryWeightPercent) || 0), 0);
+    return (activeTemplate?.kraCategories || []).reduce((sum, kra) => sum + (Number(kra.categoryWeightPercent) || 0), 0);
   };
 
   const getAllKpisTotalWeight = () => {
-    return activeTemplate.kraCategories.reduce((sum, kra) => {
+    return (activeTemplate?.kraCategories || []).reduce((sum, kra) => {
       return sum + kra.kpis.reduce((kpiSum, kpi) => kpiSum + (Number(kpi.weightPercent) || 0), 0);
     }, 0);
   };
 
-  const eligibilityWeight = Number(activeTemplate.formulaConfig.eligibilityWeight) || 85;
+  const eligibilityWeight = Number(activeTemplate?.formulaConfig?.eligibilityWeight) || 85;
   const isPart1AKraWeightValid = () => Math.abs(getKraTotalWeight() - eligibilityWeight) < 0.01;
   const isPart1AKpiWeightValid = () => Math.abs(getAllKpisTotalWeight() - eligibilityWeight) < 0.01;
-  const isKraValid = (kra: KRACategory) => getKpiTotal(kra) <= (Number(kra.categoryWeightPercent) || 0);
 
   const statusColors: Record<string, string> = {
     draft: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
@@ -1185,13 +1126,13 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     returned_by_pod: 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300',
     pod_review: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300',
     pod_approved: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300',
-    approved: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300',
+    approved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300',
     deployed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300',
   };
 
   const statusBadgeLabels: Record<string, string> = {
     draft: 'Draft',
-    submitted_to_is: 'Submitted to IS',
+    submitted_to_is: 'Pending IS',
     is_review: 'Under IS Review',
     returned_by_is: 'Returned by IS',
     is_approved: 'Pending POD',
@@ -1201,7 +1142,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     returned_by_pod: 'Returned by POD',
     pod_review: 'POD Review',
     pod_approved: 'POD Approved',
-    approved: 'Available',
+    approved: 'Approved',
     deployed: 'Deployed',
   };
 
@@ -1217,8 +1158,8 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     returned_by_pod: 'Returned by People Operations',
     pod_review: 'People Operations Review',
     pod_approved: 'Approved by People Operations',
-    approved: 'Available',
-    deployed: 'Deployed',
+    approved: 'Approved & Available',
+    deployed: 'Approved & Deployed',
   };
 
   // Filtered employees for create modal
@@ -1248,7 +1189,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 space-y-1">
           <div className="flex items-center space-x-2 text-rose-700 dark:text-rose-400 font-bold text-xs">
             <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>Cannot save template. Please correct the following:</span>
+            <span>Submission Validation Errors — Please resolve the following:</span>
           </div>
           <ul className="list-disc list-inside text-xs text-rose-600 dark:text-rose-400 space-y-0.5 ml-1">
             {validationErrors.map((err, i) => (
@@ -1265,7 +1206,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             <Layers className="w-5 h-5 text-[#E96B1A]" />
             <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
               {isEmployeeMode 
-                ? 'My Evaluation Template' 
+                ? 'My Evaluation Templates' 
                 : isSupervisorRole 
                 ? 'Team Evaluation Template Reviews'
                 : 'Evaluation Templates & POD Governance'}
@@ -1273,10 +1214,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
             {isEmployeeMode
-              ? 'Draft your personalized performance evaluation scorecard, configure KRAs and KPIs, and submit directly to your Immediate Supervisor.'
+              ? 'Prepare your performance evaluation scorecard in your private Drafts workspace, and submit deliberately to your Immediate Supervisor for evaluation.'
               : isSupervisorRole
-              ? 'Review, calibrate weights, provide remarks, and approve evaluation templates submitted by your team members.'
-              : 'Review, validate, configure, and deploy official evaluation scorecard templates across all HDI companies and departments.'}
+              ? 'Review submitted scorecards from direct reports, calibrate weights, provide remarks, and approve for POD governance.'
+              : 'Govern company scorecards across dedicated stages: draft authoring, supervisor review queues, POD validation, and deployed scorecards.'}
           </p>
         </div>
 
@@ -1286,9 +1227,168 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             className="px-4 py-2.5 rounded-xl bg-[#E96B1A] hover:bg-[#D45A0E] text-white text-xs font-bold shadow-md flex items-center space-x-2 shrink-0 transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>{isEmployeeMode ? 'Create New Template' : '+ Create New Template'}</span>
+            <span>+ Create Template</span>
           </button>
         )}
+      </div>
+
+      {/* ── TOP SEGMENTED WORKSPACE QUEUES NAVIGATION ────────────────────────── */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-2.5 border border-slate-200 dark:border-slate-700 shadow-sm space-y-2">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          {/* Group 1: My Work */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900/60 rounded-xl overflow-x-auto">
+            <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 px-2 tracking-wider shrink-0">
+              My Work
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setWorkspaceSection('drafts');
+                setMobileTab('list');
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                workspaceSection === 'drafts'
+                  ? 'bg-amber-500 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800'
+              }`}
+              title="Templates you are still preparing (private work in progress)"
+            >
+              <FileEdit className="w-3.5 h-3.5" />
+              <span>Drafts</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                workspaceSection === 'drafts' ? 'bg-amber-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+              }`}>
+                {draftsCount}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setWorkspaceSection('returned');
+                setMobileTab('list');
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                workspaceSection === 'returned'
+                  ? 'bg-rose-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800'
+              }`}
+              title="Templates returned for revision by reviewers"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Returned</span>
+              {returnedCount > 0 && (
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  workspaceSection === 'returned' ? 'bg-rose-700 text-white' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/80 dark:text-rose-200'
+                }`}>
+                  {returnedCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Group 2: For Evaluation (Supervisor & POD Review Queues) */}
+          {(isSupervisorRole || isPOD || isDeptHead || pendingISCount > 0 || pendingPODCount > 0) && (
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900/60 rounded-xl overflow-x-auto">
+              <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 px-2 tracking-wider shrink-0">
+                For Evaluation
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setWorkspaceSection('pending_is');
+                  setMobileTab('list');
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  workspaceSection === 'pending_is'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800'
+                }`}
+                title="Templates awaiting Immediate Supervisor review & weight calibration"
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Pending IS</span>
+                {pendingISCount > 0 && (
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                    workspaceSection === 'pending_is' ? 'bg-amber-700 text-white' : 'bg-amber-500 text-white'
+                  }`}>
+                    {pendingISCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setWorkspaceSection('pending_pod');
+                  setMobileTab('list');
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  workspaceSection === 'pending_pod'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800'
+                }`}
+                title="Templates awaiting People Operations final validation and deployment"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Pending POD</span>
+                {pendingPODCount > 0 && (
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                    workspaceSection === 'pending_pod' ? 'bg-indigo-700 text-white' : 'bg-indigo-500 text-white'
+                  }`}>
+                    {pendingPODCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Group 3: Completed */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900/60 rounded-xl overflow-x-auto">
+            <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 px-2 tracking-wider shrink-0">
+              Completed
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setWorkspaceSection('deployed');
+                setMobileTab('list');
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                workspaceSection === 'deployed'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800'
+              }`}
+              title="Official templates approved and deployed for evaluations"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Deployed</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                workspaceSection === 'deployed' ? 'bg-emerald-700 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+              }`}>
+                {deployedCount}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Workspace section context bar */}
+        <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center space-x-1.5">
+            <Info className="w-3.5 h-3.5 text-[#E96B1A]" />
+            <span className="font-semibold text-slate-700 dark:text-slate-300">
+              {workspaceSection === 'drafts' && 'Drafts Workspace — Work in progress. Unfinished templates remain private to you until submitted.'}
+              {workspaceSection === 'pending_is' && 'Pending IS Review Queue — Submitted templates awaiting Immediate Supervisor review and calibration.'}
+              {workspaceSection === 'pending_pod' && 'Pending POD Review Queue — Templates awaiting People Operations validation and official deployment.'}
+              {workspaceSection === 'deployed' && 'Deployed Scorecards — Approved official templates actively locked for self-evaluations.'}
+              {workspaceSection === 'returned' && 'Returned for Revision — Templates requiring adjustments based on reviewer feedback.'}
+            </span>
+          </div>
+
+          <span className="text-[11px] font-bold text-slate-400 hidden sm:inline">
+            Showing {currentSectionTemplates.length} record{currentSectionTemplates.length === 1 ? '' : 's'}
+          </span>
+        </div>
       </div>
 
       {/* Mobile View Switcher (Templates List vs Active Editor) */}
@@ -1303,7 +1403,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
-          <span>Templates List ({visibleTemplates.length})</span>
+          <span>Queue List ({currentSectionTemplates.length})</span>
         </button>
         <button
           type="button"
@@ -1315,7 +1415,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
           }`}
         >
           <FileEdit className="w-3.5 h-3.5" />
-          <span className="truncate max-w-[130px]">{activeTemplate.title || 'Editor'}</span>
+          <span className="truncate max-w-[130px]">{activeTemplate?.title || 'Editor'}</span>
         </button>
       </div>
 
@@ -1324,106 +1424,37 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         <div className={`lg:col-span-4 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col lg:h-[calc(100vh-140px)] lg:min-h-[600px] lg:sticky lg:top-4 ${
           mobileTab === 'editor' ? 'hidden lg:flex' : 'flex'
         }`}>
-          <div className="flex items-center justify-between px-1 shrink-0 mb-2">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              {isEmployeeMode ? 'My Templates' : isSupervisorRole ? 'Team Direct Report Templates' : 'Evaluation Templates'} ({visibleTemplates.length})
-            </h3>
-          </div>
-
-          {/* Supervisor / Dept Head Filter Tabs */}
-          {(isSupervisorRole || isDeptHead) && !isEmployeeMode && !isPOD && (
-            <div className="space-y-2 mb-3 shrink-0">
-              <div className="flex flex-wrap p-1 bg-slate-100 dark:bg-slate-750 rounded-xl gap-1 text-[11px] font-semibold">
-                <button
-                  onClick={() => setSupervisorFilterTab('all')}
-                  className={`flex-1 py-1 px-2 rounded-lg transition-all text-center ${supervisorFilterTab === 'all' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setSupervisorFilterTab('pending_review')}
-                  className={`flex-1 py-1 px-2 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${supervisorFilterTab === 'pending_review' ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Pending IS
-                  {pendingISCount > 0 && (
-                    <span className="px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[9px] font-bold">
-                      {pendingISCount}
-                    </span>
-                  )}
-                </button>
-                <button
-                  onClick={() => setSupervisorFilterTab('approved')}
-                  className={`flex-1 py-1 px-2 rounded-lg transition-all text-center ${supervisorFilterTab === 'approved' ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Approved
-                </button>
-                <button
-                  onClick={() => setSupervisorFilterTab('returned')}
-                  className={`flex-1 py-1 px-2 rounded-lg transition-all text-center ${supervisorFilterTab === 'returned' ? 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Returned
-                </button>
-              </div>
+          {/* Search & Filter Header */}
+          <div className="space-y-2 mb-3 shrink-0">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                {workspaceSection === 'drafts' && 'My Draft Templates'}
+                {workspaceSection === 'pending_is' && 'Awaiting IS Review'}
+                {workspaceSection === 'pending_pod' && 'Awaiting POD Validation'}
+                {workspaceSection === 'deployed' && 'Deployed Scorecards'}
+                {workspaceSection === 'returned' && 'Returned for Revision'}
+                {' '}({currentSectionTemplates.length})
+              </h3>
             </div>
-          )}
 
-          {/* POD Filter Tabs */}
-          {isPOD && (
-            <div className="space-y-2 mb-3 shrink-0">
-              <div className="flex flex-wrap p-1 bg-slate-100 dark:bg-slate-750 rounded-xl gap-1 text-[11px] font-semibold">
-                <button
-                  onClick={() => setPodFilterTab('all')}
-                  className={`flex-1 py-1 px-2 rounded-lg transition-all text-center ${podFilterTab === 'all' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setPodFilterTab('draft')}
-                  className={`flex-1 py-1 px-2 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${podFilterTab === 'draft' ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Drafts
-                  {podDraftsCount > 0 && (
-                    <span className="px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[9px] font-bold">
-                      {podDraftsCount}
-                    </span>
-                  )}
-                </button>
-                <button
-                  onClick={() => setPodFilterTab('pending_pod')}
-                  className={`flex-1 py-1 px-2 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${podFilterTab === 'pending_pod' ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Pending POD
-                  {pendingSubmissionsCount > 0 && (
-                    <span className="px-1.5 py-0.2 bg-indigo-500 text-white rounded-full text-[9px] font-bold">
-                      {pendingSubmissionsCount}
-                    </span>
-                  )}
-                </button>
-                <button
-                  onClick={() => setPodFilterTab('pending_is')}
-                  className={`flex-1 py-1 px-2 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${podFilterTab === 'pending_is' ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Pending IS
-                  {pendingISCount > 0 && (
-                    <span className="px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[9px] font-bold">
-                      {pendingISCount}
-                    </span>
-                  )}
-                </button>
-                <button
-                  onClick={() => setPodFilterTab('approved_deployed')}
-                  className={`flex-1 py-1 px-2 rounded-lg transition-all text-center ${podFilterTab === 'approved_deployed' ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Deployed
-                </button>
-              </div>
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search templates in queue..."
+                className="w-full text-xs pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400"
+              />
+            </div>
 
-              {/* Company & Department Filters for POD */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
+            {/* POD Company & Department Filters */}
+            {isPOD && (
+              <div className="grid grid-cols-2 gap-1.5 text-xs">
                 <select
                   value={companyFilter}
                   onChange={(e) => setCompanyFilter(e.target.value)}
-                  className="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-medium"
+                  className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-[11px] font-medium"
                 >
                   <option value="all">All Companies</option>
                   <option value="HDI WORLD">HDI WORLD</option>
@@ -1436,114 +1467,91 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 <select
                   value={departmentFilter}
                   onChange={(e) => setDepartmentFilter(e.target.value)}
-                  className="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-medium"
+                  className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-[11px] font-medium"
                 >
-                  <option value="all">All Departments</option>
+                  <option value="all">All Depts</option>
                   {departments.map(d => (
                     <option key={d.id} value={d.name}>{d.name}</option>
                   ))}
                 </select>
               </div>
-            </div>
-          )}
-
-          <div className="space-y-4 flex-1 overflow-y-auto pr-1 pb-10">
-            {/* Draft Templates Section */}
-            {draftTemplatesForSection.length > 0 && (
-              <div className="space-y-2 p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 shadow-sm">
-                <div className="flex items-center space-x-1.5 px-1 text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider">
-                  <FileEdit className="w-3.5 h-3.5" />
-                  <span>{isPOD ? 'All Draft Templates' : 'My Draft Templates'} ({draftTemplatesForSection.length})</span>
-                </div>
-                <div className="space-y-2">
-                  {draftTemplatesForSection.map((tmpl) => (
-                    <div
-                      key={tmpl.id}
-                      onClick={() => handleSelectTemplate(tmpl.id)}
-                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${
-                        selectedTemplateId === tmpl.id
-                          ? 'bg-amber-100/90 dark:bg-amber-900/50 border-amber-500 ring-2 ring-amber-500/20'
-                          : 'bg-white dark:bg-slate-800 border-amber-200/90 dark:border-amber-800/40 hover:border-amber-400'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-1 flex-wrap">
-                        <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
-                          Draft
-                        </span>
-                        {canDelete && (
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteTemplateAction(tmpl.id, e)}
-                            className="p-1 text-slate-400 hover:text-rose-500 rounded-lg transition-colors"
-                            title="Delete draft"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                      <p className="font-bold text-slate-900 dark:text-white text-xs mt-1.5">{tmpl.title}</p>
-                      {tmpl.createdForEmployeeName && (
-                        <p className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5 font-medium">For: {tmpl.createdForEmployeeName}</p>
-                      )}
-                      {tmpl.departmentName && (
-                        <p className="text-[9px] text-slate-500 dark:text-slate-400">{tmpl.departmentName}</p>
-                      )}
-                      <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-1 font-semibold flex items-center gap-1">
-                        <Bookmark className="w-2.5 h-2.5" />
-                        Click to edit / undraft
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
             )}
+          </div>
 
-            {/* Available / Published Templates Section */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-1 shrink-0">
-                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  {isEmployeeMode ? 'Available Templates' : isSupervisorRole ? 'Team Direct Report Templates' : 'Available Templates'} ({availableTemplates.length})
-                </h4>
+          {/* Template Cards List */}
+          <div className="space-y-3 flex-1 overflow-y-auto pr-1 pb-10">
+            {currentSectionTemplates.length === 0 ? (
+              <div className="p-8 text-center rounded-2xl bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-700 space-y-2">
+                <Inbox className="w-8 h-8 mx-auto text-slate-400" />
+                <p className="font-bold text-xs text-slate-700 dark:text-slate-300">
+                  {workspaceSection === 'drafts' && 'No unfinished drafts found'}
+                  {workspaceSection === 'pending_is' && 'No templates awaiting IS review'}
+                  {workspaceSection === 'pending_pod' && 'No templates awaiting POD validation'}
+                  {workspaceSection === 'deployed' && 'No deployed templates in this view'}
+                  {workspaceSection === 'returned' && 'No templates returned for revision'}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  {workspaceSection === 'drafts'
+                    ? 'Start a new draft with "+ Create Template".'
+                    : 'Templates will appear here once they transition to this queue.'}
+                </p>
+                {workspaceSection === 'drafts' && canCreate && (
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateModal}
+                    className="mt-2 px-3 py-1.5 rounded-lg bg-[#E96B1A] text-white text-xs font-bold shadow-sm"
+                  >
+                    + Create Template
+                  </button>
+                )}
               </div>
-
-              {availableTemplates.length === 0 ? (
-                <div className="p-6 text-center text-xs text-slate-400">
-                  No published or available templates found in this category.
-                </div>
-              ) : availableTemplates.map((tmpl) => {
+            ) : (
+              currentSectionTemplates.map((tmpl) => {
                 const sts = tmpl.status || 'deployed';
+                const isSelected = selectedTemplateId === tmpl.id;
+
                 return (
                   <div
                     key={tmpl.id}
                     onClick={() => handleSelectTemplate(tmpl.id)}
-                    className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
-                      selectedTemplateId === tmpl.id
-                        ? 'bg-orange-50 dark:bg-orange-950/40 border-[#E96B1A] ring-2 ring-[#E96B1A]/20'
+                    className={`w-full text-left p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                      isSelected
+                        ? workspaceSection === 'drafts'
+                          ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-500 ring-2 ring-amber-500/20'
+                          : workspaceSection === 'pending_is'
+                          ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-500 ring-2 ring-amber-500/20'
+                          : workspaceSection === 'pending_pod'
+                          ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-500 ring-2 ring-indigo-500/20'
+                          : workspaceSection === 'returned'
+                          ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-500 ring-2 ring-rose-500/20'
+                          : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/20'
                         : 'bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700 hover:border-slate-300'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1 flex-wrap">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         {tmpl.companyName && (
-                          <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+                          <span className="text-[9.5px] font-extrabold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
                             {tmpl.companyName}
                           </span>
                         )}
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                        <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
                           {tmpl.departmentName}
                         </span>
                       </div>
 
-                      <div className="flex items-center space-x-1.5">
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${statusColors[sts] || statusColors.deployed}`}>
-                          {statusBadgeLabels[sts] || statusLabels[sts] || sts}
+                      <div className="flex items-center space-x-1">
+                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${statusColors[sts] || statusColors.deployed}`}>
+                          {statusBadgeLabels[sts] || sts}
                         </span>
-                        {canDelete && (
+
+                        {/* Delete Draft Button */}
+                        {workspaceSection === 'drafts' && (checkIsTemplateOwnerLocal(tmpl) || isPOD || currentUser?.role === 'system_admin') && (
                           <button
                             type="button"
-                            onClick={(e) => handleDeleteTemplateAction(tmpl.id, e)}
-                            className="p-1 text-slate-400 hover:text-[#E96B1A] rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/40 transition-colors"
-                            title="Delete template"
+                            onClick={(e) => handleDeleteDraftAction(tmpl.id, e)}
+                            className="p-1 text-slate-400 hover:text-rose-500 rounded-lg transition-colors"
+                            title="Delete draft"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1551,25 +1559,39 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                       </div>
                     </div>
 
-                    <p className="font-bold text-slate-900 dark:text-white text-xs mt-2">{tmpl.title}</p>
-                    
+                    <p className="font-extrabold text-slate-900 dark:text-white text-xs mt-2 leading-tight">
+                      {tmpl.title}
+                    </p>
+
                     {tmpl.createdForEmployeeName && (
-                      <p className="text-[11px] text-[#E96B1A] font-semibold mt-0.5 flex items-center gap-1">
+                      <p className="text-[11px] text-[#E96B1A] font-semibold mt-1 flex items-center gap-1">
                         <UserIcon className="w-3 h-3" />
-                        For: {tmpl.createdForEmployeeName} ({tmpl.createdForPosition || 'Staff'})
+                        <span>For: {tmpl.createdForEmployeeName}</span>
                       </p>
                     )}
 
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      Period: {tmpl.evaluationPeriod || (tmpl.startDate && tmpl.endDate ? `${tmpl.startDate} – ${tmpl.endDate}` : 'Annual')}
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      {tmpl.kraCategories.length} KRAs • Formula: {tmpl.formulaConfig.eligibilityWeight}% KPI / {tmpl.formulaConfig.coreValuesWeight}% Core Values
-                    </p>
+                    {/* Metadata & Timestamps */}
+                    <div className="mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                      {tmpl.submittedAt && (
+                        <p className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-medium">
+                          <Clock className="w-2.5 h-2.5 text-amber-500" />
+                          <span>Submitted: {new Date(tmpl.submittedAt).toLocaleDateString()}</span>
+                        </p>
+                      )}
+                      {tmpl.deployedAt && (
+                        <p className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          <span>Deployed: {new Date(tmpl.deployedAt).toLocaleDateString()}</span>
+                        </p>
+                      )}
+                      <p>
+                        {tmpl.kraCategories.length} KRAs • Formula: {tmpl.formulaConfig?.eligibilityWeight || 85}% / {tmpl.formulaConfig?.coreValuesWeight || 15}%
+                      </p>
+                    </div>
                   </div>
                 );
-              })}
-            </div>
+              })
+            )}
           </div>
         </div>
 
@@ -1585,20 +1607,20 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-sm"
             >
               <ChevronLeft className="w-4 h-4 text-[#E96B1A]" />
-              <span>Back to Templates List ({visibleTemplates.length})</span>
+              <span>Back to Queue ({currentSectionTemplates.length})</span>
             </button>
-            <span className="text-[10px] font-bold text-slate-400">
-              Editing Scorecard
+            <span className="text-[10px] font-bold text-slate-400 uppercase">
+              {workspaceSection}
             </span>
           </div>
 
-          {/* Workflow Status Card */}
-          {activeTemplate.status && (
+          {/* Workflow Status Header Banner */}
+          {activeTemplate?.status && (
             <div className={`p-4 rounded-2xl text-xs flex items-start gap-3 border ${
+              activeTemplate.status === 'draft' ? 'bg-amber-50/70 text-amber-900 border-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-800/60' :
               activeTemplate.status === 'submitted_to_is' || activeTemplate.status === 'is_review' ? 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800' :
               activeTemplate.status === 'is_approved' || activeTemplate.status === 'submitted_to_pod' || activeTemplate.status === 'resubmitted_to_pod' ? 'bg-indigo-50 text-indigo-900 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-200 dark:border-indigo-800' :
               activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_by_pod' || activeTemplate.status === 'returned_for_revision' ? 'bg-rose-50 text-rose-900 border-rose-200 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-800' :
-              activeTemplate.status === 'pod_approved' || activeTemplate.status === 'approved' ? 'bg-blue-50 text-blue-900 border-blue-200 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-800' :
               activeTemplate.status === 'deployed' ? 'bg-emerald-50 text-emerald-900 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800' :
               'bg-slate-50 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700'
             }`}>
@@ -1606,7 +1628,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               <div className="space-y-1 flex-1">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <p className="font-extrabold uppercase tracking-wider text-[11px]">
-                    Workflow Status: {statusLabels[activeTemplate.status] || activeTemplate.status}
+                    Stage: {statusLabels[activeTemplate.status] || activeTemplate.status}
                   </p>
                   {activeTemplate.immediateSupervisorName && (
                     <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
@@ -1616,13 +1638,12 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 </div>
 
                 <p className="text-slate-700 dark:text-slate-300">
-                  {activeTemplate.status === 'draft' && 'This template is currently a private Draft. You can continue editing, save your work as a draft, or submit it for review when ready.'}
-                  {(activeTemplate.status === 'submitted_to_is' || activeTemplate.status === 'is_review') && 'This template has been submitted to your assigned Immediate Supervisor for initial review and weight calibration.'}
-                  {(activeTemplate.status === 'is_approved' || activeTemplate.status === 'submitted_to_pod' || activeTemplate.status === 'resubmitted_to_pod') && 'Approved by Immediate Supervisor. Awaiting final People Operations (POD) validation and deployment.'}
-                  {activeTemplate.status === 'returned_by_is' && 'Your Immediate Supervisor has returned this template for revision. Please review the supervisor remarks below and resubmit.'}
-                  {(activeTemplate.status === 'returned_by_pod' || activeTemplate.status === 'returned_for_revision') && 'People Operations (POD) has returned this template for revision. Please update and resubmit.'}
-                  {(activeTemplate.status === 'pod_approved' || activeTemplate.status === 'approved') && 'People Operations has validated and approved this template. It is ready to be deployed.'}
-                  {activeTemplate.status === 'deployed' && 'This template is actively deployed. Performance evaluations can now proceed.'}
+                  {activeTemplate.status === 'draft' && 'This template is an unfinished Draft private to your workspace. You can edit KRAs, KPIs, and Core Values freely, save changes as draft anytime, and submit for evaluation when ready.'}
+                  {(activeTemplate.status === 'submitted_to_is' || activeTemplate.status === 'is_review') && 'Submitted to Immediate Supervisor for review, weight calibration, and approval.'}
+                  {(activeTemplate.status === 'is_approved' || activeTemplate.status === 'submitted_to_pod' || activeTemplate.status === 'resubmitted_to_pod') && 'Approved by Immediate Supervisor. Awaiting People Operations (POD) final validation and deployment.'}
+                  {activeTemplate.status === 'returned_by_is' && 'Returned for revision by your Immediate Supervisor. Review the supervisor remarks below, adjust your scorecard, and resubmit.'}
+                  {(activeTemplate.status === 'returned_by_pod' || activeTemplate.status === 'returned_for_revision') && 'Returned for revision by People Operations. Please resolve the remarks below and resubmit.'}
+                  {activeTemplate.status === 'deployed' && 'This template has been officially approved and deployed. It is actively locked for evaluations.'}
                 </p>
 
                 {activeTemplate.isReviewRemarks && (
@@ -1642,14 +1663,15 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             </div>
           )}
 
-          {/* Immediate Supervisor Action Card (When IS is reviewing) */}
+          {/* ── IMMEDIATE SUPERVISOR (IS) REVIEW QUEUE CARD ──────────────────── */}
+          {/* Renders ONLY in pending IS stage. NEVER on drafts! */}
           {isAssignedIS && (activeTemplate.status === 'submitted_to_is' || activeTemplate.status === 'is_review') && (
-            <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700 space-y-3 shadow-md">
+            <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700 space-y-3 shadow-md animate-in fade-in">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <UserCheck className="w-5 h-5 text-amber-600" />
                   <span className="text-xs font-black text-amber-900 dark:text-amber-200 uppercase tracking-wide">
-                    Immediate Supervisor Review Action Required
+                    Immediate Supervisor Review Queue
                   </span>
                 </div>
                 {activeTemplate.createdForEmployeeName && (
@@ -1658,6 +1680,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   </span>
                 )}
               </div>
+
+              <p className="text-xs text-amber-900/90 dark:text-amber-200/90">
+                Inspect the employee's proposed KRAs and KPIs below. You may calibrate category weights, return with remarks for revision, or approve to forward directly to POD governance.
+              </p>
 
               {showISReturnInput && (
                 <div className="space-y-1">
@@ -1668,7 +1694,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     value={isRemarkInput}
                     onChange={(e) => setIsRemarkInput(e.target.value)}
                     rows={3}
-                    placeholder="Specify the adjustments required before approval..."
+                    placeholder="Specify the required adjustments before approval..."
                     className="w-full text-xs p-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                   />
                 </div>
@@ -1707,16 +1733,15 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             </div>
           )}
 
-          {/* People Operations (POD) Action Card */}
-          {isPODApprover && (activeTemplate.status === 'submitted_to_pod' || activeTemplate.status === 'resubmitted_to_pod' || activeTemplate.status === 'is_approved' || activeTemplate.status === 'pod_review' || activeTemplate.status === 'draft') && (
-            <div className="p-5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border-2 border-indigo-300 dark:border-indigo-700 space-y-3 shadow-md">
+          {/* ── PEOPLE OPERATIONS (POD) REVIEW QUEUE CARD ─────────────────────── */}
+          {/* Renders ONLY in pending POD review stage. NEVER on drafts! */}
+          {isPODApprover && (activeTemplate.status === 'submitted_to_pod' || activeTemplate.status === 'resubmitted_to_pod' || activeTemplate.status === 'is_approved' || activeTemplate.status === 'pod_review') && (
+            <div className="p-5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border-2 border-indigo-300 dark:border-indigo-700 space-y-3 shadow-md animate-in fade-in">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-indigo-600" />
                   <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 uppercase tracking-wide">
-                    {activeTemplate.status === 'draft' 
-                      ? 'People Operations (POD) Draft Template Control & Direct Deployment' 
-                      : 'People Operations (POD) Final Validation Required'}
+                    People Operations (POD) Review Queue
                   </span>
                 </div>
                 {activeTemplate.createdForEmployeeName && (
@@ -1725,6 +1750,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   </span>
                 )}
               </div>
+
+              <p className="text-xs text-indigo-900/90 dark:text-indigo-200/90">
+                This template has completed supervisor routing and is awaiting final POD governance. You can validate and deploy immediately, approve for deployment campaign, or return for revision.
+              </p>
 
               {showPODReturnInput && (
                 <div className="space-y-1">
@@ -1735,7 +1764,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     value={podRemarkInput}
                     onChange={(e) => setPodRemarkInput(e.target.value)}
                     rows={3}
-                    placeholder="Specify the necessary changes..."
+                    placeholder="Specify necessary changes..."
                     className="w-full text-xs p-3 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                   />
                 </div>
@@ -1746,7 +1775,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   type="button"
                   onClick={() => handlePODAction('deploy')}
                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm flex items-center space-x-1.5 transition-all"
-                  title="Directly deploy this draft template and make it active & locked for evaluations"
+                  title="Deploy immediately and make active & locked for evaluations"
                 >
                   <ShieldCheck className="w-4 h-4" />
                   <span>Deploy Template Immediately</span>
@@ -1759,19 +1788,17 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   <CheckCheck className="w-4 h-4" />
                   <span>Approve Template</span>
                 </button>
-                {activeTemplate.status !== 'draft' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (showPODReturnInput) handlePODAction('return');
-                      else setShowPODReturnInput(true);
-                    }}
-                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-sm flex items-center space-x-1.5 transition-all"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>{showPODReturnInput ? 'Confirm Return for Revision' : 'Return for Revision'}</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (showPODReturnInput) handlePODAction('return');
+                    else setShowPODReturnInput(true);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-sm flex items-center space-x-1.5 transition-all"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>{showPODReturnInput ? 'Confirm Return for Revision' : 'Return for Revision'}</span>
+                </button>
                 {showPODReturnInput && (
                   <button
                     type="button"
@@ -1803,37 +1830,37 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Employee Owner</p>
                 <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-0.5">
-                  {activeTemplate.createdForEmployeeName || activeTemplate.createdByName || currentUser?.name || 'Staff Member'}
+                  {activeTemplate?.createdForEmployeeName || activeTemplate?.createdByName || currentUser?.name || 'Staff Member'}
                 </p>
                 <p className="text-[10px] text-slate-500 mt-0.5">
-                  ID: {activeTemplate.createdForEmployeeNumber || currentUser?.employeeNumber || '—'}
+                  ID: {activeTemplate?.createdForEmployeeNumber || currentUser?.employeeNumber || '—'}
                 </p>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Company / Group</p>
                 <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-0.5">
-                  {activeTemplate.companyName || currentUser?.companyName || 'Adventures'}
+                  {activeTemplate?.companyName || currentUser?.companyName || 'Adventures'}
                 </p>
                 <p className="text-[10px] text-slate-500 mt-0.5">
-                  Dept: {activeTemplate.departmentName || 'General'}
+                  Dept: {activeTemplate?.departmentName || 'General'}
                 </p>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Assigned Position</p>
                 <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-0.5">
-                  {activeTemplate.createdForPosition || currentUser?.position || 'Staff'}
+                  {activeTemplate?.createdForPosition || currentUser?.position || 'Staff'}
                 </p>
                 <p className="text-[10px] text-slate-500 mt-0.5">
-                  Source: {activeTemplate.templateSource || 'EMPLOYEE'}
+                  Source: {activeTemplate?.templateSource || 'EMPLOYEE'}
                 </p>
               </div>
 
               <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
                 <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase">Immediate Supervisor (IS)</p>
                 <p className="text-xs font-extrabold text-amber-900 dark:text-amber-200 mt-0.5">
-                  {activeTemplate.immediateSupervisorName || currentUser?.immediateSuperiorName || 'Immediate Supervisor'}
+                  {activeTemplate?.immediateSupervisorName || currentUser?.immediateSuperiorName || 'Immediate Supervisor'}
                 </p>
                 <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
                   Primary Routing Reviewer
@@ -1849,9 +1876,12 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 </label>
                 <input
                   type="text"
-                  value={activeTemplate.title}
+                  value={activeTemplate?.title || ''}
                   disabled={!canEdit}
-                  onChange={(e) => setActiveTemplate({ ...activeTemplate, title: e.target.value })}
+                  onChange={(e) => {
+                    setActiveTemplate({ ...activeTemplate, title: e.target.value });
+                    setIsDirty(true);
+                  }}
                   className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white disabled:opacity-60 font-semibold"
                 />
               </div>
@@ -1862,9 +1892,12 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 </label>
                 <input
                   type="text"
-                  value={activeTemplate.evaluationPeriod}
+                  value={activeTemplate?.evaluationPeriod || ''}
                   disabled={!canEdit}
-                  onChange={(e) => setActiveTemplate({ ...activeTemplate, evaluationPeriod: e.target.value })}
+                  onChange={(e) => {
+                    setActiveTemplate({ ...activeTemplate, evaluationPeriod: e.target.value });
+                    setIsDirty(true);
+                  }}
                   className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white disabled:opacity-60 font-semibold"
                   placeholder="e.g. Jan 1, 2027 – Jun 30, 2027"
                 />
@@ -1872,9 +1905,9 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             </div>
           </div>
 
-          {/* Action Toolbar */}
+          {/* ── ACTION TOOLBAR WITH VISIBLE SAVE STATUS INDICATOR ─────────────── */}
           <div className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex-wrap">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
               <button
                 type="button"
                 onClick={() => {
@@ -1885,12 +1918,30 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center space-x-1.5 transition-all"
               >
                 <Eye className="w-4 h-4" />
-                <span>Preview Master Scorecard</span>
+                <span>Preview Scorecard</span>
               </button>
+
+              {/* Visible Save Status Indicator */}
+              <div className="flex items-center space-x-1.5 text-[11px] font-semibold pl-1">
+                {isDirty ? (
+                  <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    Unsaved changes
+                  </span>
+                ) : lastSavedAt ? (
+                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <Check className="w-3.5 h-3.5" />
+                    Draft saved at {lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                ) : activeTemplate?.status === 'draft' ? (
+                  <span className="text-slate-400">Draft (Work in Progress)</span>
+                ) : null}
+              </div>
             </div>
 
             <div className="flex items-center space-x-2.5 flex-wrap gap-2">
-              {activeTemplate.status === 'deployed' && (
+              {/* Deployed Action: Create New Revision */}
+              {activeTemplate?.status === 'deployed' && (
                 <button
                   type="button"
                   onClick={handleCreateRevision}
@@ -1902,56 +1953,68 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                 </button>
               )}
 
-              {canEdit && !activeTemplate.isLocked && (
+              {/* Draft Actions: Save Draft & Delete Draft */}
+              {canEdit && !activeTemplate?.isLocked && (
                 <>
-                  {activeTemplate.status === 'draft' ? (
-                    <button
-                      type="button"
-                      onClick={handleUndraftTemplate}
-                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center space-x-1.5 shadow-sm transition-all"
-                      title="Undraft this template and make it active & available for evaluations"
-                    >
-                      <Undo2 className="w-4 h-4" />
-                      <span>Undraft / Make Available</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSaveAsDraft}
-                      className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-750 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
-                      title="Save as private draft in Draft Templates"
-                    >
-                      <Bookmark className="w-4 h-4 text-amber-500" />
-                      <span>Save as Draft</span>
-                    </button>
+                  {activeTemplate?.status === 'draft' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleSaveAsDraft}
+                        className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-750 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
+                        title="Save draft without submitting for review"
+                      >
+                        <Bookmark className="w-4 h-4 text-amber-500" />
+                        <span>Save Draft</span>
+                      </button>
+
+                      {(checkIsTemplateOwnerLocal(activeTemplate) || isPOD || currentUser?.role === 'system_admin') && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteDraftAction(activeTemplate.id, e)}
+                          className="px-3.5 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
+                          title="Permanently delete this draft"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Delete Draft</span>
+                        </button>
+                      )}
+                    </>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
-                  >
-                    <Save className="w-4 h-4" />
-                    <span>
-                      {isAssignedIS 
-                        ? 'Save Changes / Calibration' 
-                        : activeTemplate.status === 'draft' 
-                        ? 'Save Draft Changes' 
-                        : 'Save Changes'}
-                    </span>
-                  </button>
+                  {/* Supervisor/Reviewer Calibration Save */}
+                  {isAssignedIS && (activeTemplate.status === 'submitted_to_is' || activeTemplate.status === 'is_review') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const committed = getTemplateWithCommittedWeights(activeTemplate);
+                        onSaveTemplate(committed);
+                        setActiveTemplate(committed);
+                        setIsDirty(false);
+                        showToast('Calibrated weights saved successfully.');
+                      }}
+                      className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>Save Calibration Changes</span>
+                    </button>
+                  )}
                 </>
               )}
 
-              {/* Submit for Review Button (Employee / Draft Owner) */}
-              {(isEmployeeMode || isTemplateOwner) && (activeTemplate.status === 'draft' || activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_by_pod' || activeTemplate.status === 'approved' || !activeTemplate.status) && (
+              {/* ── SUBMIT FOR EVALUATION BUTTON (Deliberate Action) ──────────── */}
+              {(isEmployeeMode || isTemplateOwner || isDeptHead || isPOD) && (activeTemplate?.status === 'draft' || activeTemplate?.status === 'returned_by_is' || activeTemplate?.status === 'returned_by_pod' || activeTemplate?.status === 'returned_for_revision' || !activeTemplate?.status) && (
                 <button
                   type="button"
-                  onClick={handleSubmitToIS}
+                  onClick={handleSubmitForEvaluation}
                   className="px-5 py-2 rounded-xl bg-[#E96B1A] hover:bg-[#D45A0E] text-white text-xs font-extrabold flex items-center space-x-2 shadow-md transition-all animate-pulse"
                 >
                   <Send className="w-4 h-4" />
-                  <span>Submit for Review</span>
+                  <span>
+                    {activeTemplate?.status === 'returned_by_is' || activeTemplate?.status === 'returned_by_pod' || activeTemplate?.status === 'returned_for_revision'
+                      ? 'Resubmit for Evaluation'
+                      : 'Submit for Evaluation'}
+                  </span>
                 </button>
               )}
             </div>
@@ -1975,7 +2038,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               <div className="p-3.5 rounded-xl bg-orange-50 dark:bg-orange-950/30 border border-[#E96B1A]/30">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-extrabold text-slate-900 dark:text-white">Part 1A: Key Results Areas (KRAs)</span>
-                  <span className="text-xs font-black text-[#E96B1A]">{activeTemplate.formulaConfig.eligibilityWeight}%</span>
+                  <span className="text-xs font-black text-[#E96B1A]">{activeTemplate?.formulaConfig?.eligibilityWeight || 85}%</span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
                   Functional deliverables, operational metrics, and role competencies.
@@ -1985,7 +2048,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-extrabold text-slate-900 dark:text-white">Part 1B: Core Values & Suitability</span>
-                  <span className="text-xs font-black text-slate-700 dark:text-slate-300">{activeTemplate.formulaConfig.coreValuesWeight}%</span>
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-300">{activeTemplate?.formulaConfig?.coreValuesWeight || 15}%</span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
                   Organizational core values, compliance, and behavioral standards.
@@ -2002,7 +2065,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   Part 1A — Key Result Areas (KRAs), Performance Types & KPI Items
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Total KRA weights must equal exactly {activeTemplate.formulaConfig.eligibilityWeight}%.
+                  Total KRA weights must equal exactly {activeTemplate?.formulaConfig?.eligibilityWeight || 85}%.
                 </p>
               </div>
 
@@ -2012,7 +2075,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                     : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
                 }`}>
-                  KRAs: {getKraTotalWeight()}% / {activeTemplate.formulaConfig.eligibilityWeight}% • Performance Types: {getAllKpisTotalWeight()}%
+                  KRAs: {getKraTotalWeight()}% / {activeTemplate?.formulaConfig?.eligibilityWeight || 85}% • KPIs: {getAllKpisTotalWeight()}%
                 </div>
 
                 {canEdit && (
@@ -2029,7 +2092,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             </div>
 
             <div className="space-y-6">
-              {activeTemplate.kraCategories.map((kra, kraIndex) => (
+              {(activeTemplate?.kraCategories || []).map((kra, kraIndex) => (
                 <div key={kra.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-4">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex-1 flex items-center gap-2">
@@ -2041,6 +2104,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                         onChange={(e) => {
                           const updated = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, name: e.target.value } : k);
                           setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+                          setIsDirty(true);
                         }}
                         className="flex-1 text-xs font-extrabold px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white disabled:opacity-60"
                         placeholder="KRA Category Name (e.g. 1. FINANCIAL)"
@@ -2060,6 +2124,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                             const numVal = commitWeightInput(`kra_${kra.id}`, kra.categoryWeightPercent || 0);
                             const updated = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, categoryWeightPercent: numVal } : k);
                             setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+                            setIsDirty(true);
                           }}
                           className="w-14 text-xs font-black text-center px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white"
                         />
@@ -2121,9 +2186,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                                   const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, name: e.target.value } : item);
                                   const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
                                   setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
+                                  setIsDirty(true);
                                 }}
                                 className="flex-1 text-xs font-bold px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white disabled:opacity-60"
-                                placeholder="Performance Type Name (e.g. Revenue performance, Booking performance)"
+                                placeholder="Performance Type Name (e.g. Revenue performance)"
                               />
                             </div>
 
@@ -2141,6 +2207,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                                     const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, weightPercent: numVal } : item);
                                     const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
                                     setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
+                                    setIsDirty(true);
                                   }}
                                   className="w-12 text-xs font-bold text-center px-1.5 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white"
                                 />
@@ -2307,7 +2374,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
               <div>
                 <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                  Part 1B — Core Values & Suitability Factors ({activeTemplate.formulaConfig.coreValuesWeight}%)
+                  Part 1B — Core Values & Suitability Factors ({activeTemplate?.formulaConfig?.coreValuesWeight || 15}%)
                 </h3>
                 <p className="text-[11px] text-slate-500">
                   Subdivisions of the Part 1B total weight.
@@ -2344,15 +2411,15 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             }`}>
               <div className="flex items-center space-x-2">
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Part 1B Total: {activeTemplate.formulaConfig.coreValuesWeight}% • Core Values: {activeTemplate.coreValues?.length || 0} • Sum: {Number(totalCoreValueWeight.toFixed(2))}%</span>
+                <span>Part 1B Total: {activeTemplate?.formulaConfig?.coreValuesWeight || 15}% • Core Values: {activeTemplate?.coreValues?.length || 0} • Sum: {Number(totalCoreValueWeight.toFixed(2))}%</span>
               </div>
               {!isCoreValuesValid && (
-                <span className="text-[11px] font-normal">Core Values must total exactly {activeTemplate.formulaConfig.coreValuesWeight}%.</span>
+                <span className="text-[11px] font-normal">Core Values must total exactly {activeTemplate?.formulaConfig?.coreValuesWeight || 15}%.</span>
               )}
             </div>
 
             <div className="space-y-3">
-              {(activeTemplate.coreValues || []).map((cv) => (
+              {(activeTemplate?.coreValues || []).map((cv) => (
                 <div key={cv.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -2406,7 +2473,6 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               ))}
             </div>
           </div>
-
         </div>
       </div>
 
@@ -2569,19 +2635,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               <button
                 type="button"
                 onClick={() => handleConfirmCreateTemplate(true)}
-                className="px-4 py-2 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 text-xs font-bold transition-all flex items-center space-x-1.5"
-                title="Save as private draft in My Draft Templates"
-              >
-                <Bookmark className="w-3.5 h-3.5 text-amber-500" />
-                <span>Save as Draft</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleConfirmCreateTemplate(false)}
                 className="px-5 py-2 rounded-xl bg-[#E96B1A] hover:bg-[#D45A0E] text-white text-xs font-extrabold shadow-md transition-all flex items-center space-x-1.5"
               >
                 <Check className="w-3.5 h-3.5" />
-                <span>Create Template</span>
+                <span>Create Draft Template</span>
               </button>
             </div>
           </div>
@@ -2596,7 +2653,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               <div className="flex items-center space-x-2">
                 <Lock className="w-4 h-4 text-[#E96B1A]" />
                 <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">
-                  Live Master Scorecard Layout Preview — {activeTemplate.title}
+                  Live Master Scorecard Layout Preview — {activeTemplate?.title}
                 </h4>
               </div>
               <button
@@ -2609,11 +2666,11 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             <div className="flex-1 overflow-y-auto p-6 bg-slate-100 dark:bg-slate-950">
               <PrintableScorecard
                 evaluation={createDraftEvaluationInMemory(
-                  currentUser || { id: 'usr_preview', name: activeTemplate.createdForEmployeeName || 'Sample Employee', role: 'employee', departmentName: activeTemplate.departmentName, position: activeTemplate.createdForPosition || 'Staff' } as User,
+                  currentUser || { id: 'usr_preview', name: activeTemplate?.createdForEmployeeName || 'Sample Employee', role: 'employee', departmentName: activeTemplate?.departmentName, position: activeTemplate?.createdForPosition || 'Staff' } as User,
                   getTemplateWithCommittedWeights(activeTemplate),
-                  activeTemplate.evaluationPeriod
+                  activeTemplate?.evaluationPeriod
                 )}
-                formulaConfig={activeTemplate.formulaConfig}
+                formulaConfig={activeTemplate?.formulaConfig || { eligibilityWeight: 85, coreValuesWeight: 15 }}
                 onBack={() => setShowPreviewModal(false)}
               />
             </div>
