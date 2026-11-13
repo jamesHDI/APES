@@ -309,7 +309,89 @@ export const EvaluationHistoryView: React.FC<EvaluationHistoryViewProps> = ({
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Immutable Records</span>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile History Card Feed (< md) */}
+        <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800 p-3 space-y-3">
+          {filteredHistory.length === 0 ? (
+            <div className="py-10 text-center text-slate-400 text-xs">
+              No evaluation history records found.
+            </div>
+          ) : (
+            filteredHistory.map((h) => {
+              const archive = getArchiveForHistory(h.evaluationId);
+              return (
+                <div key={h.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-bold text-slate-900 dark:text-white text-sm leading-snug">
+                        {h.employeeName}
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                        {h.position} · <span className="text-[#E96B1A] font-bold">{h.departmentName}</span>
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {h.appraisalPeriod}
+                      </p>
+                    </div>
+                    <StatusBadge status={h.status} />
+                  </div>
+
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Final Score</span>
+                      <div className="flex items-baseline gap-1">
+                        <span className="font-black text-hdi-red text-base">
+                          {h.finalRating > 0 ? h.finalRating.toFixed(2) : (h.eligibilityScore || 0).toFixed(2)}
+                        </span>
+                        <span className="text-[10px] text-slate-400">/ 4.00</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-500">{h.ratingClassification}</span>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Stage</span>
+                      <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                        {getWorkflowLabel(h.workflowStage)}
+                      </p>
+                      <p className="text-[10px] text-slate-400">{new Date(h.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => onOpenEvaluation(h.evaluationId)}
+                      className="py-2 px-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1 transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-brand-500" />
+                      <span>View</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadDirectPDF(h.evaluationId, archive)}
+                      className="py-2 px-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1 transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5 text-brand-500" />
+                      <span>PDF</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onViewPrintable ? onViewPrintable(h.evaluationId) : onOpenEvaluation(h.evaluationId)}
+                      className="py-2 px-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1 transition-colors"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-brand-500" />
+                      <span>Print</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop Table View (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800 text-[11px] font-extrabold uppercase text-slate-400 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">

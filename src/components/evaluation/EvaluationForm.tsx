@@ -1214,7 +1214,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
           { id: 'signatures' as const, step: 6, label: '6. Digital Signatures', sub: 'Verification & Audit' },
         ];
         return (
-          <div className="flex overflow-x-auto gap-1 pb-1">
+          <div className="flex overflow-x-auto gap-1.5 pb-2 scrollbar-none no-scrollbar touch-pan-x">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -1331,7 +1331,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                               </span>
                             </div>
 
-                            <div className="grid grid-cols-4 gap-1.5 p-2 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
                               {/* Step 1: Initial (Self) */}
                               <div className={`p-2 rounded-lg border text-xs flex flex-col justify-between ${
                                 canEditEmployeeSection
@@ -1524,7 +1524,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase mb-1">POD Rating (1-4)</label>
                     <input
@@ -2183,6 +2183,69 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 Dismiss & Retry
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Sticky Quick Action Bar */}
+      {!isReadOnly && (
+        <div className="lg:hidden fixed bottom-14 left-0 right-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-3 py-2 flex items-center justify-between gap-2 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[10px] uppercase font-bold text-slate-400">Score:</span>
+            <span className="text-xs font-black text-brand-600 dark:text-brand-400 truncate">
+              {evalData.finalRating.toFixed(2)}/4.00
+            </span>
+            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 truncate max-w-[80px]">
+              {evalData.ratingClassification}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {currentUser.role !== 'system_admin' && (
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors"
+                title="Save Draft"
+              >
+                Save
+              </button>
+            )}
+
+            {isSelfEval && (evalData.status === 'draft' || evalData.status === 'reopened') && (
+              <button
+                type="button"
+                onClick={handleSubmitEmployee}
+                className="px-3 py-1.5 rounded-lg bg-[#E96B1A] hover:bg-[#D45A0E] text-white text-xs font-extrabold shadow-sm transition-colors flex items-center gap-1"
+              >
+                <Send className="w-3 h-3" />
+                <span>Submit</span>
+              </button>
+            )}
+
+            {(currentRole === 'dept_head' || currentRole === 'supervisor' || (Boolean(currentUser.isDepartmentHead) && currentRole !== 'pod')) && 
+             (evalData.status === 'pending_dept_head' || evalData.status === 'pending_supervisor' || evalData.status === 'employee_submitted') && (
+              <button
+                type="button"
+                onClick={handleFinalizeSupervisor}
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-sm transition-colors flex items-center gap-1"
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                <span>Submit POD</span>
+              </button>
+            )}
+
+            {(currentRole === 'pod' || currentRole === 'hr_admin' || currentRole === 'system_admin') && !isSelfEval && 
+             (evalData.status === 'pending_pod' || evalData.status === 'supervisor_completed' || evalData.status === 'president_completed' || evalData.status === 'department_head_submitted') && (
+              <button
+                type="button"
+                onClick={handleValidatePOD}
+                className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-extrabold shadow-sm transition-colors flex items-center gap-1"
+              >
+                <ShieldCheck className="w-3 h-3" />
+                <span>Archive</span>
+              </button>
+            )}
           </div>
         </div>
       )}

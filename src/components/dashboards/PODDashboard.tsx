@@ -465,8 +465,65 @@ export const PODDashboard: React.FC<PODDashboardProps> = ({
           </button>
         </div>
 
-        {/* Live Employee Table */}
-        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+        {/* Mobile Evaluation Card Feed (< md) */}
+        <div className="md:hidden space-y-3">
+          {filtered.length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-900 rounded-xl">
+              No employee evaluations matched your search or stage criteria.
+            </div>
+          ) : (
+            filtered.map((ev) => {
+              const sigCount = Object.keys(ev.signatures || {}).length;
+              const badgeInfo = getStageStepBadge(ev.status);
+              const isReadyForPOD = ev.status === 'pending_pod' || ev.status === 'supervisor_completed' || ev.status === 'president_completed';
+
+              return (
+                <div key={ev.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">{ev.employeeName}</h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{ev.position} · {ev.departmentName}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{ev.appraisalPeriod}</p>
+                    </div>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold border shrink-0 ${badgeInfo.color}`}>
+                      {badgeInfo.step}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Score</span>
+                      <p className="font-black text-brand-600 dark:text-brand-400">
+                        {ev.finalRating ? ev.finalRating.toFixed(2) : '0.00'} <span className="text-[10px] font-normal text-slate-400">/4.00</span>
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Signatures</span>
+                      <p className={`text-xs font-bold ${sigCount >= 3 ? 'text-emerald-600' : 'text-slate-600 dark:text-slate-400'}`}>
+                        {sigCount} Signed
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onOpenEvaluation(ev.id)}
+                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 transition-all ${
+                      isReadyForPOD
+                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                        : 'bg-brand-500 hover:bg-brand-600 text-white'
+                    }`}
+                  >
+                    <span>{isReadyForPOD ? 'Validate & Archive Scorecard' : 'Open Employee Evaluation'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Live Employee Table (Desktop >= md) */}
+        <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/80 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">

@@ -89,10 +89,19 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-white/98 dark:bg-slate-900/98 backdrop-blur-md border-b border-[#EFE4D6] dark:border-slate-800 shadow-[0_1px_12px_rgba(15,23,42,0.06)] transition-colors shrink-0">
       <div className="max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-6">
-        <div className="flex items-center justify-between h-20 sm:h-24 gap-4">
+        <div className="flex items-center justify-between h-14 sm:h-20 md:h-24 gap-2 sm:gap-4">
 
-          {/* Left: Logo + Title */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          {/* Left: Mobile Menu Toggle + Logo + Title */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Mobile Hamburger Drawer Button */}
+            <button
+              onClick={onToggleSidebar}
+              className="p-2 -ml-1 text-slate-600 dark:text-slate-300 hover:text-[#E96B1A] hover:bg-[#FFF4EA] dark:hover:bg-slate-800 rounded-xl transition-colors lg:hidden active:scale-95"
+              title={isSidebarOpen ? "Close menu" : "Open menu"}
+              aria-label="Toggle navigation drawer"
+            >
+              {isSidebarOpen ? <X className="w-5 h-5 text-[#E96B1A]" /> : <Menu className="w-5 h-5" />}
+            </button>
 
             {/* Brand Logo */}
             <div className="shrink-0 flex items-center justify-start py-1">
@@ -100,10 +109,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               <img
                 src="/hdi-logo.png"
                 alt="HDI Hive"
-                className="h-10 sm:h-12 md:h-14 w-auto object-contain transition-all duration-200 dark:hidden"
+                className="h-8 sm:h-12 md:h-14 w-auto object-contain transition-all duration-200 dark:hidden"
               />
               {/* Dark Mode Logo: Original Red Beehive Icon + Solid White Text */}
-              <div className="hidden dark:inline-flex relative h-10 sm:h-12 md:h-14 items-center overflow-hidden">
+              <div className="hidden dark:inline-flex relative h-8 sm:h-12 md:h-14 items-center overflow-hidden">
                 <img
                   src="/hdi-logo.png"
                   alt="HDI Beehive Emblem"
@@ -184,7 +193,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {/* Notification Panel */}
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200/80 dark:border-slate-700 z-50 overflow-hidden animate-slide-up">
+                <div className="fixed sm:absolute inset-x-2 sm:inset-x-auto sm:right-0 top-16 sm:top-auto sm:mt-2 w-auto sm:w-96 rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200/80 dark:border-slate-700 z-50 overflow-hidden animate-slide-up">
                   {/* Panel Header */}
                   <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700 bg-[#FFFAF6] dark:bg-slate-800/80">
                     <div className="flex items-center gap-2">
@@ -331,7 +340,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {/* User Dropdown Panel */}
               {showUserDropdown && (
-                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200/80 dark:border-slate-700 z-50 overflow-hidden animate-slide-up">
+                <div className="fixed sm:absolute inset-x-2 sm:inset-x-auto sm:right-0 top-16 sm:top-auto sm:mt-2 w-auto sm:w-64 rounded-2xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200/80 dark:border-slate-700 z-50 overflow-hidden animate-slide-up">
                   {/* Warm User Identity Header */}
                   <div className="p-4 bg-gradient-to-br from-[#FFFAF6] to-[#FFF4EA] dark:from-slate-800 dark:to-slate-800 border-b border-[#EFE4D6] dark:border-slate-700 flex items-center gap-3">
                     <img

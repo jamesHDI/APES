@@ -140,6 +140,7 @@ import { AnnouncementModal } from './components/common/AnnouncementModal';
 import { logoutUser } from './services/authService';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
+import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { EvaluationForm } from './components/evaluation/EvaluationForm';
 import { PrintableScorecard } from './components/evaluation/PrintableScorecard';
 import { TemplateBuilder } from './components/templates/TemplateBuilder';
@@ -1859,11 +1860,22 @@ export const App: React.FC = () => {
           />
 
           <main className="flex-1 min-w-0 overflow-y-auto">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+            <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 lg:pb-6">
               {renderMainContent()}
             </div>
           </main>
         </div>
+
+        {/* Mobile Sticky Bottom Navigation Bar */}
+        <MobileBottomNav
+          currentRole={currentUser.role}
+          activeTab={activeTab}
+          onSelectTab={handleSelectTab}
+          pendingCount={notifications.filter(n => !n.read).length}
+          pendingTemplateCount={pendingTemplateCount}
+          pendingAccountCount={pendingAccountCount}
+          onOpenMenu={() => setIsSidebarOpen(true)}
+        />
       </div>
 
       {/* Organization Announcement Modal */}

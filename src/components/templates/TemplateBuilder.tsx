@@ -26,6 +26,7 @@ import {
   RotateCcw,
   Calendar,
   ChevronRight,
+  ChevronLeft,
   Filter,
   CheckCheck,
   UserCheck,
@@ -247,6 +248,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   const [activeTemplate, setActiveTemplate] = useState<EvaluationTemplate>(
     initialList.find(t => t.id === selectedTemplateId) || initialList[0] || MASTER_SALES_EVALUATION_TEMPLATE
   );
+  const [mobileTab, setMobileTab] = useState<'list' | 'editor'>('editor');
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -710,6 +712,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     setValidationErrors([]);
     const tmpl = visibleTemplates.find((t) => t.id === id) || safeTemplatesList.find((t) => t.id === id);
     if (tmpl) setActiveTemplate(tmpl);
+    setMobileTab('editor');
   };
 
   // ── POD / ADMIN CREATE NEW TEMPLATE (WITH SEARCHABLE EMPLOYEE SELECTOR) ─────
@@ -1288,9 +1291,39 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         )}
       </div>
 
+      {/* Mobile View Switcher (Templates List vs Active Editor) */}
+      <div className="lg:hidden flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl gap-1">
+        <button
+          type="button"
+          onClick={() => setMobileTab('list')}
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            mobileTab === 'list'
+              ? 'bg-white dark:bg-slate-900 text-[#E96B1A] shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>Templates List ({visibleTemplates.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('editor')}
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            mobileTab === 'editor'
+              ? 'bg-white dark:bg-slate-900 text-[#E96B1A] shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          <FileEdit className="w-3.5 h-3.5" />
+          <span className="truncate max-w-[130px]">{activeTemplate.title || 'Editor'}</span>
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Sidebar List */}
-        <div className="lg:col-span-4 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-[calc(100vh-140px)] min-h-[600px] sticky top-4">
+        <div className={`lg:col-span-4 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col lg:h-[calc(100vh-140px)] lg:min-h-[600px] lg:sticky lg:top-4 ${
+          mobileTab === 'editor' ? 'hidden lg:flex' : 'flex'
+        }`}>
           <div className="flex items-center justify-between px-1 shrink-0 mb-2">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               {isEmployeeMode ? 'My Templates' : isSupervisorRole ? 'Team Direct Report Templates' : 'Evaluation Templates'} ({visibleTemplates.length})
@@ -1541,7 +1574,23 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         </div>
 
         {/* Right Details & Editor Form */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className={`lg:col-span-8 space-y-6 ${
+          mobileTab === 'list' ? 'hidden lg:block' : 'block'
+        }`}>
+          {/* Mobile Back Button to list */}
+          <div className="lg:hidden flex items-center justify-between pb-1">
+            <button
+              type="button"
+              onClick={() => setMobileTab('list')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-sm"
+            >
+              <ChevronLeft className="w-4 h-4 text-[#E96B1A]" />
+              <span>Back to Templates List ({visibleTemplates.length})</span>
+            </button>
+            <span className="text-[10px] font-bold text-slate-400">
+              Editing Scorecard
+            </span>
+          </div>
 
           {/* Workflow Status Card */}
           {activeTemplate.status && (
@@ -2135,7 +2184,54 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                               )}
                             </div>
 
-                            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                            {/* Mobile Card View for KPI Standards (< sm) */}
+                            <div className="sm:hidden space-y-2">
+                              {standards.map((st: RatingStandard, stIdx: number) => {
+                                const defaultScaleLabel = st.rating === 4 ? '4 - Exceeds' : st.rating === 3 ? '3 - Meets' : st.rating === 2 ? '2 - Barely Meets' : '1 - Did Not Meet';
+                                return (
+                                  <div key={stIdx} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center space-x-1.5 flex-1 min-w-0">
+                                        <span className="text-xs font-black text-[#E96B1A] shrink-0">
+                                          {st.rating} -
+                                        </span>
+                                        <input
+                                          type="text"
+                                          value={st.label || defaultScaleLabel}
+                                          disabled={!canEdit}
+                                          onChange={(e) => handleUpdateKPIStandard(kra.id, kpi.id, stIdx, 'label', e.target.value)}
+                                          className="w-full text-xs font-bold px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 disabled:opacity-75"
+                                          placeholder="Scale label"
+                                        />
+                                      </div>
+                                      {canEdit && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveKPIStandard(kra.id, kpi.id, stIdx)}
+                                          className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors shrink-0"
+                                          title="Delete KPI scale item"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <input
+                                        type="text"
+                                        value={st.description}
+                                        disabled={!canEdit}
+                                        onChange={(e) => handleUpdateKPIStandard(kra.id, kpi.id, stIdx, 'description', e.target.value)}
+                                        placeholder={`Indicator for scale ${st.rating}...`}
+                                        className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-1 focus:ring-[#E96B1A] disabled:opacity-75"
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Desktop Table View (>= sm) */}
+                            <div className="hidden sm:block overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
                               <table className="w-full text-left text-xs border-collapse">
                                 <thead>
                                   <tr className="bg-slate-100 dark:bg-slate-750 text-[10px] font-bold text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
