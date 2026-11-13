@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { EvaluationTemplate, KRACategory, KPITemplateItem, CoreValue, Department, User, Evaluation, TemplateStatus } from '../../types';
+import { EvaluationTemplate, KRACategory, KPITemplateItem, RatingStandard, CoreValue, Department, User, Evaluation, TemplateStatus } from '../../types';
 import { createMasterBasedTemplate, MASTER_SALES_EVALUATION_TEMPLATE } from '../../constants/masterSalesTemplate';
 import { validateEvaluationTemplate } from '../../services/templateValidation';
 import { triggerTemplateWorkflowNotification } from '../../services/notificationService';
@@ -315,7 +315,9 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         }
       }
 
-      const exists = visibleTemplates.some(t => t.id === selectedTemplateId) || safeTemplatesList.some(t => t.id === selectedTemplateId);
+      const exists = (activeTemplate && activeTemplate.id === selectedTemplateId) ||
+        visibleTemplates.some(t => t.id === selectedTemplateId) || 
+        safeTemplatesList.some(t => t.id === selectedTemplateId);
       if (!exists && visibleTemplates.length > 0) {
         currentLoadedTemplateIdRef.current = visibleTemplates[0].id;
         setSelectedTemplateId(visibleTemplates[0].id);
@@ -353,7 +355,15 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       const updatedKpis = (kra.kpis || []).map(kpi => {
         const kpiKey = `kpi_${kpi.id}`;
         const committedKpiWeight = weightInputs[kpiKey] !== undefined ? Number(weightInputs[kpiKey]) : kpi.weightPercent;
-        return { ...kpi, weightPercent: committedKpiWeight };
+        const normalizedStandards = Array.isArray(kpi.standards) && kpi.standards.length > 0
+          ? kpi.standards
+          : [
+              { rating: 4, label: '4 - Exceeds', description: '' },
+              { rating: 3, label: '3 - Meets', description: '' },
+              { rating: 2, label: '2 - Barely Meets', description: '' },
+              { rating: 1, label: '1 - Did Not Meet', description: '' },
+            ];
+        return { ...kpi, weightPercent: committedKpiWeight, standards: normalizedStandards };
       });
 
       return { ...kra, categoryWeightPercent: committedKraWeight, kpis: updatedKpis };
@@ -812,19 +822,22 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
   };
 
   const handleAddKPI = (kraId: string) => {
+    const kra = activeTemplate.kraCategories.find(k => k.id === kraId);
+    const count = kra?.kpis.length || 0;
+    const letter = String.fromCharCode(65 + count);
     const newKpi: KPITemplateItem = {
-      id: `kpi_${Date.now()}`,
+      id: `kpi_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       kraId,
-      kraName: activeTemplate.kraCategories.find(k => k.id === kraId)?.name || '',
-      name: 'New Key Performance Indicator',
-      description: 'Define specific measurable KPI metrics and deliverables.',
+      kraName: kra?.name || '',
+      name: `${letter}. Performance Type`,
+      description: '',
       weightPercent: 5,
       evidenceRequired: false,
       standards: [
-        { rating: 4, label: '4 - Exceeds', description: 'Exceeds target performance' },
-        { rating: 3, label: '3 - Meets', description: 'Meets expected target' },
-        { rating: 2, label: '2 - Barely Meets', description: 'Barely meets minimum target' },
-        { rating: 1, label: '1 - Did Not Meet', description: 'Did not meet target performance' },
+        { rating: 4, label: '4 - Exceeds', description: '' },
+        { rating: 3, label: '3 - Meets', description: '' },
+        { rating: 2, label: '2 - Barely Meets', description: '' },
+        { rating: 1, label: '1 - Did Not Meet', description: '' },
       ]
     };
 
@@ -844,6 +857,87 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         return { ...k, kpis: k.kpis.filter(item => item.id !== kpiId) };
       }
       return k;
+    });
+    setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+  };
+
+  const handleUpdateKPIStandard = (
+    kraId: string,
+    kpiId: string,
+    standardIndex: number,
+    field: 'description' | 'label',
+    value: string
+  ) => {
+    const updated = activeTemplate.kraCategories.map(kra => {
+      if (kra.id !== kraId) return kra;
+      const updatedKpis = kra.kpis.map(kpi => {
+        if (kpi.id !== kpiId) return kpi;
+        const currentStandards = Array.isArray(kpi.standards) && kpi.standards.length > 0
+          ? [...kpi.standards]
+          : [
+              { rating: 4, label: '4 - Exceeds', description: '' },
+              { rating: 3, label: '3 - Meets', description: '' },
+              { rating: 2, label: '2 - Barely Meets', description: '' },
+              { rating: 1, label: '1 - Did Not Meet', description: '' },
+            ];
+        currentStandards[standardIndex] = {
+          ...currentStandards[standardIndex],
+          [field]: value
+        };
+        return { ...kpi, standards: currentStandards };
+      });
+      return { ...kra, kpis: updatedKpis };
+    });
+    setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+  };
+
+  const handleAddKPIStandard = (kraId: string, kpiId: string) => {
+    const updated = activeTemplate.kraCategories.map(kra => {
+      if (kra.id !== kraId) return kra;
+      const updatedKpis = kra.kpis.map(kpi => {
+        if (kpi.id !== kpiId) return kpi;
+        const currentStandards = Array.isArray(kpi.standards) ? [...kpi.standards] : [];
+        const nextRating = Math.max(1, 4 - currentStandards.length) as 1 | 2 | 3 | 4;
+        const newStandard: RatingStandard = {
+          rating: nextRating,
+          label: `${nextRating} - Standard`,
+          description: ''
+        };
+        return { ...kpi, standards: [...currentStandards, newStandard] };
+      });
+      return { ...kra, kpis: updatedKpis };
+    });
+    setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+  };
+
+  const handleRemoveKPIStandard = (kraId: string, kpiId: string, standardIndex: number) => {
+    const updated = activeTemplate.kraCategories.map(kra => {
+      if (kra.id !== kraId) return kra;
+      const updatedKpis = kra.kpis.map(kpi => {
+        if (kpi.id !== kpiId) return kpi;
+        const currentStandards = Array.isArray(kpi.standards) ? [...kpi.standards] : [];
+        const nextStandards = currentStandards.filter((_, idx) => idx !== standardIndex);
+        return { ...kpi, standards: nextStandards };
+      });
+      return { ...kra, kpis: updatedKpis };
+    });
+    setActiveTemplate({ ...activeTemplate, kraCategories: updated });
+  };
+
+  const handleResetKPIStandards = (kraId: string, kpiId: string) => {
+    const defaultStandards: RatingStandard[] = [
+      { rating: 4, label: '4 - Exceeds', description: '' },
+      { rating: 3, label: '3 - Meets', description: '' },
+      { rating: 2, label: '2 - Barely Meets', description: '' },
+      { rating: 1, label: '1 - Did Not Meet', description: '' },
+    ];
+    const updated = activeTemplate.kraCategories.map(kra => {
+      if (kra.id !== kraId) return kra;
+      const updatedKpis = kra.kpis.map(kpi => {
+        if (kpi.id !== kpiId) return kpi;
+        return { ...kpi, standards: defaultStandards };
+      });
+      return { ...kra, kpis: updatedKpis };
     });
     setActiveTemplate({ ...activeTemplate, kraCategories: updated });
   };
@@ -1663,7 +1757,11 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             <div className="flex items-center space-x-2">
               <button
                 type="button"
-                onClick={() => setShowPreviewModal(true)}
+                onClick={() => {
+                  const committed = getTemplateWithCommittedWeights(activeTemplate);
+                  setActiveTemplate(committed);
+                  setShowPreviewModal(true);
+                }}
                 className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center space-x-1.5 transition-all"
               >
                 <Eye className="w-4 h-4" />
@@ -1769,7 +1867,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
             <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
               <div>
                 <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                  Part 1A — Key Result Areas (KRAs) & KPIs
+                  Part 1A — Key Result Areas (KRAs), Performance Types & KPI Items
                 </h3>
                 <p className="text-[11px] text-slate-500">
                   Total KRA weights must equal exactly {activeTemplate.formulaConfig.eligibilityWeight}%.
@@ -1782,7 +1880,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                     : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
                 }`}>
-                  KRAs: {getKraTotalWeight()}% / {activeTemplate.formulaConfig.eligibilityWeight}% • KPIs: {getAllKpisTotalWeight()}%
+                  KRAs: {getKraTotalWeight()}% / {activeTemplate.formulaConfig.eligibilityWeight}% • Performance Types: {getAllKpisTotalWeight()}%
                 </div>
 
                 {canEdit && (
@@ -1813,7 +1911,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                           setActiveTemplate({ ...activeTemplate, kraCategories: updated });
                         }}
                         className="flex-1 text-xs font-extrabold px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white disabled:opacity-60"
-                        placeholder="KRA Category Name"
+                        placeholder="KRA Category Name (e.g. 1. FINANCIAL)"
                       />
                     </div>
 
@@ -1849,91 +1947,189 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     </div>
                   </div>
 
-                  {/* KPIs List */}
-                  <div className="space-y-3 pl-2">
+                  {/* Performance Types List */}
+                  <div className="space-y-4 pl-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold text-slate-500 uppercase">
-                        KPI Items (Sub-total: {getKpiTotal(kra)}% / {kra.categoryWeightPercent}%)
+                        Performance Types & KPI Items (Sub-total: {getKpiTotal(kra)}% / {kra.categoryWeightPercent}%)
                       </span>
 
                       {canEdit && (
                         <button
                           type="button"
                           onClick={() => handleAddKPI(kra.id)}
-                          className="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-[11px] font-bold flex items-center space-x-1"
+                          className="px-2.5 py-1 rounded-lg bg-[#E96B1A]/10 hover:bg-[#E96B1A]/20 text-[#E96B1A] dark:text-[#f97316] text-[11px] font-bold flex items-center space-x-1 transition-colors"
                         >
                           <Plus className="w-3 h-3" />
-                          <span>Add KPI</span>
+                          <span>Add Performance Type</span>
                         </button>
                       )}
                     </div>
 
-                    {kra.kpis.map((kpi, kpiIndex) => (
-                      <div key={kpi.id} className="p-3.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex-1 flex items-center gap-2">
-                            <span className="text-[11px] font-bold text-slate-400">{kpiIndex + 1}.</span>
-                            <input
-                              type="text"
-                              value={kpi.name}
-                              disabled={!canEdit}
-                              onChange={(e) => {
-                                const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, name: e.target.value } : item);
-                                const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
-                                setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
-                              }}
-                              className="flex-1 text-xs font-bold px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white disabled:opacity-60"
-                              placeholder="KPI Item Name"
-                            />
-                          </div>
+                    {kra.kpis.map((kpi, kpiIndex) => {
+                      const standards = Array.isArray(kpi.standards) && kpi.standards.length > 0
+                        ? kpi.standards
+                        : [
+                            { rating: 4, label: '4 - Exceeds', description: '' },
+                            { rating: 3, label: '3 - Meets', description: '' },
+                            { rating: 2, label: '2 - Barely Meets', description: '' },
+                            { rating: 1, label: '1 - Did Not Meet', description: '' },
+                          ];
 
-                          <div className="flex items-center space-x-2">
-                            <div className="flex items-center space-x-1">
-                              <span className="text-[10px] font-bold text-slate-400">Weight:</span>
+                      return (
+                        <div key={kpi.id} className="p-3.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-3">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex-1 flex items-center gap-2 min-w-[220px]">
+                              <span className="text-[11px] font-bold text-[#E96B1A]">{String.fromCharCode(65 + kpiIndex)}.</span>
                               <input
                                 type="text"
-                                inputMode="numeric"
+                                value={kpi.name}
                                 disabled={!canEdit}
-                                value={getWeightInputValue(`kpi_${kpi.id}`, kpi.weightPercent || 0)}
-                                onChange={(e) => handleWeightInputChange(`kpi_${kpi.id}`, e.target.value)}
-                                onBlur={() => {
-                                  const numVal = commitWeightInput(`kpi_${kpi.id}`, kpi.weightPercent || 0);
-                                  const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, weightPercent: numVal } : item);
+                                onChange={(e) => {
+                                  const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, name: e.target.value } : item);
                                   const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
                                   setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
                                 }}
-                                className="w-12 text-xs font-bold text-center px-1.5 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white"
+                                className="flex-1 text-xs font-bold px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white disabled:opacity-60"
+                                placeholder="Performance Type Name (e.g. Revenue performance, Booking performance)"
                               />
-                              <span className="text-xs font-bold text-slate-400">%</span>
                             </div>
 
-                            {canEdit && (
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveKPI(kra.id, kpi.id)}
-                                className="p-1 text-slate-400 hover:text-rose-600 rounded"
-                                title="Remove KPI"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                            <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-1">
+                                <span className="text-[10px] font-bold text-slate-400">Weight:</span>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  disabled={!canEdit}
+                                  value={getWeightInputValue(`kpi_${kpi.id}`, kpi.weightPercent || 0)}
+                                  onChange={(e) => handleWeightInputChange(`kpi_${kpi.id}`, e.target.value)}
+                                  onBlur={() => {
+                                    const numVal = commitWeightInput(`kpi_${kpi.id}`, kpi.weightPercent || 0);
+                                    const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, weightPercent: numVal } : item);
+                                    const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
+                                    setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
+                                  }}
+                                  className="w-12 text-xs font-bold text-center px-1.5 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white"
+                                />
+                                <span className="text-xs font-bold text-slate-400">%</span>
+                              </div>
+
+                              {canEdit && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveKPI(kra.id, kpi.id)}
+                                  className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors"
+                                  title="Remove Performance Type"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <textarea
+                            value={kpi.description}
+                            disabled={!canEdit}
+                            onChange={(e) => {
+                              const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, description: e.target.value } : item);
+                              const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
+                              setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
+                            }}
+                            rows={1}
+                            className="w-full text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-[#E96B1A]/20 resize-none disabled:opacity-60"
+                            placeholder="Performance Type Description / Deliverables summary"
+                          />
+
+                          {/* Editable KPI Items Table */}
+                          <div className="pt-1 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                KPI Items ({standards.length} Rating Standards)
+                              </span>
+                              {canEdit && (
+                                <div className="flex items-center space-x-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAddKPIStandard(kra.id, kpi.id)}
+                                    className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-[10px] font-bold flex items-center space-x-1"
+                                  >
+                                    <Plus className="w-2.5 h-2.5" />
+                                    <span>Add KPI Item</span>
+                                  </button>
+                                  {standards.length !== 4 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleResetKPIStandards(kra.id, kpi.id)}
+                                      className="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-semibold"
+                                    >
+                                      Reset to 4 Scales
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                              <table className="w-full text-left text-xs border-collapse">
+                                <thead>
+                                  <tr className="bg-slate-100 dark:bg-slate-750 text-[10px] font-bold text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
+                                    <th className="py-1.5 px-2.5 w-[140px]">Scale</th>
+                                    <th className="py-1.5 px-2.5">Performance Indicator (KPI Target)</th>
+                                    {canEdit && <th className="py-1.5 px-2 w-[40px] text-center"></th>}
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                                  {standards.map((st, stIdx) => {
+                                    const defaultScaleLabel = st.rating === 4 ? '4 - Exceeds' : st.rating === 3 ? '3 - Meets' : st.rating === 2 ? '2 - Barely Meets' : '1 - Did Not Meet';
+                                    return (
+                                      <tr key={stIdx} className="hover:bg-slate-50/50 dark:hover:bg-slate-750/30">
+                                        <td className="py-1.5 px-2.5 align-middle">
+                                          <div className="flex items-center space-x-1.5">
+                                            <span className="text-[11px] font-extrabold text-[#E96B1A] shrink-0">
+                                              {st.rating} -
+                                            </span>
+                                            <input
+                                              type="text"
+                                              value={st.label || defaultScaleLabel}
+                                              disabled={!canEdit}
+                                              onChange={(e) => handleUpdateKPIStandard(kra.id, kpi.id, stIdx, 'label', e.target.value)}
+                                              className="w-full text-[10.5px] font-semibold px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 disabled:opacity-75"
+                                            />
+                                          </div>
+                                        </td>
+                                        <td className="py-1.5 px-2.5 align-middle">
+                                          <input
+                                            type="text"
+                                            value={st.description}
+                                            disabled={!canEdit}
+                                            onChange={(e) => handleUpdateKPIStandard(kra.id, kpi.id, stIdx, 'description', e.target.value)}
+                                            placeholder={`e.g. ${st.rating === 4 ? 'Above target is achieved (100%+)' : st.rating === 3 ? 'Target is achieved (100%)' : st.rating === 2 ? 'Below target is achieved (80-99%)' : 'Below 50% of target achieved'}`}
+                                            className="w-full text-[11px] px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-1 focus:ring-[#E96B1A] disabled:opacity-75"
+                                          />
+                                        </td>
+                                        {canEdit && (
+                                          <td className="py-1.5 px-2 text-center align-middle">
+                                            <button
+                                              type="button"
+                                              onClick={() => handleRemoveKPIStandard(kra.id, kpi.id, stIdx)}
+                                              className="p-1 text-slate-300 hover:text-rose-500 rounded transition-colors"
+                                              title="Delete KPI scale item"
+                                            >
+                                              <Trash2 className="w-3 h-3" />
+                                            </button>
+                                          </td>
+                                        )}
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
                         </div>
-
-                        <textarea
-                          value={kpi.description}
-                          disabled={!canEdit}
-                          onChange={(e) => {
-                            const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, description: e.target.value } : item);
-                            const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
-                            setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
-                          }}
-                          rows={2}
-                          className="w-full text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-[#E96B1A]/20 resize-none disabled:opacity-60"
-                          placeholder="KPI Description / Deliverables / Target Metrics"
-                        />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -2248,7 +2444,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
               <PrintableScorecard
                 evaluation={createDraftEvaluationInMemory(
                   currentUser || { id: 'usr_preview', name: activeTemplate.createdForEmployeeName || 'Sample Employee', role: 'employee', departmentName: activeTemplate.departmentName, position: activeTemplate.createdForPosition || 'Staff' } as User,
-                  activeTemplate,
+                  getTemplateWithCommittedWeights(activeTemplate),
                   activeTemplate.evaluationPeriod
                 )}
                 formulaConfig={activeTemplate.formulaConfig}

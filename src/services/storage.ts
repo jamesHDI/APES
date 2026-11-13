@@ -807,19 +807,26 @@ export const createDraftEvaluationInMemory = (
     : MASTER_SALES_EVALUATION_TEMPLATE;
 
   const kpiRatings = activeTemplate.kraCategories.flatMap((kra) =>
-    kra.kpis.map((kpi) => ({
+    (kra.kpis || []).map((kpi) => ({
       kpiId: kpi.id,
       kraId: kra.id,
       kraName: kra.name,
       name: kpi.name,
-      weightPercent: kpi.weightPercent,
+      weightPercent: Number(kpi.weightPercent || 0),
       selfRating: 0,
       supervisorRating: 0,
       presidentRating: 0,
       weightedScore: 0,
       comments: '',
-      standards: kpi.standards,
-      evidenceRequired: kpi.evidenceRequired,
+      standards: Array.isArray(kpi.standards) && kpi.standards.length > 0
+        ? kpi.standards
+        : [
+            { rating: 4, label: '4 - Exceeds', description: 'Exceeds target performance' },
+            { rating: 3, label: '3 - Meets', description: 'Meets expected target' },
+            { rating: 2, label: '2 - Barely Meets', description: 'Barely meets minimum target' },
+            { rating: 1, label: '1 - Did Not Meet', description: 'Did not meet target performance' },
+          ],
+      evidenceRequired: Boolean(kpi.evidenceRequired),
     }))
   );
 

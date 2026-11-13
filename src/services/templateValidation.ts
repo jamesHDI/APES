@@ -69,12 +69,14 @@ export function validateEvaluationTemplate(template: EvaluationTemplate): Templa
           }
 
           // 4. Rating Scale (1-4) Standards Verification
-          if (!kpi.standards || kpi.standards.length !== 4) {
-            errors.push(`Rating Scale Error: KPI "${kpi.name || kpiIdx + 1}" must have complete 4-point rating standards (1, 2, 3, 4).`);
+          if (!kpi.standards || kpi.standards.length === 0) {
+            errors.push(`Rating Scale Error: Performance Type "${kpi.name || kpiIdx + 1}" must have at least one KPI item.`);
+          } else if (kpi.standards.length !== 4) {
+            warnings.push(`Rating Scale Notice: Performance Type "${kpi.name || kpiIdx + 1}" has ${kpi.standards.length} KPI items. Standard scorecards typically use 4 scale levels (1, 2, 3, 4).`);
           } else {
             const ratings = kpi.standards.map((s: any) => s.rating);
             if (!ratings.includes(1) || !ratings.includes(2) || !ratings.includes(3) || !ratings.includes(4)) {
-              errors.push(`Rating Scale Error: KPI "${kpi.name || kpiIdx + 1}" rating scale must cover ratings 1, 2, 3, and 4.`);
+              warnings.push(`Rating Scale Notice: Performance Type "${kpi.name || kpiIdx + 1}" scale should ideally cover ratings 1, 2, 3, and 4.`);
             }
           }
         });

@@ -151,15 +151,54 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
         { coreValueId: 'cv_accountability', name: 'Accountability & Ownership', description: 'Takes full ownership of duties, commitments, and professional conduct.', podRating: 0, peerRating: 0, isRating: 0, avgRating: 0, weightedScore: 0, comments: '' }
       ];
 
-  // Self-heal: only populate kpiRatings/coreValueRatings if they are truly absent (no structure at all).
-  // CRITICAL: Never overwrite existing ratings. If a KPI already has selfRating/supervisorRating data,
-  // those are the employee's real submitted values and must not be reset to zero.
+  // Self-heal: populate or sync kpiRatings/coreValueRatings from template.
+  // CRITICAL: Never overwrite existing user ratings. If a KPI already has selfRating/supervisorRating data,
+  // those are preserved, while newly added KPI items, standards, and weights from the template are synced.
   useEffect(() => {
     let needsUpdate = false;
     let healed = { ...initialEvaluation };
 
-    const hasExistingKpiStructure = Array.isArray(healed.kpiRatings) && healed.kpiRatings.length > 0;
-    if (!hasExistingKpiStructure) {
+    const isDraft = !healed.status || healed.status === 'draft' || healed.status === 'not_started';
+
+    if (isDraft && templateKpiRatings.length > 0) {
+      const existingKpis = Array.isArray(healed.kpiRatings) ? healed.kpiRatings : [];
+      if (existingKpis.length === 0) {
+        healed.kpiRatings = templateKpiRatings;
+        needsUpdate = true;
+      } else {
+        const syncedKpis: KPIRating[] = templateKpiRatings.map((tKpi) => {
+          const existing = existingKpis.find(e => e.kpiId === tKpi.kpiId || (e.name === tKpi.name && e.kraName === tKpi.kraName));
+          if (existing) {
+            return {
+              ...tKpi,
+              selfRating: existing.selfRating || 0,
+              supervisorRating: existing.supervisorRating || 0,
+              presidentRating: existing.presidentRating || 0,
+              podRating: existing.podRating || 0,
+              weightedScore: existing.weightedScore || 0,
+              comments: existing.comments || '',
+              ratingHistory: existing.ratingHistory || [],
+              standards: tKpi.standards,
+              weightPercent: tKpi.weightPercent,
+            };
+          }
+          return tKpi;
+        });
+
+        const hasChanged = existingKpis.length !== syncedKpis.length ||
+          syncedKpis.some((sk, idx) => {
+            const ek = existingKpis[idx];
+            if (!ek) return true;
+            return ek.kpiId !== sk.kpiId || ek.name !== sk.name || ek.weightPercent !== sk.weightPercent ||
+              JSON.stringify(ek.standards) !== JSON.stringify(sk.standards);
+          });
+
+        if (hasChanged) {
+          healed.kpiRatings = syncedKpis;
+          needsUpdate = true;
+        }
+      }
+    } else if (!Array.isArray(healed.kpiRatings) || healed.kpiRatings.length === 0) {
       healed.kpiRatings = templateKpiRatings;
       needsUpdate = true;
     }

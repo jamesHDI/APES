@@ -1131,6 +1131,59 @@ export const App: React.FC = () => {
     setTemplates(newTemplates);
     saveTemplates(newTemplates);
 
+    // Synchronize changes to any matching draft evaluation in local state
+    setEvaluations(prevEvals => {
+      let changed = false;
+      const updatedEvals = prevEvals.map(ev => {
+        const isMatch = (ev.templateId === updatedTemplate.id ||
+          (Boolean(updatedTemplate.createdForEmployeeId) && ev.employeeId === updatedTemplate.createdForEmployeeId)) &&
+          (!ev.status || ev.status === 'draft' || ev.status === 'not_started');
+
+        if (!isMatch) return ev;
+
+        changed = true;
+        const newKpiRatings = (updatedTemplate.kraCategories || []).flatMap(kra =>
+          (kra.kpis || []).map(kpi => {
+            const existing = (ev.kpiRatings || []).find(e => e.kpiId === kpi.id || (e.name === kpi.name && e.kraName === kra.name));
+            return {
+              kpiId: kpi.id,
+              kraId: kra.id,
+              kraName: kra.name,
+              name: kpi.name,
+              weightPercent: Number(kpi.weightPercent || 0),
+              selfRating: existing?.selfRating || 0,
+              supervisorRating: existing?.supervisorRating || 0,
+              presidentRating: existing?.presidentRating || 0,
+              podRating: existing?.podRating || 0,
+              weightedScore: existing?.weightedScore || 0,
+              comments: existing?.comments || '',
+              standards: Array.isArray(kpi.standards) && kpi.standards.length > 0 ? kpi.standards : [
+                { rating: 4, label: '4 - Exceeds', description: 'Exceeds target performance' },
+                { rating: 3, label: '3 - Meets', description: 'Meets expected target' },
+                { rating: 2, label: '2 - Barely Meets', description: 'Barely meets minimum target' },
+                { rating: 1, label: '1 - Did Not Meet', description: 'Did not meet target performance' },
+              ],
+              evidenceRequired: Boolean(kpi.evidenceRequired),
+              ratingHistory: existing?.ratingHistory || [],
+            };
+          })
+        );
+
+        return {
+          ...ev,
+          templateId: updatedTemplate.id,
+          templateTitle: updatedTemplate.title,
+          kpiRatings: newKpiRatings,
+        };
+      });
+
+      if (changed) {
+        saveEvaluations(updatedEvals);
+        return updatedEvals;
+      }
+      return prevEvals;
+    });
+
     if (isSupabaseConfigured) {
       try {
         const success = await saveEvaluationTemplateToSupabase(updatedTemplate);
