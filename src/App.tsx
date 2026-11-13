@@ -563,168 +563,171 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // 1.5. Load evaluation history, scorecard archives, and templates
+  // 1.5. Initialize stored evaluation history and archives from local storage
   useEffect(() => {
-    const loadHistoryAndArchives = async () => {
-      setEvaluationHistory(getStoredEvaluationHistory());
-      setScorecardArchives(getStoredScorecardArchives());
-
-      if (isSupabaseConfigured) {
-        // Synchronize and permanently provision all 60 Excel Master Employees into Supabase PostgreSQL employees table
-        syncAllMasterEmployeesToSupabase().catch((err) => {
-          console.warn('[App Init] Background master employee sync note:', err);
-        });
-
-        // Proactively purge deprecated hardcoded accounts from Supabase cloud
-        deleteEmployeeFromSupabase('usr_sup_sales_01', 'supervisor.sales@hdiadventures.com', 'SUP-SLS-01').catch(() => {});
-        deleteEmployeeFromSupabase('usr_dh_pohr', 'pohr.head@hdiadventures.com', 'DH-POHR-01').catch(() => {});
-        deleteEmployeeFromSupabase('usr_pod_malene', 'malene.pellazo@hdiadventures.com', 'POD-01').catch(() => {});
-        deleteEmployeeFromSupabase('00000000-0000-4000-8000-000000000018', 'malenepellazo@hdiholdings.com', 'POD-01').catch(() => {});
-
-        try {
-          const sbHistory = await fetchEvaluationHistoryFromSupabase();
-          if (sbHistory && sbHistory.length > 0) setEvaluationHistory(sbHistory);
-        } catch (e) {}
-
-        try {
-          const sbArchives = await fetchScorecardArchivesFromSupabase();
-          if (sbArchives && sbArchives.length > 0) setScorecardArchives(sbArchives);
-        } catch (e) {}
-
-        try {
-          const sbTemplates = await fetchEvaluationTemplatesFromSupabase();
-          if (sbTemplates !== null) {
-            setTemplates(prev => {
-              const result = mergeEvaluationTemplates(sbTemplates, prev);
-              saveTemplates(result);
-              return result;
-            });
-          }
-        } catch (e) {}
-      }
-    };
-    loadHistoryAndArchives();
+    setEvaluationHistory(getStoredEvaluationHistory());
+    setScorecardArchives(getStoredScorecardArchives());
   }, []);
 
-  // 2. Real-time Database & Notification Polling (Optimized for Egress & Efficiency)
+  // Lazy load evaluation history & scorecard archives from Supabase ONLY when visiting 'my_history' tab (saves ~90% egress on initial app load)
+  useEffect(() => {
+    if (activeTab === 'my_history' && isSupabaseConfigured) {
+      if (evaluationHistory.length === 0) {
+        fetchEvaluationHistoryFromSupabase().then(sbHistory => {
+          if (sbHistory && sbHistory.length > 0) setEvaluationHistory(sbHistory);
+        }).catch(() => {});
+      }
+      if (scorecardArchives.length === 0) {
+        fetchScorecardArchivesFromSupabase().then(sbArchives => {
+          if (sbArchives && sbArchives.length > 0) setScorecardArchives(sbArchives);
+        }).catch(() => {});
+      }
+    }
+  }, [activeTab]);
+
+  // 2. Real-time Database & Notification Polling (Optimized for Zero-Waste Egress)
   useEffect(() => {
     let isMounted = true;
-    let lastSyncTimestamp = 0;
+    let lastLightweightSyncTimestamp = 0;
+    let lastHiddenTimestamp = 0;
 
-    const syncDatabaseAndNotifications = async (force = false) => {
-      const now = Date.now();
-      // Throttle syncs to at most once every 6 seconds unless forced
-      if (!force && now - lastSyncTimestamp < 6000) {
+    // Full startup sync (runs ONCE on mount/login, uses in-memory cached departments & templates)
+    const runInitialSync = async () => {
+      if (!isSupabaseConfigured) {
+        setUsers(getStoredUsers());
+        setEvaluations(getStoredEvaluations());
         return;
       }
-      lastSyncTimestamp = now;
 
-      if (isSupabaseConfigured) {
-        try {
-          const currentUser = currentUserRef.current;
-          const isAuthenticated = isAuthenticatedRef.current;
-          
-          const sbUsers = await fetchEmployeesFromSupabase();
-          if (!isMounted) return;
-          if (sbUsers && sbUsers.length > 0) {
-            const mergedUsers = mergeMasterWithSupabaseUsers(sbUsers);
-            setUsers(mergedUsers);
-            saveUsers(mergedUsers);
-            
-            // Live profile sync across devices for logged-in user
-            if (isAuthenticated) {
-              setCurrentUser((prevUser: User) => {
-                if (!prevUser) return prevUser;
-                const updatedSelf = sbUsers.find(
-                  (u) =>
-                    (u.employeeNumber && prevUser.employeeNumber && u.employeeNumber.toLowerCase().trim() === prevUser.employeeNumber.toLowerCase().trim()) ||
-                    u.email.toLowerCase().trim() === prevUser.email.toLowerCase().trim() ||
-                    u.id === prevUser.id
-                );
-                if (updatedSelf) {
-                  // Always prefer non-empty avatar: local state > Supabase DB
-                  // The DB may have had avatar_url wiped by a bulk master sync even though user uploaded a picture
-                  const resolvedAvatarUrl =
-                    prevUser.avatarUrl ||           // prefer current in-memory avatar (uploaded this session)
-                    updatedSelf.avatarUrl ||         // fallback to DB value if local is empty
-                    '';
-                  const mergedSelf: User = {
-                    ...updatedSelf,
-                    avatarUrl: resolvedAvatarUrl,
-                    personalEmail: updatedSelf.personalEmail || prevUser.personalEmail || '',
-                    requiresPasswordChange: (prevUser.requiresPasswordChange === false || updatedSelf.requiresPasswordChange === false) ? false : (updatedSelf.requiresPasswordChange ?? false)
-                  };
-                  if (
-                    prevUser.avatarUrl === mergedSelf.avatarUrl &&
-                    prevUser.name === mergedSelf.name &&
-                    prevUser.email === mergedSelf.email &&
-                    prevUser.position === mergedSelf.position &&
-                    prevUser.departmentName === mergedSelf.departmentName
-                  ) {
-                    return prevUser;
-                  }
-                  setCurrentUserStore(mergedSelf);
-                  return mergedSelf;
+      try {
+        const curUser = currentUserRef.current;
+        const isAuth = isAuthenticatedRef.current;
+
+        const sbUsers = await fetchEmployeesFromSupabase();
+        if (!isMounted) return;
+        if (sbUsers && sbUsers.length > 0) {
+          const mergedUsers = mergeMasterWithSupabaseUsers(sbUsers);
+          setUsers(mergedUsers);
+          saveUsers(mergedUsers);
+
+          // Live profile sync across devices for logged-in user
+          if (isAuth) {
+            setCurrentUser((prevUser: User) => {
+              if (!prevUser) return prevUser;
+              const updatedSelf = sbUsers.find(
+                (u) =>
+                  (u.employeeNumber && prevUser.employeeNumber && u.employeeNumber.toLowerCase().trim() === prevUser.employeeNumber.toLowerCase().trim()) ||
+                  u.email.toLowerCase().trim() === prevUser.email.toLowerCase().trim() ||
+                  u.id === prevUser.id
+              );
+              if (updatedSelf) {
+                const resolvedAvatarUrl = prevUser.avatarUrl || updatedSelf.avatarUrl || '';
+                const mergedSelf: User = {
+                  ...updatedSelf,
+                  avatarUrl: resolvedAvatarUrl,
+                  personalEmail: updatedSelf.personalEmail || prevUser.personalEmail || '',
+                  requiresPasswordChange: (prevUser.requiresPasswordChange === false || updatedSelf.requiresPasswordChange === false) ? false : (updatedSelf.requiresPasswordChange ?? false)
+                };
+                if (
+                  prevUser.avatarUrl === mergedSelf.avatarUrl &&
+                  prevUser.name === mergedSelf.name &&
+                  prevUser.email === mergedSelf.email &&
+                  prevUser.position === mergedSelf.position &&
+                  prevUser.departmentName === mergedSelf.departmentName
+                ) {
+                  return prevUser;
                 }
-                return prevUser;
-              });
-            }
+                setCurrentUserStore(mergedSelf);
+                return mergedSelf;
+              }
+              return prevUser;
+            });
           }
-
-          const sbDepts = await fetchDepartmentsFromSupabase();
-          if (!isMounted) return;
-          if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
-
-          const sbTemplates = await fetchEvaluationTemplatesFromSupabase();
-          if (!isMounted) return;
-          if (sbTemplates && sbTemplates.length > 0) {
-            setTemplates(sbTemplates);
-            saveTemplates(sbTemplates);
-          }
-
-          const privilegedRoles = ['system_admin', 'hr_admin', 'pod', 'dept_head', 'supervisor', 'president'];
-          const isPrivileged = currentUser?.role && privilegedRoles.includes(currentUser.role);
-          const sbEvals = await fetchEvaluationsFromSupabase(isPrivileged ? undefined : currentUser);
-          if (!isMounted) return;
-          if (sbEvals) {
-            setEvaluations(sbEvals);
-            saveEvaluations(sbEvals);
-          }
-
-          const sbNotifs = await fetchNotificationsFromSupabase(currentUser?.id, currentUser?.role);
-          if (!isMounted) return;
-          if (sbNotifs) {
-            const computed = getRoleBasedNotifications(sbNotifs, currentUser);
-            setNotifications(computed);
-          }
-        } catch (syncErr) {
-          console.warn('[APES Sync] Periodic sync note:', syncErr);
         }
-      } else {
-        const storedUsers = getStoredUsers();
-        setUsers(storedUsers);
-        setEvaluations(getStoredEvaluations());
+
+        const sbDepts = await fetchDepartmentsFromSupabase();
+        if (!isMounted) return;
+        if (sbDepts && sbDepts.length > 0) setDepartments(sbDepts);
+
+        const sbTemplates = await fetchEvaluationTemplatesFromSupabase();
+        if (!isMounted) return;
+        if (sbTemplates && sbTemplates.length > 0) {
+          setTemplates(sbTemplates);
+          saveTemplates(sbTemplates);
+        }
+
+        const privilegedRoles = ['system_admin', 'hr_admin', 'pod', 'dept_head', 'supervisor', 'president'];
+        const isPrivileged = curUser?.role && privilegedRoles.includes(curUser.role);
+        const sbEvals = await fetchEvaluationsFromSupabase(isPrivileged ? undefined : curUser);
+        if (!isMounted) return;
+        if (sbEvals) {
+          setEvaluations(sbEvals);
+          saveEvaluations(sbEvals);
+        }
+
+        const sbNotifs = await fetchNotificationsFromSupabase(curUser?.id, curUser?.role);
+        if (!isMounted) return;
+        if (sbNotifs) {
+          setNotifications(getRoleBasedNotifications(sbNotifs, curUser));
+        }
+      } catch (syncErr) {
+        console.warn('[APES Sync] Initial startup sync note:', syncErr);
       }
     };
 
-    // Initial sync
-    syncDatabaseAndNotifications(true);
+    // Lightweight sync: strictly refreshes evaluations and notifications (zero templates/departments egress)
+    const runLightweightSync = async () => {
+      const now = Date.now();
+      if (now - lastLightweightSyncTimestamp < 10000) return; // 10s cooldown
+      lastLightweightSyncTimestamp = now;
 
-    // Refresh when user returns to the tab/window (zero idle egress when backgrounded)
-    const handleVisibilityOrFocus = () => {
-      if (document.visibilityState === 'visible') {
-        syncDatabaseAndNotifications(false);
+      if (!isSupabaseConfigured) return;
+
+      try {
+        const curUser = currentUserRef.current;
+        const privilegedRoles = ['system_admin', 'hr_admin', 'pod', 'dept_head', 'supervisor', 'president'];
+        const isPrivileged = curUser?.role && privilegedRoles.includes(curUser.role);
+
+        const [sbEvals, sbNotifs] = await Promise.all([
+          fetchEvaluationsFromSupabase(isPrivileged ? undefined : curUser),
+          fetchNotificationsFromSupabase(curUser?.id, curUser?.role)
+        ]);
+
+        if (!isMounted) return;
+        if (sbEvals) {
+          setEvaluations(sbEvals);
+          saveEvaluations(sbEvals);
+        }
+        if (sbNotifs) {
+          setNotifications(getRoleBasedNotifications(sbNotifs, curUser));
+        }
+      } catch (err) {
+        console.warn('[APES Sync] Lightweight poll note:', err);
       }
     };
-    window.addEventListener('focus', handleVisibilityOrFocus);
-    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
 
-    // Lightweight idle fallback sync (every 60s instead of 3s to save 95%+ egress)
+    // Initial load
+    runInitialSync();
+
+    // Visibility change handler: only sync if tab was in background for > 3 minutes (180,000ms)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        lastHiddenTimestamp = Date.now();
+      } else if (document.visibilityState === 'visible') {
+        const awayMs = Date.now() - lastHiddenTimestamp;
+        if (lastHiddenTimestamp > 0 && awayMs > 180000) {
+          runLightweightSync();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Idle heartbeat poll: every 3 minutes (180s instead of 60s), lightweight only
     const intervalId = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        syncDatabaseAndNotifications(false);
+        runLightweightSync();
       }
-    }, 60000);
+    }, 180000);
 
     // Targeted WebSocket Broadcast Channel (event-driven on mutations only)
     let broadcastChannel: any = null;
@@ -733,18 +736,60 @@ export const App: React.FC = () => {
       try {
         broadcastChannel = supabase
           .channel('apes_broadcast_events')
-          .on('broadcast', { event: 'data_changed' }, () => {
-            syncDatabaseAndNotifications(true);
-            setDeployments(getStoredDeployments());
-            fetchEvaluationTemplatesFromSupabase().then(sbTemplates => {
-              if (sbTemplates !== null && isMounted) {
-                setTemplates(prev => {
-                  const result = mergeEvaluationTemplates(sbTemplates, prev);
-                  saveTemplates(result);
-                  return result;
+          .on('broadcast', { event: 'data_changed' }, (msg: any) => {
+            const changeType = msg?.payload?.type;
+            const cur = currentUserRef.current;
+
+            if (changeType === 'notification_read' || changeType === 'notifications_read_all' || changeType === 'announcement') {
+              if (cur) {
+                fetchNotificationsFromSupabase(cur.id, cur.role).then(sbNotifs => {
+                  if (sbNotifs && isMounted) setNotifications(getRoleBasedNotifications(sbNotifs, cur));
                 });
               }
-            }).catch(() => {});
+              return;
+            }
+
+            if (changeType === 'template_workflow') {
+              fetchEvaluationTemplatesFromSupabase(true).then(sbTemplates => {
+                if (sbTemplates && isMounted) {
+                  setTemplates(prev => {
+                    const result = mergeEvaluationTemplates(sbTemplates, prev);
+                    saveTemplates(result);
+                    return result;
+                  });
+                }
+              });
+              if (cur) {
+                fetchNotificationsFromSupabase(cur.id, cur.role).then(sbNotifs => {
+                  if (sbNotifs && isMounted) setNotifications(getRoleBasedNotifications(sbNotifs, cur));
+                });
+              }
+              return;
+            }
+
+            if (changeType === 'workflow' || changeType === 'campaign_access_request') {
+              runLightweightSync();
+              return;
+            }
+
+            if (changeType === 'registration' || changeType === 'employee') {
+              fetchEmployeesFromSupabase(true).then(sbUsers => {
+                if (sbUsers && isMounted) {
+                  const mergedUsers = mergeMasterWithSupabaseUsers(sbUsers);
+                  setUsers(mergedUsers);
+                  saveUsers(mergedUsers);
+                }
+              });
+              if (cur) {
+                fetchNotificationsFromSupabase(cur.id, cur.role).then(sbNotifs => {
+                  if (sbNotifs && isMounted) setNotifications(getRoleBasedNotifications(sbNotifs, cur));
+                });
+              }
+              return;
+            }
+
+            // General mutation fallback
+            runLightweightSync();
           })
           .subscribe();
       } catch (e) {
@@ -755,8 +800,7 @@ export const App: React.FC = () => {
     return () => {
       isMounted = false;
       clearInterval(intervalId);
-      window.removeEventListener('focus', handleVisibilityOrFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       lastAvatarUpdateRef.current = null;
       if (supabase && broadcastChannel) {
         supabase.removeChannel(broadcastChannel);

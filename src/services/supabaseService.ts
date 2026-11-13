@@ -418,25 +418,28 @@ export const syncAllEmployeesToSupabase = async (customUsers?: User[]): Promise<
   }
 };
 
-export const fetchEmployeesFromSupabase = async (): Promise<User[] | null> => {
+let _cachedEmployees: User[] | null = null;
+let _cachedEmployeesTime = 0;
+const EMP_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache to avoid excessive egress
+
+export const invalidateEmployeesCache = () => {
+  _cachedEmployees = null;
+  _cachedEmployeesTime = 0;
+};
+
+export const fetchEmployeesFromSupabase = async (forceRefresh: boolean = false): Promise<User[] | null> => {
   if (!isSupabaseConfigured || !supabase) return null;
+
+  const now = Date.now();
+  if (!forceRefresh && _cachedEmployees && (now - _cachedEmployeesTime < EMP_CACHE_TTL)) {
+    return _cachedEmployees;
+  }
 
   try {
     const { data, error } = await supabase.from('employees').select('*');
     if (error) {
       console.warn('Error fetching employees from Supabase:', error);
-      return null;
-    }
-
-    // Check if any master employees are missing from database
-    const dbEmpCount = data ? data.length : 0;
-    if (dbEmpCount < MASTER_EMPLOYEES.length) {
-      console.log(`[Supabase Sync] Database has ${dbEmpCount} employees, syncing all ${MASTER_EMPLOYEES.length} master employees...`);
-      await syncAllEmployeesToSupabase();
-      const { data: retryData } = await supabase.from('employees').select('*');
-      if (retryData) {
-        return retryData.map(mapRowToUser);
-      }
+      return _cachedEmployees || null;
     }
 
     const isExcluded = (u: User) =>
@@ -462,10 +465,13 @@ export const fetchEmployeesFromSupabase = async (): Promise<User[] | null> => {
       (u.email && u.email.toLowerCase().trim() === 'pohr.head@hdiadventures.com') ||
       (u.email && u.email.toLowerCase().trim() === 'malenepellazo@hdiholdings.com');
 
-    return (data || []).map(mapRowToUser).filter((u: User) => !isExcluded(u));
+    const mapped = (data || []).map(mapRowToUser).filter((u: User) => !isExcluded(u));
+    _cachedEmployees = mapped;
+    _cachedEmployeesTime = Date.now();
+    return mapped;
   } catch (err) {
     console.warn('Error fetching employees from Supabase:', err);
-    return null;
+    return _cachedEmployees || null;
   }
 };
 
@@ -955,6 +961,7 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       }
     }
 
+    invalidateEmployeesCache();
     return {
       success: true,
       verifiedUser: verifiedRow ? mapRowToUser(verifiedRow) : undefined
@@ -1090,12 +1097,26 @@ export const deleteEmployeeFromSupabase = async (
 // 2. DEPARTMENTS SUPABASE OPERATIONS
 // ==============================================================================
 
-export const fetchDepartmentsFromSupabase = async (): Promise<Department[] | null> => {
+let _cachedDepartments: Department[] | null = null;
+let _cachedDepartmentsTime = 0;
+const DEPT_CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache to avoid excessive egress
+
+export const invalidateDepartmentsCache = () => {
+  _cachedDepartments = null;
+  _cachedDepartmentsTime = 0;
+};
+
+export const fetchDepartmentsFromSupabase = async (forceRefresh: boolean = false): Promise<Department[] | null> => {
   if (!isSupabaseConfigured || !supabase) return null;
+
+  const now = Date.now();
+  if (!forceRefresh && _cachedDepartments && (now - _cachedDepartmentsTime < DEPT_CACHE_TTL)) {
+    return _cachedDepartments;
+  }
 
   try {
     const { data, error } = await supabase.from('departments').select('*');
-    if (error || !data) return null;
+    if (error || !data) return _cachedDepartments || null;
 
     const { isObsoleteDepartment, SEED_DEPARTMENTS } = await import('./storage');
 
@@ -1132,10 +1153,12 @@ export const fetchDepartmentsFromSupabase = async (): Promise<Department[] | nul
       }
     }
 
+    _cachedDepartments = results;
+    _cachedDepartmentsTime = Date.now();
     return results;
   } catch (err) {
     console.warn('Error fetching departments from Supabase:', err);
-    return null;
+    return _cachedDepartments || null;
   }
 };
 
@@ -1143,6 +1166,7 @@ export const saveDepartmentToSupabase = async (dept: Department): Promise<boolea
   if (!isSupabaseConfigured || !supabase) return false;
 
   try {
+    invalidateDepartmentsCache();
     const payload = {
       id: ensureUuid(dept.id),
       code: dept.code,
@@ -1189,7 +1213,7 @@ export const fetchNotificationsFromSupabase = async (userId?: string, userRole?:
       }
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(100);
+    const { data, error } = await query.order('created_at', { ascending: false }).limit(30);
 
     if (error) {
       console.error('Supabase fetchNotifications error:', error.message, error.details);
@@ -2899,6 +2923,7 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       }
     }
 
+    invalidateTemplatesCache();
     console.log(`[Template Cloud Sync] Successfully saved template "${template.title}" to Supabase.`);
     return true;
   } catch (err) {
@@ -2907,12 +2932,26 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
   }
 };
 
-export const fetchEvaluationTemplatesFromSupabase = async (): Promise<EvaluationTemplate[] | null> => {
+let _cachedTemplates: EvaluationTemplate[] | null = null;
+let _cachedTemplatesTime = 0;
+const TEMPLATE_CACHE_TTL = 15 * 60 * 1000; // 15 minutes cache to eliminate heavy JSON egress
+
+export const invalidateTemplatesCache = () => {
+  _cachedTemplates = null;
+  _cachedTemplatesTime = 0;
+};
+
+export const fetchEvaluationTemplatesFromSupabase = async (forceRefresh: boolean = false): Promise<EvaluationTemplate[] | null> => {
   if (!isSupabaseConfigured || !supabase) return null;
+
+  const now = Date.now();
+  if (!forceRefresh && _cachedTemplates && (now - _cachedTemplatesTime < TEMPLATE_CACHE_TTL)) {
+    return _cachedTemplates;
+  }
 
   try {
     const { data: rows, error } = await supabase.from('evaluation_templates').select('*');
-    if (error || !rows || rows.length === 0) return null;
+    if (error || !rows || rows.length === 0) return _cachedTemplates || null;
 
     let kpiRows: any[] = [];
     try {
@@ -3059,16 +3098,19 @@ export const fetchEvaluationTemplatesFromSupabase = async (): Promise<Evaluation
     });
 
     console.log(`[Template Cloud Sync] Fetched ${templates.length} templates from Supabase.`);
+    _cachedTemplates = templates;
+    _cachedTemplatesTime = Date.now();
     return templates;
   } catch (err) {
     console.warn('[Template Cloud Sync] Exception fetching templates from Supabase:', err);
-    return null;
+    return _cachedTemplates || null;
   }
 };
 
 export const deleteEvaluationTemplateFromSupabase = async (templateId: string): Promise<boolean> => {
   if (!isSupabaseConfigured || !supabase || !templateId) return false;
   try {
+    invalidateTemplatesCache();
     const uuid = isValidUuid(templateId) ? templateId : ensureUuid(templateId);
     const { error } = await supabase.from('evaluation_templates').delete().eq('id', uuid);
     if (error) {
