@@ -1967,7 +1967,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                     </div>
 
                     {kra.kpis.map((kpi, kpiIndex) => {
-                      const standards = Array.isArray(kpi.standards) && kpi.standards.length > 0
+                      const standards: RatingStandard[] = Array.isArray(kpi.standards) && kpi.standards.length > 0
                         ? kpi.standards
                         : [
                             { rating: 4, label: '4 - Exceeds', description: '' },
@@ -2080,7 +2080,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
-                                  {standards.map((st, stIdx) => {
+                                  {standards.map((st: RatingStandard, stIdx: number) => {
                                     const defaultScaleLabel = st.rating === 4 ? '4 - Exceeds' : st.rating === 3 ? '3 - Meets' : st.rating === 2 ? '2 - Barely Meets' : '1 - Did Not Meet';
                                     return (
                                       <tr key={stIdx} className="hover:bg-slate-50/50 dark:hover:bg-slate-750/30">

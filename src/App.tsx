@@ -1137,7 +1137,7 @@ export const App: React.FC = () => {
       const updatedEvals = prevEvals.map(ev => {
         const isMatch = (ev.templateId === updatedTemplate.id ||
           (Boolean(updatedTemplate.createdForEmployeeId) && ev.employeeId === updatedTemplate.createdForEmployeeId)) &&
-          (!ev.status || ev.status === 'draft' || ev.status === 'not_started');
+          (!ev.status || ev.status === 'draft' || (ev.status as string) === 'not_started');
 
         if (!isMatch) return ev;
 

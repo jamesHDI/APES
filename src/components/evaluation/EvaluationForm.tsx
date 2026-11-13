@@ -158,7 +158,7 @@ export const EvaluationForm: React.FC<EvaluationFormProps> = ({
     let needsUpdate = false;
     let healed = { ...initialEvaluation };
 
-    const isDraft = !healed.status || healed.status === 'draft' || healed.status === 'not_started';
+    const isDraft = !healed.status || healed.status === 'draft' || (healed.status as string) === 'not_started';
 
     if (isDraft && templateKpiRatings.length > 0) {
       const existingKpis = Array.isArray(healed.kpiRatings) ? healed.kpiRatings : [];
