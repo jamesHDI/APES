@@ -482,11 +482,69 @@ export const logoutUser = async () => {
   }
 };
 
-export const requestPasswordReset = async (email: string): Promise<{ success: boolean; message: string }> => {
-  if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    if (error) return { success: false, message: error.message };
-    return { success: true, message: `Password reset link sent to ${email}` };
+export const requestPasswordReset = async (
+  email: string
+): Promise<{ success: boolean; message: string; user?: User }> => {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (!cleanEmail) {
+    return { success: false, message: 'Please enter your email address.' };
   }
-  return { success: true, message: `Password reset link sent to ${email} (Demo Mode)` };
+
+  // 1. Check Supabase employees table
+  let matchedUser: User | null = null;
+  if (isSupabaseConfigured && supabase) {
+    try {
+      matchedUser = await findEmployeeInSupabase(cleanEmail);
+    } catch (e) {
+      console.warn('[Password Reset] Supabase search note:', e);
+    }
+  }
+
+  // 2. Check local users store
+  if (!matchedUser) {
+    const users = getStoredUsers();
+    matchedUser = users.find(
+      u => u.email.toLowerCase() === cleanEmail ||
+           (u.personalEmail && u.personalEmail.toLowerCase() === cleanEmail)
+    ) || null;
+  }
+
+  if (!matchedUser) {
+    return {
+      success: false,
+      message: `No account found with email "${email}". Please verify your email address or contact People Operations (HR).`
+    };
+  }
+
+  // 3. Dispatch Supabase Auth recovery email with current production origin
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const redirectUrl = `${window.location.origin}${window.location.pathname}?reset_password=true`;
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: redirectUrl,
+      });
+
+      // If user does not exist in auth.users yet, provision and retry reset
+      if (resetErr && (resetErr.message.includes('User not found') || resetErr.message.includes('Invalid login credentials'))) {
+        const tempPw = `ApesReset_${Math.random().toString(36).substring(2, 10)}!`;
+        const { data: signUpData } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password: tempPw,
+        });
+        if (signUpData?.user) {
+          await supabase.auth.resetPasswordForEmail(cleanEmail, {
+            redirectTo: redirectUrl,
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[Password Reset] Supabase Auth reset dispatch note:', err);
+    }
+  }
+
+  return {
+    success: true,
+    message: `Account verified for ${matchedUser.name}. Please set your new password.`,
+    user: matchedUser
+  };
 };

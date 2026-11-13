@@ -8,6 +8,7 @@ interface ChangePasswordModalProps {
   isOpen: boolean;
   user: User;
   isForced?: boolean; // true = first-login forced change
+  isRecovery?: boolean; // true = reset/forgot password recovery
   onPasswordChanged: (updatedUser: User) => void;
   onClose?: () => void;
 }
@@ -16,6 +17,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   isOpen,
   user,
   isForced = false,
+  isRecovery = false,
   onPasswordChanged,
   onClose,
 }) => {
@@ -33,8 +35,8 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
     e.preventDefault();
     setError(null);
 
-    // Validate current password if not a forced change from the default
-    if (!isForced && user.password) {
+    // Validate current password if not a forced change from default and not recovery
+    if (!isForced && !isRecovery && user.password) {
       const isCurrentValid = await verifyPassword(currentPassword, user.password);
       if (!isCurrentValid) {
         setError('Current password is incorrect.');
@@ -74,20 +76,22 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         {/* Header */}
-        <div className={`px-6 py-5 ${isForced ? 'bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800' : 'bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-700'}`}>
+        <div className={`px-6 py-5 ${isForced ? 'bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800' : isRecovery ? 'bg-brand-50 dark:bg-brand-950/40 border-b border-brand-200 dark:border-brand-800' : 'bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-700'}`}>
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isForced ? 'bg-amber-100 dark:bg-amber-900/50' : 'bg-brand-100 dark:bg-brand-950'}`}>
               <ShieldCheck className={`w-5 h-5 ${isForced ? 'text-amber-600 dark:text-amber-400' : 'text-brand-600 dark:text-brand-400'}`} />
             </div>
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white">
-                {isForced ? 'Change Default Password' : 'Change Password'}
+                {isRecovery ? 'Reset Password' : isForced ? 'Change Default Password' : 'Change Password'}
               </h3>
-              {isForced && (
-                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                  For security, you must set a new personal password on your first login before continuing.
-                </p>
-              )}
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {isRecovery
+                  ? `Set a new password for ${user.name} (${user.email})`
+                  : isForced
+                  ? 'For security, you must set a new personal password on your first login before continuing.'
+                  : 'Update your account password.'}
+              </p>
             </div>
           </div>
         </div>
@@ -108,8 +112,8 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             </div>
           )}
 
-          {/* Current password — skip for forced first-login */}
-          {!isForced && (
+          {/* Current password — skip for forced first-login or recovery */}
+          {!isForced && !isRecovery && (
             <div>
               <label className="form-label">Current Password</label>
               <div className="relative">

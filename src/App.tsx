@@ -418,6 +418,57 @@ export const App: React.FC = () => {
     await handleLogout();
   };
 
+  // ── Password Recovery Listeners (for Supabase email reset links) ─────────────
+  const [showRecoveryModal, setShowRecoveryModal] = useState<boolean>(false);
+  const [recoverySessionUser, setRecoverySessionUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    if (isSupabaseConfigured && supabase) {
+      const authSub = (supabase.auth as any).onAuthStateChange(async (event: string, session: any) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          console.log('[Auth] Supabase PASSWORD_RECOVERY event received');
+          const email = session?.user?.email;
+          if (email) {
+            const user = (await findEmployeeInSupabase(email)) || {
+              id: session.user.id,
+              name: session.user.user_metadata?.full_name || email.split('@')[0],
+              email: email,
+              role: 'employee',
+              departmentId: 'dept_gen',
+              departmentName: 'General',
+            } as User;
+            setRecoverySessionUser(user);
+            setShowRecoveryModal(true);
+          }
+        }
+      });
+
+      const hash = window.location.hash || '';
+      const search = window.location.search || '';
+      if (hash.includes('type=recovery') || search.includes('type=recovery') || search.includes('reset_password=true')) {
+        (supabase.auth as any).getSession().then(async (res: any) => {
+          const session = res?.data?.session;
+          if (session?.user?.email) {
+            const user = (await findEmployeeInSupabase(session.user.email)) || {
+              id: session.user.id,
+              name: session.user.user_metadata?.full_name || session.user.email.split('@')[0],
+              email: session.user.email,
+              role: 'employee',
+              departmentId: 'dept_gen',
+              departmentName: 'General',
+            } as User;
+            setRecoverySessionUser(user);
+            setShowRecoveryModal(true);
+          }
+        }).catch((e: any) => console.warn('[Auth Recovery] Session check note:', e));
+      }
+
+      return () => {
+        authSub?.data?.subscription?.unsubscribe?.();
+      };
+    }
+  }, []);
+
   // 1. Session Restoration Effect (On App Mount)
   useEffect(() => {
     let isMounted = true;
@@ -1796,6 +1847,30 @@ export const App: React.FC = () => {
             user={currentUser}
             isForced={true}
             onPasswordChanged={handleUpdateCurrentUser}
+          />
+        )}
+
+        {/* Password Recovery Modal (from email reset link) */}
+        {showRecoveryModal && recoverySessionUser && (
+          <ChangePasswordModal
+            isOpen={true}
+            user={recoverySessionUser}
+            isRecovery={true}
+            onPasswordChanged={async (updatedUser) => {
+              setShowRecoveryModal(false);
+              setRecoverySessionUser(null);
+              try {
+                window.history.replaceState(null, '', window.location.pathname);
+              } catch {}
+              await handleUpdateCurrentUser(updatedUser);
+            }}
+            onClose={() => {
+              setShowRecoveryModal(false);
+              setRecoverySessionUser(null);
+              try {
+                window.history.replaceState(null, '', window.location.pathname);
+              } catch {}
+            }}
           />
         )}
 
