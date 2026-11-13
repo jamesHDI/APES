@@ -34,6 +34,7 @@ import {
   FileEdit,
   Bookmark,
   Check,
+  Undo2,
 } from 'lucide-react';
 
 interface TemplateBuilderProps {
@@ -136,8 +137,10 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     t => (t.status === 'submitted_to_is' || t.status === 'is_review') && (isPOD || checkIsISForTemplateLocal(t))
   ).length;
 
+  const podDraftsCount = safeTemplatesList.filter(t => t.status === 'draft').length;
+
   // POD Filter Tab & Company Filter
-  const [podFilterTab, setPodFilterTab] = useState<'all' | 'pending_is' | 'pending_pod' | 'returned' | 'approved_deployed'>('all');
+  const [podFilterTab, setPodFilterTab] = useState<'all' | 'draft' | 'pending_is' | 'pending_pod' | 'returned' | 'approved_deployed'>('all');
   const [supervisorFilterTab, setSupervisorFilterTab] = useState<'all' | 'pending_review' | 'approved' | 'returned'>(
     pendingISCount > 0 ? 'pending_review' : 'all'
   );
@@ -149,6 +152,7 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
         if (companyFilter !== 'all' && t.companyName && t.companyName !== companyFilter) return false;
         if (departmentFilter !== 'all' && t.departmentName && t.departmentName !== departmentFilter) return false;
 
+        if (podFilterTab === 'draft') return t.status === 'draft';
         if (podFilterTab === 'pending_is') return t.status === 'submitted_to_is' || t.status === 'is_review';
         if (podFilterTab === 'pending_pod') return t.status === 'submitted_to_pod' || t.status === 'resubmitted_to_pod' || t.status === 'is_approved' || t.status === 'pod_review';
         if (podFilterTab === 'returned') return t.status === 'returned_by_is' || t.status === 'returned_by_pod' || t.status === 'returned_for_revision';
@@ -164,8 +168,15 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
       })
     : safeTemplatesList;
 
-  // Available / published templates (excluding drafts from the main list)
-  const availableTemplates = visibleTemplates.filter(t => t.status !== 'draft');
+  // Available / published templates (when viewing draft tab in POD, show drafts; otherwise exclude drafts from the main available list)
+  const availableTemplates = (isPOD && podFilterTab === 'draft')
+    ? visibleTemplates.filter(t => t.status === 'draft')
+    : visibleTemplates.filter(t => t.status !== 'draft');
+
+  // Draft templates for sidebar section (POD sees all drafts across system; others see their own)
+  const draftTemplatesForSection = isPOD
+    ? safeTemplatesList.filter(t => t.status === 'draft')
+    : myDraftTemplates;
 
   // Initialize employee personal template if in employee mode and list is empty
   const getInitialEmployeeTemplate = (): EvaluationTemplate => {
@@ -272,13 +283,11 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     (currentUser?.role === 'pod' || currentUser?.role === 'hr_admin' || currentUser?.role === 'system_admin');
 
   const canEdit = 
-    // POD approver can edit unless deployed/locked
-    (isPODApprover && activeTemplate.status !== 'deployed' && !activeTemplate.isLocked)
-    // System admin can edit unless deployed/locked
-    || (currentUser?.role === 'system_admin' && !isEmployeeMode && activeTemplate.status !== 'deployed' && !activeTemplate.isLocked)
+    // POD or System Admin can edit any template unless deployed/locked
+    (isPOD && activeTemplate.status !== 'deployed' && !activeTemplate.isLocked)
     // Assigned IS can edit/calibrate when reviewing (submitted_to_is or is_review)
     || (isAssignedIS && (activeTemplate.status === 'submitted_to_is' || activeTemplate.status === 'is_review'))
-    // Template owner can edit ONLY their drafts or returned templates (CANNOT edit once submitted to IS!)
+    // Template owner can edit their drafts or returned templates
     || (isTemplateOwner && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_by_is' || activeTemplate.status === 'returned_for_revision' || activeTemplate.status === 'returned_by_pod'))
     // Dept Head can edit their own drafts or returned templates
     || (isDeptHead && isTemplateOwner && (!activeTemplate.status || activeTemplate.status === 'draft' || activeTemplate.status === 'returned_for_revision' || activeTemplate.status === 'returned_by_is'));
@@ -1097,6 +1106,46 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
     showToast('Template published and made available for evaluations!');
   };
 
+  const handleUndraftTemplate = () => {
+    let templateToSave = getTemplateWithCommittedWeights(activeTemplate);
+
+    if (weightInputs['formula_eligibility'] !== undefined) {
+      const raw = weightInputs['formula_eligibility'];
+      const numVal = raw === '' ? 85 : Number(raw);
+      templateToSave = {
+        ...templateToSave,
+        formulaConfig: { ...templateToSave.formulaConfig, eligibilityWeight: numVal }
+      };
+    }
+    if (weightInputs['formula_core_values'] !== undefined) {
+      const raw = weightInputs['formula_core_values'];
+      const numVal = raw === '' ? 15 : Number(raw);
+      templateToSave = {
+        ...templateToSave,
+        formulaConfig: { ...templateToSave.formulaConfig, coreValuesWeight: numVal }
+      };
+    }
+    setWeightInputs({});
+
+    const validation = validateEvaluationTemplate(templateToSave);
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      showToast('Please resolve all validation errors before undrafting.');
+      return;
+    }
+
+    setValidationErrors([]);
+    const nextStatus: TemplateStatus = isPOD ? 'deployed' : 'approved';
+    const undrafted: EvaluationTemplate = {
+      ...templateToSave,
+      status: nextStatus,
+      isLocked: isPOD ? true : false,
+    };
+    onSaveTemplate(undrafted);
+    setActiveTemplate(undrafted);
+    showToast(`Template undrafted successfully! Status is now ${isPOD ? 'Deployed & Available' : 'Available for Evaluations'}.`);
+  };
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
@@ -1296,6 +1345,17 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                   All
                 </button>
                 <button
+                  onClick={() => setPodFilterTab('draft')}
+                  className={`flex-1 py-1 px-2 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${podFilterTab === 'draft' ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Drafts
+                  {podDraftsCount > 0 && (
+                    <span className="px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[9px] font-bold">
+                      {podDraftsCount}
+                    </span>
+                  )}
+                </button>
+                <button
                   onClick={() => setPodFilterTab('pending_pod')}
                   className={`flex-1 py-1 px-2 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${podFilterTab === 'pending_pod' ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
                 >
@@ -1355,15 +1415,15 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
           )}
 
           <div className="space-y-4 flex-1 overflow-y-auto pr-1 pb-10">
-            {/* My Draft Templates Section */}
-            {myDraftTemplates.length > 0 && (
+            {/* Draft Templates Section */}
+            {draftTemplatesForSection.length > 0 && (
               <div className="space-y-2 p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 shadow-sm">
                 <div className="flex items-center space-x-1.5 px-1 text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider">
                   <FileEdit className="w-3.5 h-3.5" />
-                  <span>My Draft Templates ({myDraftTemplates.length})</span>
+                  <span>{isPOD ? 'All Draft Templates' : 'My Draft Templates'} ({draftTemplatesForSection.length})</span>
                 </div>
                 <div className="space-y-2">
-                  {myDraftTemplates.map((tmpl) => (
+                  {draftTemplatesForSection.map((tmpl) => (
                     <div
                       key={tmpl.id}
                       onClick={() => handleSelectTemplate(tmpl.id)}
@@ -1389,9 +1449,15 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                         )}
                       </div>
                       <p className="font-bold text-slate-900 dark:text-white text-xs mt-1.5">{tmpl.title}</p>
+                      {tmpl.createdForEmployeeName && (
+                        <p className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5 font-medium">For: {tmpl.createdForEmployeeName}</p>
+                      )}
+                      {tmpl.departmentName && (
+                        <p className="text-[9px] text-slate-500 dark:text-slate-400">{tmpl.departmentName}</p>
+                      )}
                       <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-1 font-semibold flex items-center gap-1">
                         <Bookmark className="w-2.5 h-2.5" />
-                        Click to continue editing
+                        Click to edit / undraft
                       </p>
                     </div>
                   ))}
@@ -1784,27 +1850,39 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
 
               {canEdit && !activeTemplate.isLocked && (
                 <>
-                  <button
-                    type="button"
-                    onClick={handleSaveAsDraft}
-                    className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-750 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
-                    title="Save as private draft in My Draft Templates"
-                  >
-                    <Bookmark className="w-4 h-4 text-amber-500" />
-                    <span>Save as Draft</span>
-                  </button>
+                  {activeTemplate.status === 'draft' ? (
+                    <button
+                      type="button"
+                      onClick={handleUndraftTemplate}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center space-x-1.5 shadow-sm transition-all"
+                      title="Undraft this template and make it active & available for evaluations"
+                    >
+                      <Undo2 className="w-4 h-4" />
+                      <span>Undraft / Make Available</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSaveAsDraft}
+                      className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-750 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
+                      title="Save as private draft in Draft Templates"
+                    >
+                      <Bookmark className="w-4 h-4 text-amber-500" />
+                      <span>Save as Draft</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"
-                    onClick={activeTemplate.status === 'draft' && isPOD ? handlePublishTemplate : handleSave}
+                    onClick={handleSave}
                     className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
                   >
                     <Save className="w-4 h-4" />
                     <span>
-                      {isAssignedIS || isPODApprover 
+                      {isAssignedIS 
                         ? 'Save Changes / Calibration' 
-                        : activeTemplate.status === 'draft' && isPOD 
-                        ? 'Publish & Make Available' 
+                        : activeTemplate.status === 'draft' 
+                        ? 'Save Draft Changes' 
                         : 'Save Changes'}
                     </span>
                   </button>
