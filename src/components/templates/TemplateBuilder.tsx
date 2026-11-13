@@ -2028,19 +2028,6 @@ export const TemplateBuilder: React.FC<TemplateBuilderProps> = ({
                             </div>
                           </div>
 
-                          <textarea
-                            value={kpi.description}
-                            disabled={!canEdit}
-                            onChange={(e) => {
-                              const updatedKpis = kra.kpis.map(item => item.id === kpi.id ? { ...item, description: e.target.value } : item);
-                              const updatedKras = activeTemplate.kraCategories.map(k => k.id === kra.id ? { ...k, kpis: updatedKpis } : k);
-                              setActiveTemplate({ ...activeTemplate, kraCategories: updatedKras });
-                            }}
-                            rows={1}
-                            className="w-full text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-[#E96B1A]/20 resize-none disabled:opacity-60"
-                            placeholder="Performance Type Description / Deliverables summary"
-                          />
-
                           {/* Editable KPI Items Table */}
                           <div className="pt-1 space-y-2">
                             <div className="flex items-center justify-between">
