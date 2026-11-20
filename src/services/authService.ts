@@ -552,20 +552,39 @@ export const requestPasswordReset = async (
         redirectTo: redirectUrl,
       });
 
+      let finalErr: any = resetErr;
+
       // If user does not exist in auth.users yet, provision and retry reset
-      if (resetErr && (resetErr.message.includes('User not found') || resetErr.message.includes('Invalid login credentials'))) {
+      if (resetErr && (resetErr.message?.includes('User not found') || resetErr.message?.includes('Invalid login credentials'))) {
         const tempPw = `ApesReset_${Math.random().toString(36).substring(2, 10)}!`;
         const { data: signUpData } = await supabase.auth.signUp({
           email: cleanEmail,
           password: tempPw,
         });
         if (signUpData?.user) {
-          await supabase.auth.resetPasswordForEmail(cleanEmail, {
+          const { error: retryErr } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
             redirectTo: redirectUrl,
           });
+          finalErr = retryErr;
         }
       }
-    } catch (err) {
+
+      if (finalErr) {
+        console.error('[Password Reset] Supabase reset error:', finalErr);
+        const msg = (finalErr.message || '').toLowerCase();
+        if (
+          finalErr.status === 429 ||
+          msg.includes('rate limit') ||
+          msg.includes('60 seconds') ||
+          msg.includes('too many')
+        ) {
+          return {
+            success: false,
+            message: 'Email rate limit reached: Supabase limits how often reset emails can be sent. Please wait a few minutes before trying again.'
+          };
+        }
+      }
+    } catch (err: any) {
       console.warn('[Password Reset] Supabase Auth reset dispatch note:', err);
     }
   }

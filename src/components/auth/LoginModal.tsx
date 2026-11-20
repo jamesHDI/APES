@@ -153,9 +153,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         setForgotEmailSent(true);
         setForgotSuccess(res.message);
       } else {
-        // Should not happen with generic messages, but handle edge cases
-        setForgotSuccess(res.message);
-        setForgotEmailSent(true);
+        setForgotError(res.message);
       }
     } catch (err: any) {
       setForgotError(err?.message || 'An error occurred. Please try again later.');
