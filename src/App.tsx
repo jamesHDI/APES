@@ -426,9 +426,26 @@ export const App: React.FC = () => {
   // ── Password Recovery Listeners (for Supabase email reset links) ─────────────
   const [showRecoveryModal, setShowRecoveryModal] = useState<boolean>(false);
   const [recoverySessionUser, setRecoverySessionUser] = useState<User | null>(null);
+  const [recoveryErrorMsg, setRecoveryErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (isSupabaseConfigured && supabase) {
+      // 1. Check for errors returned by Supabase (e.g., expired or invalid token)
+      const hash = window.location.hash || '';
+      const search = window.location.search || '';
+      if (hash.includes('error=') || search.includes('error=')) {
+        const params = new URLSearchParams(hash.replace(/^#/, '') || search.replace(/^\?/, ''));
+        const desc = params.get('error_description') || params.get('error');
+        if (desc) {
+          console.warn('[Auth Recovery] Link error detected:', desc);
+          setRecoveryErrorMsg(decodeURIComponent(desc.replace(/\+/g, ' ')));
+          try {
+            window.history.replaceState(null, '', window.location.pathname);
+          } catch {}
+        }
+      }
+
+      // 2. Listen for Supabase Auth state events
       const authSub = (supabase.auth as any).onAuthStateChange(async (event: string, session: any) => {
         if (event === 'PASSWORD_RECOVERY') {
           console.log('[Auth] Supabase PASSWORD_RECOVERY event received');
@@ -448,8 +465,7 @@ export const App: React.FC = () => {
         }
       });
 
-      const hash = window.location.hash || '';
-      const search = window.location.search || '';
+      // 3. Fallback check for recovery parameters in URL
       if (hash.includes('type=recovery') || search.includes('type=recovery') || search.includes('reset_password=true')) {
         (supabase.auth as any).getSession().then(async (res: any) => {
           const session = res?.data?.session;
@@ -1940,6 +1956,38 @@ export const App: React.FC = () => {
               } catch {}
             }}
           />
+        )}
+
+        {/* Recovery Link Error / Expired Modal */}
+        {recoveryErrorMsg && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 dark:text-white text-base">
+                    Reset Link Invalid or Expired
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Authentication error
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                {recoveryErrorMsg}. Please return to the login screen and request a fresh password reset link.
+              </p>
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => setRecoveryErrorMsg(null)}
+                  className="px-4 py-2 text-xs font-bold bg-[#E96B1A] text-white rounded-xl shadow-md hover:bg-[#d55f15] transition-colors"
+                >
+                  OK, Return to Login
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Inactive Account Modal */}

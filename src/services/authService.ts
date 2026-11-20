@@ -538,7 +538,16 @@ export const requestPasswordReset = async (
   // 3. Dispatch Supabase Auth recovery email with current production origin
   if (isSupabaseConfigured && supabase) {
     try {
-      const redirectUrl = `${window.location.origin}${window.location.pathname}?reset_password=true`;
+      // Determine base URL:
+      // If VITE_APP_URL is set in environment, prioritize it.
+      // Otherwise, use current origin with fallback to the configured production origin if on localhost.
+      const configuredAppUrl = (import.meta as any).env?.VITE_APP_URL;
+      const baseOrigin = configuredAppUrl ? configuredAppUrl.replace(/\/$/, '') : window.location.origin;
+      const cleanPath = window.location.pathname.replace(/\/$/, '');
+      const redirectUrl = `${baseOrigin}${cleanPath}/?reset_password=true`;
+
+      console.log(`[Password Reset] Dispatching reset email with redirectTo: ${redirectUrl}`);
+
       const { error: resetErr } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: redirectUrl,
       });
