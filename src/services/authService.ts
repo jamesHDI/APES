@@ -102,7 +102,8 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
     isPwValid = true;
   } else if (isHashedPassword(storedPw)) {
     isPwValid = await verifyPassword(inputPw, storedPw);
-  } else if (inputPw === storedPw || inputPw.toLowerCase() === storedPw.toLowerCase()) {
+  } else if (inputPw === storedPw) {
+    // Exact plaintext match only (legacy accounts) — no case-insensitive
     isPwValid = true;
   }
 
@@ -133,7 +134,9 @@ export const authenticateUser = async (credentials: LoginCredentials): Promise<{
   if (isSupabaseConfigured && supabase) {
     try {
       const authEmail = matchedUser.email.toLowerCase();
-      const authPassword = password || matchedUser.password;
+      // Always use the user's entered password for Supabase Auth sign-in,
+      // NOT the stored hash from the employees table
+      const authPassword = inputPw;
 
       let { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
         email: authEmail,
@@ -319,13 +322,23 @@ export const changeUserPassword = async (userIdOrEmail: string, newPassword: str
         await saveEmployeeToSupabaseDetailed({ ...targetUser, password: hashedPassword, requiresPasswordChange: false });
       }
 
-      // 5. Update Supabase Auth user password if user is currently signed in
+      // 5. Update Supabase Auth user password — only if the currently signed-in
+      // user is the SAME user whose password is being changed (self-service change).
+      // For admin-initiated resets of OTHER users, we cannot update auth.users
+      // from the client SDK; the employees table hash is the primary auth source.
       if (supabase?.auth) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            await supabase.auth.updateUser({ password: newPassword });
-            console.log('[Password Change] Successfully synchronized new password with active Supabase Auth session');
+          if (session?.user?.email) {
+            const sessionEmail = session.user.email.toLowerCase();
+            const targetEmail = emailToMatch.toLowerCase();
+            // Only update Supabase Auth if the signed-in user IS the target user
+            if (sessionEmail === targetEmail) {
+              await supabase.auth.updateUser({ password: newPassword });
+              console.log('[Password Change] Successfully synchronized new password with active Supabase Auth session (self-service)');
+            } else {
+              console.log(`[Password Change] Skipping Supabase Auth update: signed-in user (${sessionEmail}) differs from target (${targetEmail}). Employees table updated.`);
+            }
           }
         } catch (authErr) {
           console.warn('[Password Change] Supabase Auth session update note:', authErr);
@@ -489,11 +502,14 @@ export const logoutUser = async () => {
 
 export const requestPasswordReset = async (
   email: string
-): Promise<{ success: boolean; message: string; user?: User }> => {
+): Promise<{ success: boolean; message: string }> => {
   const cleanEmail = (email || '').trim().toLowerCase();
   if (!cleanEmail) {
     return { success: false, message: 'Please enter your email address.' };
   }
+
+  // Generic message — do NOT reveal whether the account exists
+  const genericMsg = 'If an account exists with this email address, a password reset link will be sent to your inbox.';
 
   // 1. Check Supabase employees table
   let matchedUser: User | null = null;
@@ -514,11 +530,9 @@ export const requestPasswordReset = async (
     ) || null;
   }
 
+  // If no account found, return generic message (don't reveal non-existence)
   if (!matchedUser) {
-    return {
-      success: false,
-      message: `No account found with email "${email}". Please verify your email address or contact People Operations (HR).`
-    };
+    return { success: true, message: genericMsg };
   }
 
   // 3. Dispatch Supabase Auth recovery email with current production origin
@@ -547,9 +561,6 @@ export const requestPasswordReset = async (
     }
   }
 
-  return {
-    success: true,
-    message: `Account verified for ${matchedUser.name}. Please set your new password.`,
-    user: matchedUser
-  };
+  // Return generic success — do NOT return user object or reveal account details
+  return { success: true, message: genericMsg };
 };

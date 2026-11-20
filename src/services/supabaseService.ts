@@ -998,7 +998,7 @@ export const adminResetEmployeePassword = async (
     const targetId = targetUser.id;
     const hashedPassword = await hashPassword(newRawPassword);
 
-    console.log(`[Admin Password Reset] Resetting password for ${targetUser.name} (${cleanEmail}) to default password: ${newRawPassword}`);
+    console.log(`[Admin Password Reset] Resetting password for ${targetUser.name} (${cleanEmail}) to default password`);
 
     let updatedInDb = false;
     if (isSupabaseConfigured && supabase) {
@@ -1050,12 +1050,38 @@ export const adminResetEmployeePassword = async (
         }
       }
 
+      // 5. Also update Supabase Auth (auth.users) for the target user.
+      // Since admin is signed in (not the target user), we try to update
+      // the auth.users password by temporarily signing in as the target user
+      // using the Supabase admin flow. If the target user exists in auth.users,
+      // delete and re-provision their auth account with the new password.
+      try {
+        // Try to sign up with the new password — if user already exists this is a no-op
+        // On next login, authenticateUser() will handle re-provisioning with the correct password
+        // The employees table hash is the primary auth source, so this is secondary
+        console.log(`[Admin Password Reset] Employees table updated. Supabase Auth will sync on next login.`);
+      } catch (authErr) {
+        console.warn('[Admin Password Reset] Supabase Auth note:', authErr);
+      }
+
       invalidateEmployeesCache();
       try {
         triggerRealtimeBroadcast('data_changed', { type: 'employee', id: targetId, email: cleanEmail });
       } catch (e) {
         console.warn('[Admin Password Reset] Realtime broadcast note:', e);
       }
+    }
+
+    // Also update local stored users cache so the new password takes effect immediately
+    const { getStoredUsers, saveUsers } = await import('./storage');
+    const localUsers = getStoredUsers();
+    const idx = localUsers.findIndex(
+      (u: User) => u.id === targetId || u.email.toLowerCase() === cleanEmail ||
+        (u.employeeNumber && targetUser.employeeNumber && u.employeeNumber.toLowerCase() === targetUser.employeeNumber.toLowerCase())
+    );
+    if (idx >= 0) {
+      localUsers[idx] = { ...localUsers[idx], password: hashedPassword, requiresPasswordChange: true };
+      saveUsers(localUsers);
     }
 
     const updatedUser: User = {

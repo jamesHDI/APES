@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Key, Eye, EyeOff, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { changeUserPassword } from '../../services/authService';
+import { supabase, isSupabaseConfigured } from '../../services/supabaseClient';
 import { verifyPassword } from '../../utils/crypto';
 import { User } from '../../types';
 
@@ -58,6 +59,16 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
     const ok = await changeUserPassword(user.id, newPassword);
     if (ok) {
+      // If this is a recovery session, also update Supabase Auth credentials directly
+      // since we have a valid authenticated recovery session for this specific user
+      if (isRecovery && isSupabaseConfigured && supabase?.auth) {
+        try {
+          await supabase.auth.updateUser({ password: newPassword });
+          console.log('[Recovery] Successfully updated Supabase Auth password via recovery session');
+        } catch (authErr) {
+          console.warn('[Recovery] Supabase Auth update note:', authErr);
+        }
+      }
       setSuccess(true);
       const updatedUser: User = { ...user, password: newPassword, requiresPasswordChange: false };
       setTimeout(() => {

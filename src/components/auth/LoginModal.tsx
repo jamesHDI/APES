@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { User, Department } from '../../types';
-import { authenticateUser, requestPasswordReset, changeUserPassword } from '../../services/authService';
+import { authenticateUser, requestPasswordReset } from '../../services/authService';
 import { SelfRegisterModal } from './SelfRegisterModal';
 import {
-  Lock,
   Mail,
   Key,
   ArrowRight,
-  ShieldCheck,
   AlertCircle,
   UserPlus,
   Eye,
@@ -43,15 +41,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [showSelfRegister, setShowSelfRegister] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotStep, setForgotStep] = useState<'email' | 'reset'>('email');
-  const [verifiedResetUser, setVerifiedResetUser] = useState<User | null>(null);
-  const [forgotNewPassword, setForgotNewPassword] = useState('');
-  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
-  const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
-  const [showForgotConfirmPassword, setShowForgotConfirmPassword] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
   const [forgotSuccess, setForgotSuccess] = useState<string | null>(null);
   const [isForgotLoading, setIsForgotLoading] = useState(false);
+  const [forgotEmailSent, setForgotEmailSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const [failedAttempts, setFailedAttempts] = useState<number>(() => {
@@ -141,17 +134,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   const handleOpenForgotModal = () => {
-    setForgotStep('email');
     setForgotEmail(identifier.includes('@') ? identifier.trim() : '');
-    setVerifiedResetUser(null);
-    setForgotNewPassword('');
-    setForgotConfirmPassword('');
     setForgotError(null);
     setForgotSuccess(null);
+    setForgotEmailSent(false);
     setShowForgotModal(true);
   };
 
-  const handleVerifyEmailForReset = async (e: React.FormEvent) => {
+  const handleSendResetEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError(null);
     setForgotSuccess(null);
@@ -159,62 +149,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
     try {
       const res = await requestPasswordReset(forgotEmail);
-      if (!res.success || !res.user) {
-        setForgotError(res.message);
-        setIsForgotLoading(false);
-        return;
-      }
-
-      setVerifiedResetUser(res.user);
-      setForgotStep('reset');
-      setForgotSuccess(res.message);
-    } catch (err: any) {
-      setForgotError(err?.message || 'Error verifying account email.');
-    } finally {
-      setIsForgotLoading(false);
-    }
-  };
-
-  const handleSetNewPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setForgotError(null);
-
-    if (!verifiedResetUser) {
-      setForgotError('No verified user found. Please start over.');
-      setForgotStep('email');
-      return;
-    }
-
-    if (forgotNewPassword.length < 6) {
-      setForgotError('New password must be at least 6 characters.');
-      return;
-    }
-
-    if (forgotNewPassword !== forgotConfirmPassword) {
-      setForgotError('New password and confirmation do not match.');
-      return;
-    }
-
-    setIsForgotLoading(true);
-    try {
-      const ok = await changeUserPassword(verifiedResetUser.id, forgotNewPassword);
-      if (ok) {
-        setForgotSuccess('Password updated successfully! You can now log in.');
-        setIdentifier(verifiedResetUser.email);
-        setPassword('');
-        setTimeout(() => {
-          setShowForgotModal(false);
-          setForgotStep('email');
-          setVerifiedResetUser(null);
-          setForgotNewPassword('');
-          setForgotConfirmPassword('');
-          setForgotSuccess(null);
-        }, 1600);
+      if (res.success) {
+        setForgotEmailSent(true);
+        setForgotSuccess(res.message);
       } else {
-        setForgotError('Failed to update password. Please try again.');
+        // Should not happen with generic messages, but handle edge cases
+        setForgotSuccess(res.message);
+        setForgotEmailSent(true);
       }
     } catch (err: any) {
-      setForgotError(err?.message || 'Failed to update password. Please try again.');
+      setForgotError(err?.message || 'An error occurred. Please try again later.');
     } finally {
       setIsForgotLoading(false);
     }
@@ -414,16 +358,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             {/* Header */}
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#E96B1A]/10 text-[#E96B1A] flex items-center justify-center shrink-0">
-                <Key className="w-5 h-5" />
+                {forgotEmailSent ? <Mail className="w-5 h-5" /> : <Key className="w-5 h-5" />}
               </div>
               <div>
                 <h4 className="font-bold text-slate-900 dark:text-white text-base">
-                  {forgotStep === 'email' ? 'Forgot Password' : 'Set New Password'}
+                  {forgotEmailSent ? 'Check Your Email' : 'Forgot Password'}
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {forgotStep === 'email'
-                    ? 'Enter your registered email address to verify your account.'
-                    : `Create a new password for ${verifiedResetUser?.name || 'your account'}.`}
+                  {forgotEmailSent
+                    ? 'A password reset link has been sent if the email is registered.'
+                    : 'Enter your registered email address to receive a password reset link.'}
                 </p>
               </div>
             </div>
@@ -444,9 +388,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </div>
             )}
 
-            {/* Step 1: Email Form */}
-            {forgotStep === 'email' && (
-              <form onSubmit={handleVerifyEmailForReset} className="space-y-4">
+            {/* Email Form — only shown before email is sent */}
+            {!forgotEmailSent && (
+              <form onSubmit={handleSendResetEmail} className="space-y-4">
                 <div>
                   <label className="form-label text-xs">Registered Email Address</label>
                   <div className="relative">
@@ -486,12 +430,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                         </svg>
-                        <span>Verifying...</span>
+                        <span>Sending...</span>
                       </>
                     ) : (
                       <>
-                        <span>Continue</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <Mail className="w-3.5 h-3.5" />
+                        <span>Send Reset Link</span>
                       </>
                     )}
                   </button>
@@ -499,116 +443,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </form>
             )}
 
-            {/* Step 2: Set New Password Form */}
-            {forgotStep === 'reset' && verifiedResetUser && (
-              <form onSubmit={handleSetNewPassword} className="space-y-3">
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs space-y-0.5">
-                  <div className="font-bold text-slate-800 dark:text-slate-200">
-                    {verifiedResetUser.name}
-                  </div>
-                  <div className="text-slate-500 dark:text-slate-400 text-[11px]">
-                    {verifiedResetUser.email} &bull; {verifiedResetUser.departmentName || 'HDI'} &bull; {verifiedResetUser.position || 'Staff'}
-                  </div>
+            {/* Confirmation — shown after email is sent */}
+            {forgotEmailSent && (
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 space-y-2">
+                  <p>We sent a password reset link to <strong className="text-slate-800 dark:text-white">{forgotEmail}</strong>.</p>
+                  <p>Please check your inbox (and spam folder) and click the link to set a new password.</p>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500">The link will expire after a short time. If you don't receive the email, try again or contact People Operations (HR).</p>
                 </div>
-
-                <div>
-                  <label className="form-label text-xs">New Password</label>
-                  <div className="relative">
-                    <Key className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type={showForgotNewPassword ? 'text' : 'password'}
-                      required
-                      minLength={6}
-                      value={forgotNewPassword}
-                      onChange={(e) => {
-                        setForgotNewPassword(e.target.value);
-                        setForgotError(null);
-                      }}
-                      placeholder="At least 6 characters"
-                      className="form-input pl-9 pr-10 text-xs"
-                      disabled={isForgotLoading}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      {showForgotNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="form-label text-xs">Confirm New Password</label>
-                  <div className="relative">
-                    <Key className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type={showForgotConfirmPassword ? 'text' : 'password'}
-                      required
-                      minLength={6}
-                      value={forgotConfirmPassword}
-                      onChange={(e) => {
-                        setForgotConfirmPassword(e.target.value);
-                        setForgotError(null);
-                      }}
-                      placeholder="Re-enter new password"
-                      className="form-input pl-9 pr-10 text-xs"
-                      disabled={isForgotLoading}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowForgotConfirmPassword(!showForgotConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      {showForgotConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center pt-2">
+                <div className="flex justify-end">
                   <button
                     type="button"
-                    onClick={() => {
-                      setForgotStep('email');
-                      setForgotError(null);
-                    }}
-                    className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-semibold flex items-center gap-1"
-                    disabled={isForgotLoading}
+                    onClick={() => setShowForgotModal(false)}
+                    className="btn btn-primary btn-sm flex items-center gap-1.5"
                   >
-                    &larr; Back
+                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>Back to Login</span>
                   </button>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowForgotModal(false)}
-                      className="btn btn-secondary btn-sm"
-                      disabled={isForgotLoading}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="btn btn-primary btn-sm flex items-center gap-1.5"
-                      disabled={isForgotLoading}
-                    >
-                      {isForgotLoading ? (
-                        <>
-                          <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                          </svg>
-                          <span>Updating...</span>
-                        </>
-                      ) : (
-                        <>
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          <span>Update Password</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
                 </div>
-              </form>
+              </div>
             )}
           </div>
         </div>
