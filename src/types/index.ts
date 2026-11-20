@@ -206,9 +206,32 @@ export interface EvaluationTemplate {
   isApprovedAt?: string;
   podApprovedAt?: string;
   deployedAt?: string;
+  updatedAt?: string;
+  submittedToIsAt?: string;
+  submittedToPodAt?: string;
+  isReviewedAt?: string;
+  isReviewerId?: string;
+  isReviewerName?: string;
+  podReviewedAt?: string;
+  podReviewerId?: string;
+  podReviewerName?: string;
   version?: number;
   isLocked?: boolean;
   revisionHistory?: any[];
+  // Reusable template & deployment cycle links
+  isReusable?: boolean;
+  savedAsReusableAt?: string;
+  savedByUserId?: string;
+  savedByName?: string;
+  sourceTemplateId?: string;
+  sourceTemplateTitle?: string;
+  deploymentCycleId?: string;
+  deploymentCycleName?: string;
+  deployedByUserId?: string;
+  deployedByName?: string;
+  isArchived?: boolean;
+  archivedAt?: string;
+  archivedByUserId?: string;
 }
 
 export type DeploymentStatus = 'draft' | 'scheduled' | 'active' | 'closed' | 'archived';

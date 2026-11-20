@@ -160,7 +160,8 @@ export const getStoredUsers = (): User[] => {
             resultsMap.set(matchKey, {
               ...existing,
               ...u,
-              requiresPasswordChange: (u.requiresPasswordChange === false || existing.requiresPasswordChange === false) ? false : (u.requiresPasswordChange ?? existing.requiresPasswordChange ?? false),
+              requiresPasswordChange: u.requiresPasswordChange !== undefined ? u.requiresPasswordChange : (existing.requiresPasswordChange ?? false),
+              password: u.password || existing.password || '',
               id: existing.id,
               companyId: existing.companyId || u.companyId,
               companyName: existing.companyName || u.companyName,

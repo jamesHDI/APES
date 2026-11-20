@@ -44,7 +44,8 @@ const mergeMasterWithSupabaseUsers = (sbUsers: User[]): User[] => {
         resultsMap.set(matchKey, {
           ...existing,
           ...u,
-          requiresPasswordChange: (u.requiresPasswordChange === false || existing.requiresPasswordChange === false) ? false : (u.requiresPasswordChange ?? existing.requiresPasswordChange ?? false),
+          requiresPasswordChange: u.requiresPasswordChange !== undefined ? u.requiresPasswordChange : (existing.requiresPasswordChange ?? false),
+          password: u.password || existing.password || '',
           id: existing.id,
           companyId: existing.companyId || u.companyId,
           companyName: existing.companyName || u.companyName,
@@ -509,14 +510,13 @@ export const App: React.FC = () => {
             try {
               const freshUser = (await findEmployeeInSupabase(storedUser.id)) || (await findEmployeeInSupabase(storedUser.email));
               if (freshUser) {
-                const shouldRequireChange = (activeDevMode || storedUser.requiresPasswordChange === false || freshUser.requiresPasswordChange === false) ? false : (freshUser.requiresPasswordChange ?? false);
-                // Preserve local avatar and password — the DB may have had these wiped by a bulk master sync
-                // Local storedUser always has the most up-to-date avatar the user uploaded in this session
+                const shouldRequireChange = activeDevMode ? false : (freshUser.requiresPasswordChange ?? false);
+                // Preserve local avatar if DB has blank, but use fresh DB password and flag
                 storedUser = {
                   ...freshUser,
                   requiresPasswordChange: shouldRequireChange,
                   avatarUrl: storedUser.avatarUrl || freshUser.avatarUrl || '',
-                  password: storedUser.password || freshUser.password || '',
+                  password: freshUser.password || storedUser.password || '',
                 };
                 setCurrentUserStore(storedUser);
               }
@@ -627,7 +627,7 @@ export const App: React.FC = () => {
                   ...updatedSelf,
                   avatarUrl: resolvedAvatarUrl,
                   personalEmail: updatedSelf.personalEmail || prevUser.personalEmail || '',
-                  requiresPasswordChange: (prevUser.requiresPasswordChange === false || updatedSelf.requiresPasswordChange === false) ? false : (updatedSelf.requiresPasswordChange ?? false)
+                  requiresPasswordChange: isDevTestingModeActive() ? false : (updatedSelf.requiresPasswordChange ?? false)
                 };
                 if (
                   prevUser.avatarUrl === mergedSelf.avatarUrl &&
@@ -829,7 +829,7 @@ export const App: React.FC = () => {
     // Fetch all fresh data from Supabase on login
     if (isSupabaseConfigured) {
       try {
-        const sbUsers = await fetchEmployeesFromSupabase();
+        const sbUsers = await fetchEmployeesFromSupabase(true);
         if (sbUsers && sbUsers.length > 0) {
           setUsers(sbUsers);
           const dbUser = sbUsers.find(
@@ -1741,9 +1741,11 @@ export const App: React.FC = () => {
           users={users}
           departments={departments}
           templates={templates}
+          onSaveTemplate={handleSaveTemplate}
           onRefreshData={() => {
             setEvaluations(getStoredEvaluations());
             setDeployments(getStoredDeployments());
+            setTemplates(getStoredTemplates());
           }}
         />
       );

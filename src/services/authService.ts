@@ -1,8 +1,8 @@
-import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { supabase, isSupabaseConfigured, triggerRealtimeBroadcast } from './supabaseClient';
 import { User, Role } from '../types';
 import { getStoredUsers, saveUsers, getStoredCurrentUser, setCurrentUserStore, clearCurrentUserStore } from './storage';
 import { triggerRegistrationNotification } from './notificationService';
-import { ensureUuid, generateUuid, isValidUuid, saveEmployeeToSupabase, saveEmployeeToSupabaseDetailed, fetchEmployeesFromSupabase, findEmployeeInSupabase } from './supabaseService';
+import { ensureUuid, generateUuid, isValidUuid, saveEmployeeToSupabase, saveEmployeeToSupabaseDetailed, fetchEmployeesFromSupabase, findEmployeeInSupabase, invalidateEmployeesCache } from './supabaseService';
 import { hashPassword, verifyPassword, isHashedPassword } from '../utils/crypto';
 import {
   verifyDevCredential,
@@ -331,6 +331,11 @@ export const changeUserPassword = async (userIdOrEmail: string, newPassword: str
           console.warn('[Password Change] Supabase Auth session update note:', authErr);
         }
       }
+
+      invalidateEmployeesCache();
+      try {
+        triggerRealtimeBroadcast('data_changed', { type: 'employee', id: targetUser.id, email: targetUser.email });
+      } catch {}
     } catch (err) {
       console.warn('[Password Change] Supabase update warning:', err);
     }

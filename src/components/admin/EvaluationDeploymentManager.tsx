@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { User, Department, EvaluationTemplate, EvaluationDeployment, DeploymentStatus, AssignmentType } from '../../types';
 import { getStoredDeployments, saveDeployments, getStoredEvaluations, saveEvaluations, assignNewEvaluationToEmployee, saveSingleEvaluation, getStoredTemplates, saveTemplates } from '../../services/storage';
 import { saveEvaluationTemplateToSupabase } from '../../services/supabaseService';
@@ -19,7 +19,14 @@ import {
   SlidersHorizontal,
   FileCheck,
   AlertCircle,
-  Search
+  Search,
+  Filter,
+  Check,
+  Trash2,
+  Bookmark,
+  Layers,
+  ChevronDown,
+  RotateCcw
 } from 'lucide-react';
 
 interface EvaluationDeploymentManagerProps {
@@ -28,6 +35,7 @@ interface EvaluationDeploymentManagerProps {
   departments: Department[];
   templates: EvaluationTemplate[];
   onRefreshData: () => void;
+  onSaveTemplate?: (template: EvaluationTemplate) => void;
 }
 
 export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerProps> = ({
@@ -36,6 +44,7 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
   departments,
   templates,
   onRefreshData,
+  onSaveTemplate,
 }) => {
   const [deployments, setDeployments] = useState<EvaluationDeployment[]>(getStoredDeployments());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -54,6 +63,130 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
   const [selectedEmps, setSelectedEmps] = useState<string[]>([]);
   const [empSearchQuery, setEmpSearchQuery] = useState('');
   const [initialStatus, setInitialStatus] = useState<DeploymentStatus>('active');
+
+  // Template Selection & Management State
+  const [templateSearchQuery, setTemplateSearchQuery] = useState('');
+  const [templateDeptFilter, setTemplateDeptFilter] = useState('all');
+  const [templateTab, setTemplateTab] = useState<'available' | 'history' | 'archived'>('available');
+  const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false);
+
+  // Distinct templates list (deduplicated by ID)
+  const allTemplatesList = useMemo(() => {
+    const combined = [...templates];
+    const uniqueMap = new Map<string, EvaluationTemplate>();
+    for (const t of combined) {
+      if (t && t.id && !uniqueMap.has(t.id)) {
+        uniqueMap.set(t.id, t);
+      }
+    }
+    return Array.from(uniqueMap.values());
+  }, [templates]);
+
+  const selectedTemplate = useMemo(() => {
+    return allTemplatesList.find(t => t.id === templateId) || allTemplatesList[0];
+  }, [allTemplatesList, templateId]);
+
+  const distinctTemplateDepts = useMemo(() => {
+    const set = new Set<string>();
+    departments.forEach(d => { if (d.name) set.add(d.name); });
+    allTemplatesList.forEach(t => { if (t.departmentName) set.add(t.departmentName); });
+    return Array.from(set).sort();
+  }, [departments, allTemplatesList]);
+
+  const filteredTemplatesForPicker = useMemo(() => {
+    return allTemplatesList.filter(t => {
+      // Tab filter
+      if (templateTab === 'archived') {
+        if (!t.isArchived) return false;
+      } else if (templateTab === 'history') {
+        if (t.isArchived) return false;
+        if (t.status !== 'deployed') return false;
+      } else {
+        // available for deployment
+        if (t.isArchived) return false;
+        if (t.status === 'deployed') return false;
+      }
+
+      // Department filter
+      if (templateDeptFilter !== 'all' && t.departmentName && t.departmentName !== templateDeptFilter) {
+        return false;
+      }
+
+      // Search query filter
+      if (templateSearchQuery.trim()) {
+        const q = templateSearchQuery.toLowerCase().trim();
+        const matchTitle = (t.title || '').toLowerCase().includes(q);
+        const matchDept = (t.departmentName || '').toLowerCase().includes(q);
+        const matchOwner = (t.createdByName || t.createdForEmployeeName || '').toLowerCase().includes(q);
+        const matchId = (t.id || '').toLowerCase().includes(q);
+        if (!matchTitle && !matchDept && !matchOwner && !matchId) return false;
+      }
+
+      return true;
+    });
+  }, [allTemplatesList, templateTab, templateDeptFilter, templateSearchQuery]);
+
+  // Archive / Restore / Safe Delete Actions
+  const handleArchiveTemplate = async (tmplToArchive: EvaluationTemplate, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!confirm(`Are you sure you want to archive "${tmplToArchive.title}"? It will be hidden from active deployment selection.`)) return;
+    const updated: EvaluationTemplate = {
+      ...tmplToArchive,
+      isArchived: true,
+      archivedAt: new Date().toISOString(),
+      archivedByUserId: currentUser.id,
+    };
+    const existing = getStoredTemplates();
+    const updatedList = existing.map((t: EvaluationTemplate) => t.id === tmplToArchive.id ? updated : t);
+    saveTemplates(updatedList);
+    await saveEvaluationTemplateToSupabase(updated).catch(err => console.warn('[Deployment] Error archiving template:', err));
+    if (onSaveTemplate) onSaveTemplate(updated);
+    onRefreshData();
+    showToast(`Template "${tmplToArchive.title}" archived successfully.`);
+  };
+
+  const handleUnarchiveTemplate = async (tmplToUnarchive: EvaluationTemplate, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const updated: EvaluationTemplate = {
+      ...tmplToUnarchive,
+      isArchived: false,
+      archivedAt: undefined,
+      archivedByUserId: undefined,
+    };
+    const existing = getStoredTemplates();
+    const updatedList = existing.map((t: EvaluationTemplate) => t.id === tmplToUnarchive.id ? updated : t);
+    saveTemplates(updatedList);
+    await saveEvaluationTemplateToSupabase(updated).catch(err => console.warn('[Deployment] Error unarchiving template:', err));
+    if (onSaveTemplate) onSaveTemplate(updated);
+    onRefreshData();
+    showToast(`Template "${tmplToUnarchive.title}" restored.`);
+  };
+
+  const handleSafeDeleteDraft = async (tmplToDelete: EvaluationTemplate, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (tmplToDelete.status !== 'draft') {
+      alert('Only unfinished draft templates can be safely deleted.');
+      return;
+    }
+    if (!confirm(`Permanently delete unused draft "${tmplToDelete.title}"? This cannot be undone.`)) return;
+    const existing = getStoredTemplates();
+    const filtered = existing.filter((t: EvaluationTemplate) => t.id !== tmplToDelete.id);
+    saveTemplates(filtered);
+    if (isSupabaseConfigured) {
+      try {
+        const { supabase } = await import('../../services/supabaseClient');
+        await supabase.from('evaluation_templates').delete().eq('id', tmplToDelete.id);
+      } catch (err) {
+        console.warn('[Deployment] Note deleting draft template in supabase:', err);
+      }
+    }
+    if (templateId === tmplToDelete.id) {
+      const remaining = filtered.find((t: EvaluationTemplate) => !t.isArchived);
+      if (remaining) setTemplateId(remaining.id);
+    }
+    onRefreshData();
+    showToast(`Draft template "${tmplToDelete.title}" deleted.`);
+  };
 
   const isEligibleUser = (u: User) => {
     if (!u) return false;
@@ -123,23 +256,29 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
       return;
     }
 
-    // If the selected template is currently in draft status, POD deploying it auto-promotes it to deployed
-    if (template.status === 'draft') {
-      const deployedTemplate: EvaluationTemplate = {
-        ...template,
-        status: 'deployed',
-        isLocked: true,
-        deployedAt: new Date().toISOString(),
-      };
-      const existing = getStoredTemplates();
-      const updatedList = existing.map((t: EvaluationTemplate) => t.id === template.id ? deployedTemplate : t);
-      saveTemplates(updatedList);
-      saveEvaluationTemplateToSupabase(deployedTemplate).catch((err: any) => {
-        console.warn('[Deployment] Note auto-deploying draft template:', err);
-      });
-    }
-
     const deploymentId = `deploy_${Date.now()}`;
+
+    // Authoritative template synchronization across Evaluation Deployment and Evaluation Template modules:
+    // Every deployed template is updated with status 'deployed', cycle association, timestamp, and deploying POD user
+    const deployedTemplate: EvaluationTemplate = {
+      ...template,
+      status: 'deployed',
+      isLocked: true,
+      deployedAt: new Date().toISOString(),
+      deployedByUserId: currentUser.id,
+      deployedByName: currentUser.name,
+      deploymentCycleId: deploymentId,
+      deploymentCycleName: title,
+    };
+    const existingTemplates = getStoredTemplates();
+    const updatedTemplates = existingTemplates.map((t: EvaluationTemplate) => t.id === template.id ? deployedTemplate : t);
+    saveTemplates(updatedTemplates);
+    saveEvaluationTemplateToSupabase(deployedTemplate).catch((err: any) => {
+      console.warn('[Deployment] Note saving deployed template to Supabase:', err);
+    });
+    if (onSaveTemplate) {
+      onSaveTemplate(deployedTemplate);
+    }
     const newDeployment: EvaluationDeployment = {
       id: deploymentId,
       title,
@@ -218,6 +357,15 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
         );
       }
       triggerRealtimeBroadcast('data_changed', { type: 'evaluation_deployment', deploymentId });
+      triggerRealtimeBroadcast('template_workflow', {
+        templateId: template.id,
+        status: 'deployed',
+        action: 'deploy',
+        deploymentId,
+        deploymentCycleName: title,
+        deployedByName: currentUser.name,
+        timestamp: new Date().toISOString()
+      });
 
       // Send Outlook / inbox email notification to each assigned employee
       const emailRecipients = targetUsers
@@ -576,21 +724,235 @@ export const EvaluationDeploymentManager: React.FC<EvaluationDeploymentManagerPr
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                    Evaluation Template
-                  </label>
-                  <select
-                    value={templateId}
-                    onChange={(e) => setTemplateId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
-                  >
-                    {templates.map(t => (
-                      <option key={t.id} value={t.id}>
-                        {t.title} ({t.departmentName}){t.status === 'draft' ? ' [Draft - Auto-Deploys]' : ''}
-                      </option>
-                    ))}
-                  </select>
+                {/* Searchable & Filterable Evaluation Template Selector */}
+                <div className="sm:col-span-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
+                      Selected Evaluation Scorecard / Template
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsTemplatePickerOpen(!isTemplatePickerOpen)}
+                      className="text-xs font-bold text-[#E96B1A] hover:underline flex items-center space-x-1"
+                    >
+                      <span>{isTemplatePickerOpen ? 'Close Selector' : 'Change Template'}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isTemplatePickerOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                  </div>
+
+                  {/* Active Selected Card Display */}
+                  <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-[#E96B1A]/10 text-[#E96B1A] dark:text-[#f97316]">
+                          v{selectedTemplate?.version || 1}
+                        </span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                          {selectedTemplate?.departmentName || 'All Departments'}
+                        </span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                          selectedTemplate?.status === 'deployed'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                            : selectedTemplate?.status === 'draft'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                            : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                        }`}>
+                          {selectedTemplate?.status === 'deployed' 
+                            ? 'Deployed / Active' 
+                            : selectedTemplate?.status === 'draft' 
+                            ? 'Draft (Auto-Promotes)' 
+                            : 'Approved for Deployment'}
+                        </span>
+                      </div>
+                      <p className="font-bold text-slate-900 dark:text-white text-xs truncate">
+                        {selectedTemplate?.title || 'No Template Selected'}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Author: {selectedTemplate?.createdByName || selectedTemplate?.createdForEmployeeName || 'POD Administration'}
+                        {selectedTemplate?.deploymentCycleName && ` • Previously deployed in "${selectedTemplate.deploymentCycleName}"`}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsTemplatePickerOpen(!isTemplatePickerOpen)}
+                      className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-300 dark:border-slate-600 text-xs font-bold text-slate-800 dark:text-slate-200 shrink-0"
+                    >
+                      {isTemplatePickerOpen ? 'Hide' : 'Browse'}
+                    </button>
+                  </div>
+
+                  {/* Expandable Searchable Picker Panel */}
+                  {isTemplatePickerOpen && (
+                    <div className="mt-2.5 p-3.5 rounded-2xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 shadow-md space-y-3">
+                      {/* Search and Filters */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="relative flex-1 min-w-[180px]">
+                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input
+                            type="text"
+                            value={templateSearchQuery}
+                            onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                            placeholder="Search by title, author, department, or version..."
+                            className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white"
+                          />
+                        </div>
+
+                        <select
+                          value={templateDeptFilter}
+                          onChange={(e) => setTemplateDeptFilter(e.target.value)}
+                          className="px-2.5 py-1.5 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
+                        >
+                          <option value="all">All Departments</option>
+                          {distinctTemplateDepts.map(d => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Picker Tabs */}
+                      <div className="flex items-center space-x-1 border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <button
+                          type="button"
+                          onClick={() => setTemplateTab('available')}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                            templateTab === 'available'
+                              ? 'bg-[#E96B1A] text-white shadow-sm'
+                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          Available for Deployment ({allTemplatesList.filter(t => !t.isArchived && t.status !== 'deployed').length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTemplateTab('history')}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                            templateTab === 'history'
+                              ? 'bg-[#E96B1A] text-white shadow-sm'
+                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          Deployment History ({allTemplatesList.filter(t => !t.isArchived && t.status === 'deployed').length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTemplateTab('archived')}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                            templateTab === 'archived'
+                              ? 'bg-slate-700 text-white shadow-sm'
+                              : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          Archived ({allTemplatesList.filter(t => t.isArchived).length})
+                        </button>
+                      </div>
+
+                      {/* Templates List */}
+                      <div className="max-h-56 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+                        {filteredTemplatesForPicker.length === 0 ? (
+                          <div className="py-6 text-center text-slate-400 text-xs">
+                            No templates match the current filter criteria.
+                          </div>
+                        ) : (
+                          filteredTemplatesForPicker.map((tmpl) => {
+                            const isChosen = templateId === tmpl.id;
+                            return (
+                              <div
+                                key={tmpl.id}
+                                onClick={() => {
+                                  setTemplateId(tmpl.id);
+                                  setIsTemplatePickerOpen(false);
+                                }}
+                                className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                                  isChosen
+                                    ? 'bg-orange-50 dark:bg-orange-950/40 border-[#E96B1A] ring-1 ring-[#E96B1A]/40'
+                                    : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                                }`}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                    <span className="text-[9px] font-extrabold px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                      v{tmpl.version || 1}
+                                    </span>
+                                    <span className="text-[9px] font-semibold text-slate-500">
+                                      {tmpl.departmentName || 'General'}
+                                    </span>
+                                    {tmpl.status === 'draft' && (
+                                      <span className="text-[8.5px] font-bold px-1 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                        Draft
+                                      </span>
+                                    )}
+                                    {tmpl.isReusable && (
+                                      <span className="text-[8.5px] font-bold px-1 rounded bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                                        Reusable
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                                    {tmpl.title}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                    Author: {tmpl.createdByName || tmpl.createdForEmployeeName || 'POD'}
+                                    {tmpl.deploymentCycleName && ` • Cycle: ${tmpl.deploymentCycleName}`}
+                                  </p>
+                                </div>
+
+                                <div className="flex items-center space-x-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setTemplateId(tmpl.id);
+                                      setIsTemplatePickerOpen(false);
+                                    }}
+                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                      isChosen
+                                        ? 'bg-[#E96B1A] text-white'
+                                        : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100'
+                                    }`}
+                                  >
+                                    {isChosen ? 'Selected' : 'Select'}
+                                  </button>
+
+                                  {/* Archive / Unarchive Action */}
+                                  {tmpl.isArchived ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleUnarchiveTemplate(tmpl, e)}
+                                      className="p-1 text-emerald-600 hover:text-emerald-500 rounded"
+                                      title="Restore Template"
+                                    >
+                                      <RotateCcw className="w-3.5 h-3.5" />
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleArchiveTemplate(tmpl, e)}
+                                      className="p-1 text-slate-400 hover:text-rose-500 rounded"
+                                      title="Archive Template"
+                                    >
+                                      <Archive className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+
+                                  {/* Safe Delete Draft Action (only if draft and not deployed) */}
+                                  {tmpl.status === 'draft' && !tmpl.deploymentCycleId && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleSafeDeleteDraft(tmpl, e)}
+                                      className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                                      title="Delete Unused Draft"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

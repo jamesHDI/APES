@@ -20,11 +20,12 @@ import {
   RotateCcw,
   Eye,
   EyeOff,
-  ShieldCheck
+  ShieldCheck,
+  KeyRound
 } from 'lucide-react';
 import { RegisterEmployeeModal } from '../auth/RegisterEmployeeModal';
-import { deleteEmployeeFromSupabase, saveEmployeeToSupabase, saveEmployeeToSupabaseDetailed, syncAllMasterEmployeesToSupabase } from '../../services/supabaseService';
-import { isHashedPassword } from '../../utils/crypto';
+import { deleteEmployeeFromSupabase, saveEmployeeToSupabase, saveEmployeeToSupabaseDetailed, syncAllMasterEmployeesToSupabase, adminResetEmployeePassword } from '../../services/supabaseService';
+import { isHashedPassword, hashPassword } from '../../utils/crypto';
 import * as XLSX from 'xlsx';
 
 interface EmployeeManagementProps {
@@ -234,6 +235,35 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     }
   };
 
+  const handleResetUserPassword = async (user: User) => {
+    const confirmMsg = `Are you sure you want to reset the password for ${user.name} (${user.email}) to the default password ("password123")?\n\nThis will take effect immediately. The employee will be required to change their password on next login.`;
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+
+    try {
+      const res = await adminResetEmployeePassword(user, 'password123');
+      if (!res.success) {
+        showToast(res.error || 'Failed to reset password. Please try again.');
+        return;
+      }
+
+      const updatedUser: User = res.updatedUser || {
+        ...user,
+        password: await hashPassword('password123'),
+        requiresPasswordChange: true,
+      };
+
+      const updated = userList.map((u) => (u.id === user.id ? updatedUser : u));
+      setUserList(updated);
+      await onSaveUsers(updated);
+      showToast(`Password for ${user.name} has been reset to default: password123`);
+    } catch (err: any) {
+      showToast(err?.message || 'Error resetting password.');
+      console.error('Failed to reset user password:', err);
+    }
+  };
+
   const handleSaveEmployee = async () => {
     if (!formData.firstName || !formData.lastName || !formData.email) {
       alert('Please fill in required fields: First Name, Last Name, Email');
@@ -249,8 +279,6 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
       formData.position.toLowerCase().includes('head of')
     );
 
-    let savedTargetUser: User | null = null;
-
     if (editingUser) {
       const cleanPw = formData.passwordInput.trim();
       const isNewPasswordEntered = cleanPw.length > 0 && !isHashedPassword(cleanPw);
@@ -258,47 +286,45 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
         alert('Password must be at least 6 characters.');
         return;
       }
-      const finalPassword = isNewPasswordEntered ? cleanPw : (editingUser.password || '');
+      const finalPassword = isNewPasswordEntered ? await hashPassword(cleanPw) : (editingUser.password || '');
       const previousEmail = editingUser.email;
+      const requiresChange = isNewPasswordEntered
+        ? formData.forcePasswordChange
+        : (formData.forcePasswordChange ?? editingUser.requiresPasswordChange ?? false);
 
-      const updated = userList.map((u) => {
-        if (u.id === editingUser.id) {
-          const userObj: User = {
-            ...u,
-            firstName: formData.firstName,
-            middleName: formData.middleName,
-            lastName: formData.lastName,
-            name: fullName,
-            email: cleanEmail,
-            contactNumber: formData.contactNumber,
-            departmentId: formData.departmentId,
-            departmentName: dept?.name || formData.departmentName,
-            position: formData.position,
-            role: formData.role,
-            employmentStatus: formData.employmentStatus,
-            password: finalPassword,
-            requiresPasswordChange: isNewPasswordEntered ? formData.forcePasswordChange : (formData.forcePasswordChange ?? u.requiresPasswordChange),
-            isDepartmentHead: isDeptHeadPos,
-            isActive: u.isActive,
-            isApproved: u.isApproved,
-            approvalStatus: u.approvalStatus,
-          };
-          savedTargetUser = userObj;
-          return userObj;
-        }
-        return u;
-      });
-      setUserList(updated);
+      const userObj: User = {
+        ...editingUser,
+        firstName: formData.firstName,
+        middleName: formData.middleName,
+        lastName: formData.lastName,
+        name: fullName,
+        email: cleanEmail,
+        contactNumber: formData.contactNumber,
+        departmentId: formData.departmentId,
+        departmentName: dept?.name || formData.departmentName,
+        position: formData.position,
+        role: formData.role,
+        employmentStatus: formData.employmentStatus,
+        password: finalPassword,
+        requiresPasswordChange: requiresChange,
+        isDepartmentHead: isDeptHeadPos,
+        isActive: editingUser.isActive,
+        isApproved: editingUser.isApproved,
+        approvalStatus: editingUser.approvalStatus,
+      };
+
       try {
-        if (savedTargetUser) {
-          const saveRes = await saveEmployeeToSupabaseDetailed(savedTargetUser, previousEmail);
-          if (!saveRes.success) {
-            const errMsg = saveRes.error?.message || 'Failed to update profile. Please try again.';
-            showToast(errMsg);
-            console.error('Failed to save employee to Supabase:', saveRes.error);
-            return;
-          }
+        const saveRes = await saveEmployeeToSupabaseDetailed(userObj, previousEmail);
+        if (!saveRes.success) {
+          const errMsg = saveRes.error?.message || 'Failed to update profile. Please try again.';
+          showToast(errMsg);
+          console.error('Failed to save employee to Supabase:', saveRes.error);
+          return;
         }
+
+        const verifiedUser = saveRes.verifiedUser || userObj;
+        const updated = userList.map((u) => (u.id === editingUser.id ? verifiedUser : u));
+        setUserList(updated);
         await onSaveUsers(updated);
         showToast(`Updated personnel profile for ${fullName}`);
         suppressAutofillUntilRef.current = Date.now() + 2500;
@@ -393,6 +419,14 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
           </span>
 
           <div className="flex items-center space-x-1">
+            <button
+              onClick={() => handleResetUserPassword(u)}
+              className="p-1.5 text-slate-400 hover:text-amber-600 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors"
+              title={`Reset Password for ${u.name} to default ("password123")`}
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+
             <button
               onClick={() => handleOpenEdit(u)}
               className="p-1.5 text-slate-500 hover:text-brand-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -843,16 +877,36 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                     Account Password & Login Credentials
                   </span>
                 </div>
-                {editingUser?.password ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 flex items-center space-x-1">
-                    <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                    <span>Password Protected & Encrypted</span>
-                  </span>
-                ) : (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300">
-                    No Password Set
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        passwordInput: 'password123',
+                        forcePasswordChange: true,
+                      }));
+                      setShowPassword(true);
+                      showToast('Default password "password123" filled in. Click Save Profile Changes to apply.');
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-200 hover:bg-amber-300 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 border border-amber-300 dark:border-amber-700 flex items-center space-x-1.5 transition-colors shadow-sm"
+                    title="Fill password input with default 'password123' and check force password change"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-amber-800 dark:text-amber-200" />
+                    <span>Reset to Default (password123)</span>
+                  </button>
+
+                  {editingUser?.password ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 flex items-center space-x-1">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                      <span>Password Protected</span>
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300">
+                      No Password Set
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center pt-1">

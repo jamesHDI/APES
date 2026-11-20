@@ -855,11 +855,17 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       console.warn('[Supabase DB Update] Column mismatch detected, retrying with core payload...', saveErr.message);
       const {
         employee_number, middle_name, suffix, personal_email, contact_number,
-        username, password, requires_password_change, avatar_url,
+        avatar_url,
         employment_status, date_hired, approval_status, hr_rejection_remarks,
         is_department_head, immediate_superior_name, department_head_name,
         immediate_superior_id, department_head_id, company_id, company_name, ...corePayload
       } = payload;
+
+      // CRITICAL: Preserve password, requires_password_change, and username in corePayload
+      if (payload.password !== undefined) corePayload.password = payload.password;
+      if (payload.requires_password_change !== undefined) corePayload.requires_password_change = payload.requires_password_change;
+      if (payload.username !== undefined) corePayload.username = payload.username;
+
       if (existingId) {
         const { error: coreErr } = await supabase.from('employees').update(corePayload).eq('id', existingId);
         saveErr = coreErr;
@@ -939,21 +945,18 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
       };
     }
 
-    // Synchronize Supabase Auth user session if active and email/password changed
+    // Synchronize Supabase Auth user session ONLY IF the currently logged-in user is updating their own account
     if (supabase?.auth) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const authUpdate: { email?: string; password?: string } = {};
-          if (cleanEmail && session.user.email?.toLowerCase() !== cleanEmail) {
-            authUpdate.email = cleanEmail;
-          }
+        if (session?.user && session.user.email && cleanEmail && session.user.email.toLowerCase() === cleanEmail) {
+          const authUpdate: { password?: string } = {};
           if (user.password && user.password.length >= 6 && !isHashedPassword(user.password)) {
             authUpdate.password = user.password;
           }
           if (Object.keys(authUpdate).length > 0) {
             await supabase.auth.updateUser(authUpdate);
-            console.log('[Supabase Auth Sync] Updated auth user session:', Object.keys(authUpdate));
+            console.log('[Supabase Auth Sync] Updated auth user session for self:', session.user.email);
           }
         }
       } catch (authErr) {
@@ -962,6 +965,12 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
     }
 
     invalidateEmployeesCache();
+    try {
+      triggerRealtimeBroadcast('data_changed', { type: 'employee', id: targetId, email: cleanEmail });
+    } catch (e) {
+      console.warn('[Supabase DB Update] Realtime broadcast note:', e);
+    }
+
     return {
       success: true,
       verifiedUser: verifiedRow ? mapRowToUser(verifiedRow) : undefined
@@ -977,6 +986,88 @@ export const saveEmployeeToSupabaseDetailed = async (user: User, previousEmail?:
         hint: err?.hint || ''
       }
     };
+  }
+};
+
+export const adminResetEmployeePassword = async (
+  targetUser: User,
+  newRawPassword = 'password123'
+): Promise<{ success: boolean; error?: string; updatedUser?: User }> => {
+  try {
+    const cleanEmail = (targetUser.email || '').toLowerCase().trim();
+    const targetId = targetUser.id;
+    const hashedPassword = await hashPassword(newRawPassword);
+
+    console.log(`[Admin Password Reset] Resetting password for ${targetUser.name} (${cleanEmail}) to default password: ${newRawPassword}`);
+
+    let updatedInDb = false;
+    if (isSupabaseConfigured && supabase) {
+      const updatePayload: any = {
+        password: hashedPassword,
+        requires_password_change: true,
+        updated_at: new Date().toISOString()
+      };
+
+      // 1. Try update by UUID
+      if (isValidUuid(targetId)) {
+        const { error: idErr, data: idData } = await supabase
+          .from('employees')
+          .update(updatePayload)
+          .eq('id', targetId)
+          .select('id');
+        if (!idErr && idData && idData.length > 0) updatedInDb = true;
+      }
+
+      // 2. Try update by email
+      if (!updatedInDb && cleanEmail) {
+        const { error: emailErr, data: emailData } = await supabase
+          .from('employees')
+          .update(updatePayload)
+          .ilike('email', cleanEmail)
+          .select('id');
+        if (!emailErr && emailData && emailData.length > 0) updatedInDb = true;
+      }
+
+      // 3. Try update by employee_number
+      if (!updatedInDb && targetUser.employeeNumber) {
+        const { error: numErr, data: numData } = await supabase
+          .from('employees')
+          .update(updatePayload)
+          .ilike('employee_number', targetUser.employeeNumber.trim())
+          .select('id');
+        if (!numErr && numData && numData.length > 0) updatedInDb = true;
+      }
+
+      // 4. Fallback to saveEmployeeToSupabaseDetailed
+      if (!updatedInDb) {
+        const fallbackRes = await saveEmployeeToSupabaseDetailed({
+          ...targetUser,
+          password: hashedPassword,
+          requiresPasswordChange: true
+        });
+        if (!fallbackRes.success) {
+          return { success: false, error: fallbackRes.error?.message || 'Database update failed' };
+        }
+      }
+
+      invalidateEmployeesCache();
+      try {
+        triggerRealtimeBroadcast('data_changed', { type: 'employee', id: targetId, email: cleanEmail });
+      } catch (e) {
+        console.warn('[Admin Password Reset] Realtime broadcast note:', e);
+      }
+    }
+
+    const updatedUser: User = {
+      ...targetUser,
+      password: hashedPassword,
+      requiresPasswordChange: true
+    };
+
+    return { success: true, updatedUser };
+  } catch (err: any) {
+    console.error('[Admin Password Reset] Exception:', err);
+    return { success: false, error: err?.message || String(err) };
   }
 };
 
@@ -1085,6 +1176,11 @@ export const deleteEmployeeFromSupabase = async (
     if (employeeNumber) {
       await supabase.from('employees').delete().eq('employee_number', employeeNumber.trim());
     }
+
+    invalidateEmployeesCache();
+    try {
+      triggerRealtimeBroadcast('data_changed', { type: 'employee', id: userId, email });
+    } catch {}
 
     return true;
   } catch (err) {
@@ -2799,6 +2895,20 @@ export const saveEvaluationTemplateToSupabase = async (template: EvaluationTempl
       version: template.version,
       isLocked: template.isLocked,
       isActive: template.isActive ?? true,
+      // Reusable & deployment linking
+      isReusable: template.isReusable,
+      savedAsReusableAt: template.savedAsReusableAt,
+      savedByUserId: template.savedByUserId,
+      savedByName: template.savedByName,
+      sourceTemplateId: template.sourceTemplateId,
+      sourceTemplateTitle: template.sourceTemplateTitle,
+      deploymentCycleId: template.deploymentCycleId,
+      deploymentCycleName: template.deploymentCycleName,
+      deployedByUserId: template.deployedByUserId,
+      deployedByName: template.deployedByName,
+      isArchived: template.isArchived,
+      archivedAt: template.archivedAt,
+      archivedByUserId: template.archivedByUserId,
       formulaConfig: {
         eligibilityWeight: Number(template.formulaConfig?.eligibilityWeight ?? 85.00),
         coreValuesWeight: Number(template.formulaConfig?.coreValuesWeight ?? 15.00),
@@ -3094,6 +3204,19 @@ export const fetchEvaluationTemplatesFromSupabase = async (forceRefresh: boolean
         endDate: row.end_date || full.endDate || undefined,
         version: full.version || 1,
         isLocked: full.isLocked || (row.status === 'deployed' || full.status === 'deployed'),
+        isReusable: Boolean(full.isReusable),
+        savedAsReusableAt: full.savedAsReusableAt || undefined,
+        savedByUserId: full.savedByUserId || undefined,
+        savedByName: full.savedByName || undefined,
+        sourceTemplateId: full.sourceTemplateId || undefined,
+        sourceTemplateTitle: full.sourceTemplateTitle || undefined,
+        deploymentCycleId: full.deploymentCycleId || undefined,
+        deploymentCycleName: full.deploymentCycleName || undefined,
+        deployedByUserId: full.deployedByUserId || undefined,
+        deployedByName: full.deployedByName || undefined,
+        isArchived: Boolean(full.isArchived),
+        archivedAt: full.archivedAt || undefined,
+        archivedByUserId: full.archivedByUserId || undefined,
       };
     });
 
